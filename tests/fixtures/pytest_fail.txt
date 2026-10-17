@@ -1,0 +1,82 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.7.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /tmp/claude-0/-home-claude/82f13101-211e-57be-af75-5581470341f0/scratchpad/fx/py
+plugins: anyio-4.15.1
+collecting ... collected 42 items
+
+test_bad.py::test_parse_missing FAILED                                   [  2%]
+test_bad.py::test_math FAILED                                            [  4%]
+test_m1.py::test_ok_1 PASSED                                             [  7%]
+test_m10.py::test_ok_10 PASSED                                           [  9%]
+test_m11.py::test_ok_11 PASSED                                           [ 11%]
+test_m12.py::test_ok_12 PASSED                                           [ 14%]
+test_m13.py::test_ok_13 PASSED                                           [ 16%]
+test_m14.py::test_ok_14 PASSED                                           [ 19%]
+test_m15.py::test_ok_15 PASSED                                           [ 21%]
+test_m16.py::test_ok_16 PASSED                                           [ 23%]
+test_m17.py::test_ok_17 PASSED                                           [ 26%]
+test_m18.py::test_ok_18 PASSED                                           [ 28%]
+test_m19.py::test_ok_19 PASSED                                           [ 30%]
+test_m2.py::test_ok_2 PASSED                                             [ 33%]
+test_m20.py::test_ok_20 PASSED                                           [ 35%]
+test_m21.py::test_ok_21 PASSED                                           [ 38%]
+test_m22.py::test_ok_22 PASSED                                           [ 40%]
+test_m23.py::test_ok_23 PASSED                                           [ 42%]
+test_m24.py::test_ok_24 PASSED                                           [ 45%]
+test_m25.py::test_ok_25 PASSED                                           [ 47%]
+test_m26.py::test_ok_26 PASSED                                           [ 50%]
+test_m27.py::test_ok_27 PASSED                                           [ 52%]
+test_m28.py::test_ok_28 PASSED                                           [ 54%]
+test_m29.py::test_ok_29 PASSED                                           [ 57%]
+test_m3.py::test_ok_3 PASSED                                             [ 59%]
+test_m30.py::test_ok_30 PASSED                                           [ 61%]
+test_m31.py::test_ok_31 PASSED                                           [ 64%]
+test_m32.py::test_ok_32 PASSED                                           [ 66%]
+test_m33.py::test_ok_33 PASSED                                           [ 69%]
+test_m34.py::test_ok_34 PASSED                                           [ 71%]
+test_m35.py::test_ok_35 PASSED                                           [ 73%]
+test_m36.py::test_ok_36 PASSED                                           [ 76%]
+test_m37.py::test_ok_37 PASSED                                           [ 78%]
+test_m38.py::test_ok_38 PASSED                                           [ 80%]
+test_m39.py::test_ok_39 PASSED                                           [ 83%]
+test_m4.py::test_ok_4 PASSED                                             [ 85%]
+test_m40.py::test_ok_40 PASSED                                           [ 88%]
+test_m5.py::test_ok_5 PASSED                                             [ 90%]
+test_m6.py::test_ok_6 PASSED                                             [ 92%]
+test_m7.py::test_ok_7 PASSED                                             [ 95%]
+test_m8.py::test_ok_8 PASSED                                             [ 97%]
+test_m9.py::test_ok_9 PASSED                                             [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_parse_missing ______________________________
+
+    def test_parse_missing():
+>       assert parse('{"user": {}}') == "x"
+               ^^^^^^^^^^^^^^^^^^^^^
+
+test_bad.py:5: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+s = '{"user": {}}'
+
+    def parse(s):
+>       return json.loads(s)["user"]["name"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'name'
+
+test_bad.py:3: KeyError
+__________________________________ test_math ___________________________________
+
+    def test_math():
+        data = [1, 2, 3]
+>       assert sum(data) == 7, "sum mismatch"
+E       AssertionError: sum mismatch
+E       assert 6 == 7
+E        +  where 6 = sum([1, 2, 3])
+
+test_bad.py:8: AssertionError
+=========================== short test summary info ============================
+FAILED test_bad.py::test_parse_missing - KeyError: 'name'
+FAILED test_bad.py::test_math - AssertionError: sum mismatch
+========================= 2 failed, 40 passed in 0.09s =========================

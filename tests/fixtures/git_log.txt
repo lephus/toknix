@@ -1,0 +1,1500 @@
+commit 611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Sep 21 13:22:33 2026 -0700
+
+    Bump the actions group with 3 updates (#7628)
+    
+    Bumps the actions group with 3 updates: [github/codeql-action/init](https://github.com/github/codeql-action), [github/codeql-action/autobuild](https://github.com/github/codeql-action) and [github/codeql-action/analyze](https://github.com/github/codeql-action).
+    
+    
+    Updates `github/codeql-action/init` from 4.37.0 to 4.38.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/99df26d4f13ea111d4ec1a7dddef6063f76b97e9...b96794f015dfd88f77b49b1c93e0fa7110f94c63)
+    
+    Updates `github/codeql-action/autobuild` from 4.37.0 to 4.38.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/99df26d4f13ea111d4ec1a7dddef6063f76b97e9...b96794f015dfd88f77b49b1c93e0fa7110f94c63)
+    
+    Updates `github/codeql-action/analyze` from 4.37.0 to 4.38.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/99df26d4f13ea111d4ec1a7dddef6063f76b97e9...b96794f015dfd88f77b49b1c93e0fa7110f94c63)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action/init
+      dependency-version: 4.38.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    - dependency-name: github/codeql-action/autobuild
+      dependency-version: 4.38.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    - dependency-name: github/codeql-action/analyze
+      dependency-version: 4.38.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit dae7ef63b4df6eded86637f251fc4e3a06c3b479
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Wed Sep 2 12:15:52 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7616)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.16.3 to 0.16.4
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.16.3...v0.16.4)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.16.4
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 5460f467b02e49471c0fd6cfc9ca0adab6351f98
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Aug 24 18:45:57 2026 -0600
+
+    Update lock-issues.yml to latest dependencies (#7609)
+
+commit 6af0b94158bbe10c45e754e85f9701f401e6aa9c
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Aug 24 11:33:15 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7608)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.16.2 to 0.16.3
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.16.2...v0.16.3)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.16.3
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 8f8b212de8c2129d7954c6cd373762880375620a
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Aug 17 13:03:13 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7606)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.16.1 to 0.16.2
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.16.1...v0.16.2)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.16.2
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 8068356288978c4f54661ae6f95afe0e0831885e
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Aug 11 11:14:26 2026 -0500
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7603)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.16.0 to 0.16.1
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.16.0...v0.16.1)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.16.1
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 1f6589ec3a1ee910f9a65cc3ceac60b26677bc0e
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Aug 3 11:52:44 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7598)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.22 to 0.16.0
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.22...v0.16.0)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.16.0
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 414f0513c33883adf6f2b46901d4f0b38a455851
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jul 27 11:25:09 2026 -0600
+
+    Bump the actions group with 2 updates (#7596)
+    
+    Bumps the actions group with 2 updates: [actions/setup-python](https://github.com/actions/setup-python) and [zizmorcore/zizmor-action](https://github.com/zizmorcore/zizmor-action).
+    
+    
+    Updates `actions/setup-python` from 6.3.0 to 7.0.0
+    - [Release notes](https://github.com/actions/setup-python/releases)
+    - [Commits](https://github.com/actions/setup-python/compare/ece7cb06caefa5fff74198d8649806c4678c61a1...5fda3b95a4ea91299a34e894583c3862153e4b97)
+    
+    Updates `zizmorcore/zizmor-action` from 0.5.2 to 0.6.0
+    - [Release notes](https://github.com/zizmorcore/zizmor-action/releases)
+    - [Commits](https://github.com/zizmorcore/zizmor-action/compare/71321a20a9ded102f6e9ce5718a2fcec2c4f70d8...6599ee8b7a49aef6a770f63d261d214911a7ce02)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/setup-python
+      dependency-version: 7.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+      dependency-group: actions
+    - dependency-name: zizmorcore/zizmor-action
+      dependency-version: 0.6.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit ded32878c0090f6b7b32a008176df6cecf36481f
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jul 27 11:18:18 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7597)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.21 to 0.15.22
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.21...v0.15.22)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.22
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 69f84847045bef7a849cc994a26fe7ba8a169e95
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jul 20 12:41:16 2026 -0600
+
+    Bump the actions group with 3 updates (#7591)
+    
+    Bumps the actions group with 3 updates: [github/codeql-action/init](https://github.com/github/codeql-action), [github/codeql-action/autobuild](https://github.com/github/codeql-action) and [github/codeql-action/analyze](https://github.com/github/codeql-action).
+    
+    
+    Updates `github/codeql-action/init` from 4.36.0 to 4.37.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/7211b7c8077ea37d8641b6271f6a365a22a5fbfa...99df26d4f13ea111d4ec1a7dddef6063f76b97e9)
+    
+    Updates `github/codeql-action/autobuild` from 4.36.0 to 4.37.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/7211b7c8077ea37d8641b6271f6a365a22a5fbfa...99df26d4f13ea111d4ec1a7dddef6063f76b97e9)
+    
+    Updates `github/codeql-action/analyze` from 4.36.0 to 4.37.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/7211b7c8077ea37d8641b6271f6a365a22a5fbfa...99df26d4f13ea111d4ec1a7dddef6063f76b97e9)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action/init
+      dependency-version: 4.37.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    - dependency-name: github/codeql-action/autobuild
+      dependency-version: 4.37.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    - dependency-name: github/codeql-action/analyze
+      dependency-version: 4.37.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit b17c61b618b1824f1f5d9edcacaf16801343a295
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jul 20 11:55:26 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7590)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.20 to 0.15.21
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.20...v0.15.21)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.21
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit f361ead047be5cb873174218582f7d8b9fcd9f49
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Thu Jul 9 08:12:40 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7562)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.18 to 0.15.20
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.18...v0.15.20)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.20
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit d38495c90653496c3c81f31e8f9bef162b400b44
+Author: Yamac <32689837+yamac-kurtulus@users.noreply.github.com>
+Date:   Thu Jul 9 18:10:39 2026 +0300
+
+    Fix link to AI Policy in CONTRIBUTING.md (#7576)
+
+commit 4c800e9aea2059660b8306b0fc8f9e9a4232cb3e
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jul 6 11:32:29 2026 -0600
+
+    Bump actions/setup-python from 6.2.0 to 6.3.0 in the actions group (#7561)
+    
+    Bumps the actions group with 1 update: [actions/setup-python](https://github.com/actions/setup-python).
+    
+    
+    Updates `actions/setup-python` from 6.2.0 to 6.3.0
+    - [Release notes](https://github.com/actions/setup-python/releases)
+    - [Commits](https://github.com/actions/setup-python/compare/a309ff8b426b58ec0e2a45f0f869d46889d02405...ece7cb06caefa5fff74198d8649806c4678c61a1)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/setup-python
+      dependency-version: 6.3.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 23953c0c875219a715f081cf3de7c149a7629ccf
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jun 29 10:37:19 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7551)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.17 to 0.15.18
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.17...v0.15.18)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.18
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 4ed3d1b3204caa6806a36125a39589044a02e807
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Wed Jun 24 15:47:15 2026 -0700
+
+    Bump actions/checkout from 6.0.2 to 7.0.0 in the actions group (#7540)
+    
+    Bumps the actions group with 1 update: [actions/checkout](https://github.com/actions/checkout).
+    
+    
+    Updates `actions/checkout` from 6.0.2 to 7.0.0
+    - [Release notes](https://github.com/actions/checkout/releases)
+    - [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/actions/checkout/compare/de0fac2e4500dabe0009e67214ff5f5447ce83dd...9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/checkout
+      dependency-version: 7.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+      dependency-group: actions
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit d44b67eb55f3dea5a36024b8c4ae6a5c37bca617
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Wed Jun 24 15:40:29 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7536)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.16 to 0.15.17
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.16...v0.15.17)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.17
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 74c56d5ffb0ad718dbd011b983d056c994355d7d
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Jun 24 16:40:12 2026 -0600
+
+    Inline pre-commit linting (#7539)
+
+commit d64b9ad4bf1c14e21e0df3f0f4320fec81180e91
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jun 15 11:12:28 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7515)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.15 to 0.15.16
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.15...v0.15.16)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.16
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 6f66281a1d6326b1b9c4ac09ca30de0fc4e6ef43
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Jun 9 08:45:59 2026 -0700
+
+    Add hasattr checks for remaining protocol isinstance checks (#7505)
+
+commit 6f205ff422bccd5e4c4fc0b64c5f3e7df5181db6
+Author: Loïc Pernod <loic.padier@gmail.com>
+Date:   Mon Jun 8 22:52:51 2026 +0200
+
+    Fix `_encode_files` detection for `__getattr__`-based file wrappers (#7502)
+
+commit 661970d171d9c3e12e4c789c4768db647d8c4da0
+Author: Joren Hammudoglu <jhammudoglu@gmail.com>
+Date:   Mon Jun 8 19:33:26 2026 +0200
+
+    Disable commonly ignored Pyright linting rules (#7497)
+
+commit fbd0eb37320376740a1010f52f2b9870e8210d88
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Jun 8 10:04:24 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7503)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.14 to 0.15.15
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.14...v0.15.15)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.15
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 1190afd14fca74292946d62c4c8169880a47ff67
+Author: Joren Hammudoglu <jhammudoglu@gmail.com>
+Date:   Thu Jun 4 23:43:21 2026 +0200
+
+    Add type annotation for `Request.hooks` (#7498)
+
+commit e50e5945294f79ee9ab4ec69de24d14f9b26a7ae
+Author: Joren Hammudoglu <jhammudoglu@gmail.com>
+Date:   Thu Jun 4 19:20:33 2026 +0200
+
+    Improve static typing of 3rd party imports  (#7496)
+    
+    * Add missing `typecheck` dependencies
+    
+    * Fix static typing of `compat.chardet`
+    
+    * Remove unused `# type: ignore` comments
+
+commit 3be097d450ee4ca8a2f9c1a3a58eb61ed19936b0
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Jun 2 17:45:34 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7493)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.12 to 0.15.14
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.12...v0.15.14)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.14
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit a634611dd1bbf1455723cff0af2ecc30866d880c
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Jun 2 17:44:54 2026 -0700
+
+    Bump github/codeql-action from 4.35.1 to 4.36.0 in the actions group (#7492)
+    
+    Bumps the actions group with 1 update: [github/codeql-action](https://github.com/github/codeql-action).
+    
+    
+    Updates `github/codeql-action` from 4.35.1 to 4.36.0
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/c10b8064de6f491fea524254123dbe5e09572f13...7211b7c8077ea37d8641b6271f6a365a22a5fbfa)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 4.36.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+      dependency-group: actions
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit c4367f231b5dc54f23f2983828562ce3a7555a8a
+Author: Ian Stapleton Cordasco <graffatcolmingov@gmail.com>
+Date:   Sun May 31 07:33:11 2026 -0500
+
+    Add AI Policy
+    
+    The immense influx of low-quality pull requests, many of which are
+    duplicated tens of times, are creating unnecessary toil. As such, we now
+    need to spell out what used to be basic, decent, and reasonable open
+    source behaviour because many are just using LLMs to spam and reputation
+    farm instead of trying to make meaningful contributions.
+
+commit cd90742ed94d901759e26766197d0ce7c7bd9c8e
+Author: aldbr <aldbr@outlook.com>
+Date:   Mon May 18 17:02:35 2026 +0200
+
+    docs: indent continuation line in Session.get :param params: (#7460)
+
+commit 6e83187b8feb273ed4c6cdab5efd8d54901dfab3
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Thu May 14 13:21:52 2026 -0600
+
+    v2.34.2
+
+commit 84d10f0be83e8f6aeca8a05230c52216431c4d0b
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Thu May 14 10:16:25 2026 -0600
+
+    Move Request.headers back to Mapping (#7441)
+
+commit b7b549b54571d03950b16afd2d01bc6ff0348224
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed May 13 13:17:24 2026 -0600
+
+    v2.34.1
+
+commit e511bc72777a94c45d004e010c597925092e1efe
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed May 13 13:16:50 2026 -0600
+
+    Fix mutability issues with headers input types (#7431)
+
+commit 5691f596134c2feb121e595c77a0178921fcce61
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed May 13 08:43:16 2026 -0600
+
+    Update JsonType containers to read-based collections (#7436)
+
+commit 2144213c307691710c9d665700860fc4993c3035
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed May 13 08:42:42 2026 -0600
+
+    Constrain Response.reason to str (#7437)
+
+commit 6404f345e562d962abe6700a1c357ec1e7e18232
+Author: Kaeun Kim <kaeun@lightning.ai>
+Date:   Tue May 12 18:51:01 2026 +0100
+
+    Fix `prepare_body` stream detection for `__getattr__`-based file wrappers (#7433)
+    
+    ---------
+    
+    Co-authored-by: Nate Prewitt <nate.prewitt@gmail.com>
+
+commit 0b401c76b6e80a4eecf3c690085b2553f6e261ca
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon May 11 13:24:57 2026 -0600
+
+    v2.34.0
+
+commit 86b378d3f60f828daa13ca50aa82e287ff7b66b4
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon May 11 13:24:34 2026 -0600
+
+    Align Session.get parameters with requests.get (#7429)
+
+commit a4f9a5999bdb9bf2d6e7c8aa973b28cacb17134f
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon May 11 13:24:21 2026 -0600
+
+    Port bpo-39057 to Requests (#7427)
+
+commit 3816cfa1abd42dca21b9e837f26c59b246016aaf
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon May 11 11:33:17 2026 -0600
+
+    Parameterize SupportsItems to handle Mapping key invariance (#7426)
+
+commit b684dcb9bbf3aa557d1238e72062c4a29737dd1c
+Author: Sebastian Meyer <mail@bastimeyer.de>
+Date:   Mon May 11 18:14:13 2026 +0200
+
+    sessions: fix hooks type (#7425)
+
+commit dc9dbdfb3434c6e58d48fd102f93e5342308817e
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sun May 10 20:05:34 2026 -0600
+
+    Formalize 3.15 support (#7422)
+
+commit 25340ebad09a38e0748aeb26232102022a03ec94
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sun May 10 20:05:15 2026 -0600
+
+    Clear proxy env vars before every test run (#7423)
+
+commit fd628095d7b9ddbf3e987d8a4bf0e6062768916f
+Author: typhon8 <49500687+typhon8@users.noreply.github.com>
+Date:   Sun May 10 17:41:25 2026 -0400
+
+    Preserve leading slashes in request path_url (#7315)
+    
+    
+    ---------
+    
+    Co-authored-by: Nate Prewitt <nate.prewitt@gmail.com>
+
+commit e8d2c015eecda8273612dd4562425e00cd164ba5
+Author: eggsort <111772900+eggsort@users.noreply.github.com>
+Date:   Sat May 9 19:51:50 2026 +0100
+
+    docs: Fix missing hook output in docs example (#7421)
+
+commit eb173bc819c72580deed2d54190d340cc769e529
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri May 8 14:18:00 2026 -0600
+
+    Add 3.14t support to CI (#7419)
+
+commit d60f4773b1f5932e2715b2c64b333649edbb405b
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Thu May 7 15:47:07 2026 -0600
+
+    Cleanup remaining http:// reference URIs
+
+commit f64a0d782b2a9310340aba929f44bb887d2f27e0
+Author: Joshua Kothapalle <joshua.kp0812@gmail.com>
+Date:   Thu May 7 17:25:17 2026 -0400
+
+    docs: update stale Sphinx link in contributing guide
+
+commit 04d750509b90da728e53aee8d7516426e5a1a293
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon May 4 14:42:06 2026 -0700
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7411)
+    
+    Bumps the pre-commit group with 1 update: [https://github.com/astral-sh/ruff-pre-commit](https://github.com/astral-sh/ruff-pre-commit).
+    
+    
+    Updates `https://github.com/astral-sh/ruff-pre-commit` from v0.15.11 to 0.15.12
+    - [Release notes](https://github.com/astral-sh/ruff-pre-commit/releases)
+    - [Commits](https://github.com/astral-sh/ruff-pre-commit/compare/v0.15.11...v0.15.12)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: https://github.com/astral-sh/ruff-pre-commit
+      dependency-version: 0.15.12
+      dependency-type: direct:production
+      dependency-group: pre-commit
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit f7822f7c4185b45527f171095c4edf8777efe51b
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sun May 3 13:51:27 2026 -0600
+
+    v2.34.0.dev1
+
+commit 561e4b6889f53584c39a67f8794c53a414f68481
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sun May 3 13:38:48 2026 -0600
+
+    Add inline types to Requests (#7272)
+
+commit 8f6cda9969f4a98c45ea2922f6bcbefc02256202
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Thu Apr 30 11:05:37 2026 -0600
+
+    Add tests for hasattr/getattr usage on LookupDict (#7401)
+
+commit 27e0981962d355b9532256f4dcb3d42f64b04d9c
+Author: Dimitri Papadopoulos Orfanos <3234522+DimitriPapadopoulos@users.noreply.github.com>
+Date:   Thu Apr 30 16:35:13 2026 +0200
+
+    Fix remaining typos (#7395)
+
+commit 6ec76b4a36fba4a32fb72f5f9ba04e632635e477
+Author: Dimitri Papadopoulos Orfanos <3234522+DimitriPapadopoulos@users.noreply.github.com>
+Date:   Mon Apr 27 18:08:18 2026 +0300
+
+    Ruff rule UP038 has been removed (#7393)
+
+commit f43f750ee10addbaa13901c1017631b4d70fd6e3
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Fri Apr 24 08:19:25 2026 -0600
+
+    Bump https://github.com/astral-sh/ruff-pre-commit (#7390)
+
+commit 9450dd51fb423c17f01325d5f23e62b0450696c6
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Apr 24 04:52:01 2026 -0600
+
+    Create groups for GHA and pre-commit dependabot PRs (#7387)
+
+commit 93bf5331a70cd2c77ac3ba43f85c918cae67c69f
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Thu Apr 23 14:53:48 2026 -0600
+
+    Update index.rst to match README info (#7386)
+
+commit 79f4df84cf77a2fee873809821dfbd786de05b97
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Apr 20 12:32:32 2026 -0700
+
+    Bump pypa/gh-action-pypi-publish from 1.13.0 to 1.14.0 (#7378)
+    
+    Bumps [pypa/gh-action-pypi-publish](https://github.com/pypa/gh-action-pypi-publish) from 1.13.0 to 1.14.0.
+    - [Release notes](https://github.com/pypa/gh-action-pypi-publish/releases)
+    - [Commits](https://github.com/pypa/gh-action-pypi-publish/compare/ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e...cef221092ed1bacb1cc03d23a2d87d1d172e277b)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: pypa/gh-action-pypi-publish
+      dependency-version: 1.14.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit b294b08fe3b08df9f646f64d1250f96193dab066
+Author: Dejan SANADER <dejan@sanader.fr>
+Date:   Mon Apr 20 18:24:32 2026 +0200
+
+    Consider urllib3 version has 3 numbers at most (#7375) (#7376)
+
+commit 5f3ff9b9e4d3d44960467e7877e06e9efa22f20b
+Author: Christian Clauss <cclauss@me.com>
+Date:   Sun Apr 19 20:34:20 2026 +0200
+
+    Fix typos discovered by codespell (#7371)
+
+commit 514c1623fefff760bfa15a693aa38e474aba8560
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Apr 15 12:30:57 2026 -0600
+
+    Update README and remove extraneous images (#7366)
+
+commit d2f6bdecc835475c3cfbb83565ea879d7b2712ca
+Author: Chris Riches <chrisriches42@gmail.com>
+Date:   Wed Apr 15 16:06:46 2026 +0100
+
+    Clarify decode_unicode behaviour in iter_{content,lines} docstrings (#7365)
+
+commit a044b020dea43230585126901684a0f30ec635a8
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Apr 15 08:56:38 2026 -0600
+
+    Move DigestAuth hash algorithms to use usedforsecurity=False (#7310)
+
+commit 16df2a09173b17a82d607c31a6826b7c5dd0fc57
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Apr 14 21:04:46 2026 -0600
+
+    Move pytest pin to support 9.x series (#7364)
+
+commit fe2063be0cfbc08150ef468ae57a708c2514a321
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Apr 14 11:58:28 2026 -0600
+
+    Don't hide navigation on mobile webpage (#7360)
+
+commit 4b0b1a3e9f2fc21b9dcd8b906f2ff02645aa697e
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sat Apr 11 18:05:37 2026 -0600
+
+    Update pre-commit versions (#7348)
+    
+    * Update pre-commit versions
+    
+    * Add dependabot entry for pre-commit
+    
+    * Update pre-commit and ruff hooks
+
+commit 185f587a78e2d2df31ae8af8c95d97a012213df7
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sat Apr 11 13:39:24 2026 -0600
+
+    Cleanup docs and add i18n wrappers (#7354)
+
+commit ef439eb779c1eba7cbdeeeb302b11e1e061b4b7d
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Sun Apr 5 09:31:02 2026 -0600
+
+    Prevent Response self-reference in redirect history (#7328)
+
+commit cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Mar 31 16:21:33 2026 -0600
+
+    Add Zizmor workflow and make initial updates
+
+commit 6360477c52303c9445b45fa8744b02d05a2f0905
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Mar 30 18:25:42 2026 +0000
+
+    Bump github/codeql-action from 4.34.1 to 4.35.1
+    
+    Bumps [github/codeql-action](https://github.com/github/codeql-action) from 4.34.1 to 4.35.1.
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/38697555549f1db7851b81482ff19f1fa5c4fedc...c10b8064de6f491fea524254123dbe5e09572f13)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 4.35.1
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 111d2b77790bf49943c0dfa09b365371c24aec7e
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Mar 30 10:07:00 2026 -0600
+
+    v2.33.1
+
+commit f0198e6dfc431a2293dc16e1b1e8fcddc910a7f3
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Mar 30 09:27:35 2026 -0600
+
+    Fix malformed value parsing for Content-Type (#7309)
+
+commit bc7dd0fc4d56e808bcdd85ac2d797b3107c89259
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Mar 30 09:24:49 2026 -0600
+
+    Fix cosmetic header validity parsing regex (#7308)
+
+commit 4443b1a847b190010c2972a658924b98b5db6360
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Mar 30 09:23:00 2026 -0600
+
+    Fix unintended test extra (#7306)
+
+commit 389eea58dfb2f2ee096421a812e3af29c0298951
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Mar 30 09:21:38 2026 -0600
+
+    Cleanup extracted file after extract_zipped_path test (#7305)
+
+commit 7407309c8a8a73aa2f4337184025d440bbedab7a
+Author: Frank Dana <ferdnyc@gmail.com>
+Date:   Mon Mar 30 00:07:31 2026 -0400
+
+    Packaging: DRY out extras definition (#7277)
+
+commit bc04dfd6dad4cb02cd92f5daa81eb562d280a761
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Mar 25 09:06:17 2026 -0600
+
+    v2.33.0
+
+commit 66d21cb07bd6255b1280291c4fafb71803cdb3b7
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Mar 25 08:57:56 2026 -0600
+
+    Merge commit from fork
+
+commit 8b9bc8fc0f63be84602387913c4b689f19efd028
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Mar 24 23:18:38 2026 -0600
+
+    Move badges to top of README (#7293)
+
+commit e331a288f369973f5de0ec8901c94cae4fa87286
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Mar 24 23:15:21 2026 -0600
+
+    Remove unused extraction call (#7292)
+
+commit 753fd08c5eacce0aa0df73fe47e49525c67e0a29
+Author: rohan436 <rohan.santhoshkumar@googlemail.com>
+Date:   Fri Feb 27 17:30:09 2026 +0800
+
+    docs: fix FAQ grammar in httplib2 example
+    
+    Signed-off-by: rohan436 <rohan.santhoshkumar@googlemail.com>
+
+commit 774a0b837a194ee885d4fdd9ca947900cc3daf71
+Author: Magsen (CD) <magsen01@hotmail.fr>
+Date:   Wed Oct 18 14:59:43 2023 +0200
+
+    docs(socks): same block as other sections
+    
+    strange formatting:
+    https://docs.python-requests.org/en/latest/user/advanced/#socks
+
+commit 9c72a41bec8597f948c9d8caa5dc3f12273b3303
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Mar 23 17:26:06 2026 +0000
+
+    Bump github/codeql-action from 4.33.0 to 4.34.1
+    
+    Bumps [github/codeql-action](https://github.com/github/codeql-action) from 4.33.0 to 4.34.1.
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/b1bff81932f5cdfc8695c7752dcee935dcd061c8...38697555549f1db7851b81482ff19f1fa5c4fedc)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 4.34.1
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit ebf71906798ec82f34e07d3168f8b8aecaf8a3be
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Mar 16 17:38:50 2026 +0000
+
+    Bump github/codeql-action from 4.32.0 to 4.33.0
+    
+    Bumps [github/codeql-action](https://github.com/github/codeql-action) from 4.32.0 to 4.33.0.
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/b20883b0cd1f46c72ae0ba6d1090936928f9fa30...b1bff81932f5cdfc8695c7752dcee935dcd061c8)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 4.33.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 0e4ae38f0c93d4f92a96c774bd52c069d12a4798
+Author: Dr Alex Mitre <bedr10_capacitacion@hotmail.com>
+Date:   Thu Mar 5 14:14:29 2026 -0600
+
+    docs: exclude Response.is_permanent_redirect from API docs (#7244)
+    
+    Hide the internal Response.is_permanent_redirect attribute from public API documentation.
+
+commit d568f47278492e630cc990a259047c67991d007a
+Author: Ethan Price <146688626+E8Price@users.noreply.github.com>
+Date:   Tue Mar 3 11:59:47 2026 -0800
+
+    docs: clarify Quickstart POST example (#6960)
+    
+    (fixes #6949)
+    
+    ---------
+    
+    Co-authored-by: Nate Prewitt <nate.prewitt@gmail.com>
+
+commit b2a1d33f571518ca9a6148e7da787cc5827f897a
+Author: Dan Blanchard <dan.blanchard@gmail.com>
+Date:   Mon Mar 2 17:49:19 2026 -0500
+
+    Increase chardet upper limit to 8
+    
+    Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+
+commit 392b01f26e1cca4a2ada1539a6ae1a1b607ec33a
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Mar 2 20:34:25 2026 +0000
+
+    Bump actions/download-artifact from 7.0.0 to 8.0.0
+    
+    Bumps [actions/download-artifact](https://github.com/actions/download-artifact) from 7.0.0 to 8.0.0.
+    - [Release notes](https://github.com/actions/download-artifact/releases)
+    - [Commits](https://github.com/actions/download-artifact/compare/37930b1c2abaa49bbe596cd826c3c89aef350131...70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/download-artifact
+      dependency-version: 8.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 27f8b40d5cc6198148a58a8e65c8cff8f7c46a54
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Mar 2 18:43:39 2026 +0000
+
+    Bump actions/upload-artifact from 6.0.0 to 7.0.0
+    
+    Bumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 6.0.0 to 7.0.0.
+    - [Release notes](https://github.com/actions/upload-artifact/releases)
+    - [Commits](https://github.com/actions/upload-artifact/compare/b7c566a772e6b6bfb58ed0dc250532a479d7789f...bbbca2ddaa5d8feaa63e36b76fdaad77386f024f)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/upload-artifact
+      dependency-version: 7.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 4bd79e397304d46dfccd76f36c07f66c0295ff82
+Author: Amin Vakil <info@aminvakil.com>
+Date:   Sun Feb 22 19:37:16 2026 +0330
+
+    Increase chardet upper limit to 7
+
+commit da9113c0466850a425e554630a732ec1f7d045fc
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Feb 13 17:06:57 2026 -0700
+
+    Add CODEOWNERS file to repo (#7208)
+
+commit a2ce3d8ace060b0c8446bc956e3853806dd4e3bb
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Feb 13 15:48:20 2026 -0700
+
+    Remove harden runner from publish workflow (#7207)
+
+commit 5e7cb71cd719394f8fc56ea55da3f58bb22ae2b6
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Feb 13 12:30:59 2026 -0700
+
+    Bump version to dev for test publish
+
+commit 00600b38f45dc234f825f609cea63d24e7e690af
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Feb 13 12:28:59 2026 -0700
+
+    Update publish workflow and add test pypi option
+
+commit 5f338446f9eabd956e7e132668f330d9de4fc368
+Author: m0d3v <136194555+M0d3v1@users.noreply.github.com>
+Date:   Fri Feb 13 06:22:04 2026 +0330
+
+    Update docstring for Session.verify to include string support (#6859) (#6865)
+    
+    
+    ---------
+    
+    Co-authored-by: Nate Prewitt <nate.prewitt@gmail.com>
+
+commit 47914226c2968802f2cdee3f6f0f6e06e4472f64
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Thu Feb 12 19:07:05 2026 -0700
+
+    Fix empty netrc entry usage (#7205)
+
+commit 1b40fdd004bfc8ba5301bcf8a6908264e9b6b877
+Merge: dedee0f 514b3f2
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Feb 10 17:29:35 2026 -0700
+
+    Merge pull request #7200 from psf/dependabot/github_actions/step-security/harden-runner-2.14.2
+    
+    Bump step-security/harden-runner from 2.13.0 to 2.14.2
+
+commit 514b3f2345e5b80444b5b85e7cc4ac18a74925b1
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Wed Feb 11 00:23:00 2026 +0000
+
+    Bump step-security/harden-runner from 2.13.0 to 2.14.2
+    
+    Bumps [step-security/harden-runner](https://github.com/step-security/harden-runner) from 2.13.0 to 2.14.2.
+    - [Release notes](https://github.com/step-security/harden-runner/releases)
+    - [Commits](https://github.com/step-security/harden-runner/compare/ec9f2d5744a09debf3a187a3f4f675c53b671911...5ef0c079ce82195b2a36a210272d6b661572d83e)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: step-security/harden-runner
+      dependency-version: 2.14.2
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit dedee0f4562bd7f6612ee66b2e8a3c85cd4c3643
+Merge: 733b201 7112775
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Feb 10 17:22:16 2026 -0700
+
+    Merge pull request #7199 from psf/dependabot/github_actions/dessant/lock-threads-6.0.0
+    
+    Bump dessant/lock-threads from 5.0.0 to 6.0.0
+
+commit 7112775514a8276a0b94360c71730db9ae2ab974
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Feb 10 23:59:55 2026 +0000
+
+    Bump dessant/lock-threads from 5.0.0 to 6.0.0
+    
+    Bumps [dessant/lock-threads](https://github.com/dessant/lock-threads) from 5.0.0 to 6.0.0.
+    - [Release notes](https://github.com/dessant/lock-threads/releases)
+    - [Changelog](https://github.com/dessant/lock-threads/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/dessant/lock-threads/compare/d42e5f49803f3c4e14ffee0378e31481265dda22...7266a7ce5c1df01b1c6db85bf8cd86c737dadbe7)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: dessant/lock-threads
+      dependency-version: 6.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 733b2018a3987714f5a9576f2df4895f2a166449
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Feb 10 16:36:31 2026 -0700
+
+    Update floors for certifi and urllib3 (#7189)
+
+commit 0c2bbe73982a70623fb81bf16b2507ea0ca80b99
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Feb 6 08:02:46 2026 -0700
+
+    Drop support for Python 3.9 (#7196)
+
+commit 32e26af3afafb50930e64765ee37be18774d481c
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Feb 4 18:01:16 2026 -0700
+
+    Start testing Python 3.15 Alpha (#7195)
+    
+    * Add optional 3.15-dev runners to test matrix
+    
+    * Set PYO3_USE_ABI3_FORWARD_COMPATIBILITY for 3.15 builds
+
+commit 421b8733cf17e4dee8be237e7412b095772c2323
+Merge: 0b950d8 9688636
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 20:01:53 2026 -0700
+
+    Merge pull request #7101 from psf/dependabot/github_actions/github/codeql-action-4.31.6
+    
+    Bump github/codeql-action from 4.30.8 to 4.31.6
+
+commit 968863678bc09c0205fc916138c1a74e11f46e5b
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Sat Jan 31 02:32:11 2026 +0000
+
+    Bump github/codeql-action from 4.30.8 to 4.31.6
+    
+    Bumps [github/codeql-action](https://github.com/github/codeql-action) from 4.30.8 to 4.31.6.
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/f443b600d91635bebf5b0d9ebc620189c0d6fba5...fe4161a26a8629af62121b670040955b330f9af2)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 4.31.6
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 0b950d8e97c5a70e8e9047b8d8c765db3ca6fd7b
+Merge: 49f8968 42eaeb4
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 19:59:20 2026 -0700
+
+    Merge pull request #7100 from psf/dependabot/github_actions/actions/setup-python-6.1.0
+    
+    Bump actions/setup-python from 6.0.0 to 6.1.0
+
+commit 42eaeb4da87330107f2b314793ec52dfd3395412
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Sat Jan 31 02:31:55 2026 +0000
+
+    Bump actions/setup-python from 6.0.0 to 6.1.0
+    
+    Bumps [actions/setup-python](https://github.com/actions/setup-python) from 6.0.0 to 6.1.0.
+    - [Release notes](https://github.com/actions/setup-python/releases)
+    - [Commits](https://github.com/actions/setup-python/compare/e797f83bcb11b83ae66e0230d6156d7c80228e7c...83679a892e2d95755f2dac6acb0bfd1e9ac5d548)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/setup-python
+      dependency-version: 6.1.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 49f89688672cd7a6c56cb9cde06ae9722f8590e2
+Merge: 5f33bdd 8e39833
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 19:47:47 2026 -0700
+
+    Merge pull request #7092 from psf/dependabot/github_actions/actions/checkout-6.0.0
+    
+    Bump actions/checkout from 5.0.0 to 6.0.0
+
+commit 8e398336f8cc82f44c7b549bfa803b99d7159c25
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Sat Jan 31 02:31:46 2026 +0000
+
+    Bump actions/checkout from 5.0.0 to 6.0.0
+    
+    Bumps [actions/checkout](https://github.com/actions/checkout) from 5.0.0 to 6.0.0.
+    - [Release notes](https://github.com/actions/checkout/releases)
+    - [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/actions/checkout/compare/08c6903cd8c0fde910a37f88322edcfb5dd907a8...1af3b93b6815bc44a9784bd300feb67ff0d1eeb3)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/checkout
+      dependency-version: 6.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 5f33bddabdb3a3828e428252e756405d028501de
+Merge: 8e5ac8e ca78ca9
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 19:45:13 2026 -0700
+
+    Merge pull request #7073 from psf/dependabot/github_actions/actions/download-artifact-6.0.0
+    
+    Bump actions/download-artifact from 5.0.0 to 6.0.0
+
+commit ca78ca96115cb254855afb3d966d24e92c973a20
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Sat Jan 31 02:31:33 2026 +0000
+
+    Bump actions/download-artifact from 5.0.0 to 6.0.0
+    
+    Bumps [actions/download-artifact](https://github.com/actions/download-artifact) from 5.0.0 to 6.0.0.
+    - [Release notes](https://github.com/actions/download-artifact/releases)
+    - [Commits](https://github.com/actions/download-artifact/compare/634f93cb2916e3fdff6788551b99b062d0335ce0...018cc2cf5baa6db3ef3c5f8a56943fffe632ef53)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/download-artifact
+      dependency-version: 6.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 8e5ac8e0eb53ed0d204639ac3bc42878c7621210
+Merge: cb2c800 6c88b6b
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 19:36:42 2026 -0700
+
+    Merge pull request #7071 from psf/dependabot/github_actions/actions/upload-artifact-5.0.0
+    
+    Bump actions/upload-artifact from 4.6.2 to 5.0.0
+
+commit 6c88b6b09f2ac7c8cba340db774f0e7596626ec2
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Sat Jan 31 02:31:13 2026 +0000
+
+    Bump actions/upload-artifact from 4.6.2 to 5.0.0
+    
+    Bumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 4.6.2 to 5.0.0.
+    - [Release notes](https://github.com/actions/upload-artifact/releases)
+    - [Commits](https://github.com/actions/upload-artifact/compare/ea165f8d65b6e75b540449e92b4886f43607fa02...330a01c490aca151604b8cf639adc76d48f6c5d4)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/upload-artifact
+      dependency-version: 5.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit cb2c800518423e0042789ab09f8f6e719428a444
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 19:25:55 2026 -0700
+
+    Migrate build system to PEP 517 (#7012)
+
+commit a389aaad453ac4c0b9f8af4a72429de164810654
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 19:12:40 2026 -0700
+
+    Update maintainers in the AUTHORS.rst (#7191)
+    
+    
+    ---------
+    
+    Co-authored-by: Ian Stapleton Cordasco <graffatcolmingov@gmail.com>
+
+commit f8bec2f7ca9d7c03981a12ff8866a9b3923f1699
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Fri Jan 30 14:10:27 2026 -0700
+
+    Fix CI and build failures (#7190)
+    
+    * Migrate linting from various tooling to Ruff
+    
+    * Run ruff over codebase
+    
+    * Drop support for pypy-3.10
+
+commit 70298332899f25826e35e42f8d83425124f755a5
+Merge: 420d16b 6e4134b
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Wed Oct 15 20:45:42 2025 +0900
+
+    Merge pull request #7042 from psf/dependabot/github_actions/github/codeql-action-4.30.8
+
+commit 6e4134b204f675268296b2b44c2d52c8a7927b2c
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Oct 13 16:16:05 2025 +0000
+
+    Bump github/codeql-action from 3.30.0 to 4.30.8
+    
+    Bumps [github/codeql-action](https://github.com/github/codeql-action) from 3.30.0 to 4.30.8.
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/2d92b76c45b91eb80fc44c74ce3fce0ee94e8f9d...f443b600d91635bebf5b0d9ebc620189c0d6fba5)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 4.30.8
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 420d16bc7ef326f7b65f90e4644adc0f6a0e1d44
+Merge: 5a270e2 3c8decb
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Sep 9 18:00:19 2025 +0900
+
+    Merge pull request #7026 from psf/dependabot/github_actions/actions/setup-python-6.0.0
+
+commit 3c8decb92fb9062cac4bdd12d6c0d32fb3a2d119
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Sep 9 00:09:47 2025 +0000
+
+    Bump actions/setup-python from 5.6.0 to 6.0.0
+    
+    Bumps [actions/setup-python](https://github.com/actions/setup-python) from 5.6.0 to 6.0.0.
+    - [Release notes](https://github.com/actions/setup-python/releases)
+    - [Commits](https://github.com/actions/setup-python/compare/a26af69be951a213d495a4c3e4e4022e16d87065...e797f83bcb11b83ae66e0230d6156d7c80228e7c)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/setup-python
+      dependency-version: 6.0.0
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 5a270e2a95cdf84e746f26face11efdda3aa0127
+Merge: 1c49660 7d8df1d
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Tue Sep 9 09:08:49 2025 +0900
+
+    Merge pull request #7025 from psf/dependabot/github_actions/pypa/gh-action-pypi-publish-1.13.0
+
+commit 7d8df1df573a01f20a80994685e9f6c375f9c63f
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Sep 8 16:18:37 2025 +0000
+
+    Bump pypa/gh-action-pypi-publish from 1.12.4 to 1.13.0
+    
+    Bumps [pypa/gh-action-pypi-publish](https://github.com/pypa/gh-action-pypi-publish) from 1.12.4 to 1.13.0.
+    - [Release notes](https://github.com/pypa/gh-action-pypi-publish/releases)
+    - [Commits](https://github.com/pypa/gh-action-pypi-publish/compare/76f52bc884231f62b9a034ebfe128415bbaabdfc...ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: pypa/gh-action-pypi-publish
+      dependency-version: 1.13.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 1c49660b84c88eeb2695796ce4a68903c00e00c5
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Sep 2 02:56:17 2025 +0000
+
+    Bump github/codeql-action from 3.29.0 to 3.30.0
+    
+    Bumps [github/codeql-action](https://github.com/github/codeql-action) from 3.29.0 to 3.30.0.
+    - [Release notes](https://github.com/github/codeql-action/releases)
+    - [Changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/github/codeql-action/compare/ce28f5bb42b7a9f2c824e633a3f6ee835bab6858...2d92b76c45b91eb80fc44c74ce3fce0ee94e8f9d)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: github/codeql-action
+      dependency-version: 3.30.0
+      dependency-type: direct:production
+      update-type: version-update:semver-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit b25c87d7cb8d6a18a37fa12442b5f883f9e41741
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Aug 18 13:23:20 2025 -0700
+
+    v2.32.5
+
+commit 131e506079d97606e4214cc4d87b780ac478de7a
+Merge: 46e939b b336cb2
+Author: Nate Prewitt <nate.prewitt@gmail.com>
+Date:   Mon Aug 11 15:32:16 2025 -0700

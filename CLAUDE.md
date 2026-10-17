@@ -1,0 +1,35 @@
+# tokopt
+
+CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini CLI).
+
+- **Kế hoạch:** `docs/PLAN.md`
+- **Thuật toán:** `docs/ALGORITHMS.md` (nguồn sự thật duy nhất, nếu mâu thuẫn thì sửa tài liệu trước rồi mới sửa code)
+
+## Cách làm việc
+
+- Mỗi session làm đúng 1 task trong `docs/PLAN.md`: task đầu tiên còn `[ ]`, trừ khi người dùng chỉ định task khác.
+  1. Đọc phần thuật toán liên quan (A1–A8) trong `docs/ALGORITHMS.md`, không cần đọc cả file.
+  2. Viết test trước, chạy cho fail, rồi implement.
+  3. Xong thì đổi `[ ]` thành `[x]` trong PLAN.md và commit `P<n>-T<m>: …`.
+- Test: `python -m unittest discover -s tests -v`. Mọi test phải xanh trước khi commit.
+- Gặp `[TBD]` hoặc `[ASSUMPTION]` cần quyết định thì dừng lại và hỏi người dùng, không tự chọn.
+
+## Ràng buộc
+
+- Python ≥ 3.9, **chỉ stdlib**, cả trong test. Không thêm dependency.
+- Hook không bao giờ được làm hỏng agent: mọi exception đều thành exit 0, không in gì (bật `TOKOPT_DEBUG=1` để in ra stderr).
+- `tokopt run` phải giữ nguyên exit code của lệnh gốc.
+- Không bộ lọc nào được bỏ dòng khớp `ERROR_RE`.
+- Không ghi ra ngoài `~/.tokopt/`, trừ khi người dùng chạy `install` hoặc `init-project`. Test phải dùng `HOME` / `TOKOPT_HOME` tạm.
+- Code đa nền tảng: dùng `pathlib`; không giả định `/`; chạy được trên Windows qua Git Bash.
+
+## Cấu trúc
+
+```
+src/tokopt/      cli.py, config.py, textutil.py, store.py, filters.py, runner.py, hooks.py,
+                 outline.py, transcripts.py, measure.py, bench.py, statusline.py, installer.py
+tests/           test_*.py, fixtures/ (output thật, không sửa tay), fake_agents/
+templates/       rules.md (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md)
+docs/            PLAN.md, ALGORITHMS.md, VERIFY.md
+install.sh, install.ps1
+```

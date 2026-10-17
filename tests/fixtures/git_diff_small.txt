@@ -1,0 +1,9 @@
+diff --git a/README.md b/README.md
+index 4e5c445..2a8c883 100644
+--- a/README.md
++++ b/README.md
+@@ -74,3 +74,4 @@ git config --global fetch.fsck.badTimezone ignore
+ ---
+ 
+ [![Kenneth Reitz](https://raw.githubusercontent.com/psf/requests/main/ext/kr.png)](https://kennethreitz.org) [![Python Software Foundation](https://raw.githubusercontent.com/psf/requests/main/ext/psf.png)](https://www.python.org/psf)
++x
