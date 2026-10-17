@@ -65,6 +65,9 @@
 - Mọi điều kiện trong bảng "Kiểm chứng A2" đều có test và pass.
 - Có property test: với mọi fixture, mọi dòng khớp `ERROR_RE` trong input đều xuất hiện trong output (hoặc nằm trong dòng gộp deprecated).
 - Bổ sung fixture tự sinh cho jest, go test, cargo test, eslint (viết tay theo format thật, ghi rõ nguồn trong `tests/fixtures/README.md`).
+- Sửa 2 lỗi đã phát hiện trong bản nháp khi chạy thử trên fixture:
+  - BUG-1: `f_install` không bỏ được dòng progress `━━━… 46.4/46.4 kB`. Regex dùng `\b` sau `━`, mà `━` không phải ký tự word nên `\b` không khớp.
+  - BUG-2: `f_gitlog` trên `git_log.txt` (125 commit) trả về 30 dòng nhưng thiếu dòng `[tokopt] 95 older commits omitted`.
 
 **P1-T4 `[ ]` `tokopt run` và `recall` end-to-end**
 - `tokopt run -- "exit 3"` trả exit code 3.
