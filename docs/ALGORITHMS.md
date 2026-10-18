@@ -7,6 +7,7 @@ Quy ước:
 - `FACT`: đã kiểm chứng (tài liệu chính thức hoặc fixture thật trong `tests/fixtures/`).
 - `[ASSUMPTION]`: giả định hợp lý, cần xác nhận khi implement.
 - `[TBD]`: chưa quyết định.
+- Từ thiết kế 2026-10-18 (`docs/superpowers/specs/2026-10-18-token-optimizations-design.md`): `[ASSUMPTION]` gắn cho **một con số** là giá trị mặc định ban đầu. Người làm đặt đúng giá trị đó vào config và được chỉnh nếu fixture cho thấy giá trị khác tốt hơn (ghi lý do trong commit). Quy tắc "dừng lại và hỏi" chỉ áp dụng cho `[TBD]` và giả định về hành vi của Claude Code.
 
 Ràng buộc chung:
 
@@ -21,10 +22,19 @@ Ràng buộc chung:
 **Mục tiêu:** có một đơn vị so sánh chi phí giữa các loại token.
 
 ```
-est_tokens(text) = ceil(len(text) / 4)            # chỉ dùng cho output tool, file; sai số ±25%
+est_tokens(text) = Σ_lớp ceil(chars_lớp / token_ratios[lớp])     # chỉ dùng cho output tool, file
+  lớp hex:       chuỗi [0-9a-fA-F] hoặc base64 liền nhau ≥ 16 ký tự
+  lớp non_ascii: ký tự ngoài ASCII (tiếng Việt có dấu, ━ ✓ …)
+  lớp default:   phần còn lại
+  token_ratios mặc định = {default: 4.0, hex: 2.0, non_ascii: 1.5}   [ASSUMPTION]
 ETU(u) = w_in·input + w_cw·cache_write + w_cr·cache_read + w_out·output
 weights mặc định = [1, 1.25, 0.1, 5]              # FACT: tỉ lệ giá niêm yết Anthropic
+reread_cost(T, R) = T·w_cw + T·w_cr·R              # T token vào context khi phiên còn R request phía sau
+                                                   # ví dụ T=5.000, R=50 → ≈ 31.000 ETU
 ```
+
+- `est_tokens` chạy một lượt regex. Hook read vẫn dùng `size // 4` để giữ tốc độ.
+- Bộ lọc (`tokopt run`) **luôn** dùng `token_ratios` trong config. Kết quả hiệu chỉnh (A6.4) chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`), để lượng output agent nhận được không tự thay đổi.
 
 - Token của model **luôn lấy từ `usage` trong transcript** (số chính xác của provider), không ước lượng.
 - Trọng số đọc từ `config.weights`. Codex và Gemini có tỉ lệ giá khác nên người dùng tự đặt.
@@ -51,11 +61,15 @@ run(cmd):
 
   kind = classify(cmd)                  # A2.3
   out = FILTERS[kind](lines, failed = p.returncode != 0)                         # A2.4
+  out = normalize_costly(out, kind)                                              # A2.5b
   out = squeeze_blank(collapse_similar(dedupe_runs(out)))                        # A2.5
   if kind != "gitdiff":
-      out = budget_cut(out, max_lines × (2 if failed else 1), head_lines)        # A2.6
+      out = cut_long_lines(out, max_line_chars)                                  # A2.5c
+      k = 2 if failed else 1
+      out = budget_cut(out, max_lines × k, max_tokens × k, head_lines)           # A2.6
 
-  if len(join(out)) < 0.9 × len(text):  # chỉ lưu tee khi thật sự cắt
+  lossy = normalize_costly hoặc cut_long_lines đã đổi ≥ 1 dòng
+  if lossy or len(join(out)) < 0.9 × len(text):   # lưu tee khi thật sự cắt hoặc có biến đổi mất thông tin
       id = random hex(6); save text → ~/.tokopt/tee/<id>.log
       append footer: "[tokopt: N → M lines; full output: tokopt recall <id>; exit X]"
   print(out); record_run(...)           # A6
@@ -105,6 +119,7 @@ Bất biến của mọi bộ lọc:
 
 - Không bỏ dòng khớp `ERROR_RE`: error, failed, fail, fatal, exception, traceback, panic, assert, cannot, could not, not found, undefined, denied, refused, segfault, warning, warn, `^E\s`, `^\s*at .+:\d+`.
 - Luôn giữ dòng tổng kết cuối.
+- Bất biến ERROR_RE là **tuyệt đối** (người dùng chốt 2026-10-18): dòng khớp luôn được giữ **nguyên văn**, kể cả khi vượt ngân sách; không bị cắt dòng dài, không bị chuẩn hoá. Hai ngoại lệ không làm mất nội dung: `dedupe_runs` gộp các dòng giống hệt liên tiếp thành `… [×N]`; bộ lọc install gộp các dòng `deprecated`.
 
 | kind | Bỏ | Giữ / biến đổi |
 |---|---|---|
@@ -113,10 +128,10 @@ Bất biến của mọi bộ lọc:
 | gotest | `=== RUN/PAUSE/CONT`, `--- PASS:`, `PASS`, `ok  ` | khối FAIL, panic |
 | cargotest | `test x ... ok`, `Compiling/Downloaded/Fresh/Checking` | failures, `test result:` |
 | install | Collecting, Downloading, Using cached, Requirement already satisfied, Building wheel, `━`, Resolved, Prepared, Fetching, Progress, Downloaded, Compiling | Gộp mọi dòng `deprecated` thành 1 dòng `[tokopt] N deprecation warnings: a, b, …` (tối đa 8 tên); giữ added/audited/vulnerabilities/error |
-| lint, compile | — | Nhóm theo file (regex `^path.ext[(:]`), tối đa 15 diagnostic/file, thêm dòng `[tokopt] N diagnostics in F files` |
+| lint, compile | — | Nhóm theo file (regex `^path.ext[(:]`), tối đa 15 dòng **không** khớp ERROR_RE mỗi file (diagnostic khớp ERROR_RE luôn giữ hết), thêm dòng `[tokopt] N diagnostics in F files` |
 | gitstatus | dòng gợi ý `(use "git …")` | Mọi dòng còn lại |
 | gitlog | — | Nếu là format mặc định (`commit <sha>`): chuyển thành `sha9 date author: subject`, tối đa 30 commit, kèm dòng báo số commit bị bỏ. Format khác: không đổi |
-| gitdiff | — | Giữ **trọn khối file** (`diff --git …`) cho tới khi đủ ngân sách 400 dòng; các file còn lại liệt kê `path (+a -d)` kèm gợi ý `git diff -- <file>`. Không bao giờ cắt giữa hunk |
+| gitdiff | — | Giữ **trọn khối file** (`diff --git …`) cho tới khi chạm ngân sách 400 dòng hoặc `max_tokens` (trần nào trước); khối file mà riêng nó đã vượt ngân sách cũng chỉ được liệt kê; các file còn lại liệt kê `path (+a -d)` kèm gợi ý `git diff -- <file>`. Không bao giờ cắt giữa hunk |
 | gitnet | Enumerating, Counting, Compressing, Receiving, Resolving, Writing objects | Mọi dòng còn lại |
 | listing | — | 80 mục đầu, kèm dòng báo số mục còn lại |
 | build | layer docker (sha256, extracting, Pulling fs layer, Waiting, Download complete), `> Task … UP-TO-DATE`, dòng chỉ có % | Mọi dòng còn lại |
@@ -128,16 +143,35 @@ Bất biến của mọi bộ lọc:
 - `collapse_similar(min_run=4)`: `shape(l)` thay số và hex ≥ 7 ký tự bằng `#`. Một chuỗi từ 4 dòng cùng shape trở lên và không khớp `ERROR_RE` → giữ dòng đầu, dòng `… K similar lines …`, dòng cuối.
 - `squeeze_blank`: gộp nhiều dòng trống liên tiếp, bỏ dòng trống ở cuối.
 
-### A2.6 budget_cut(lines, max, head)
+### A2.5b normalize_costly(lines, kind)
+
+Cùng nội dung, chọn cách viết tốn ít token hơn (ý tưởng MCE của bài CNF-MCE). Chỉ áp cho kind `install`, `build`, `gitnet`. Không bao giờ đụng dòng khớp `ERROR_RE`. Không áp cho kind có thể in code nguyên văn hoặc tên file cần giữ nguyên (pytest, jest, gotest, cargotest, lint, compile, gitdiff, gitstatus, gitlog, listing, generic). Mỗi biến đổi có cờ config riêng.
+
+| Biến đổi | Cờ config | Mặc định |
+|---|---|---|
+| Hex ≥ 32 ký tự → 12 ký tự đầu + `…`; `sha512-<base64>` / `sha256-<base64>` → `sha512-…` / `sha256-…` | `normalize_hashes` | bật |
+| ≥ 4 dòng liên tiếp bắt đầu bằng timestamp (ISO 8601 hoặc `HH:MM:SS`) → bỏ timestamp ở các dòng giữa, giữ ở dòng đầu và dòng cuối | `normalize_timestamps` | bật |
+| Đường dẫn tuyệt đối nằm dưới cwd → tương đối | `normalize_paths` | **tắt** (tool Read của Claude Code cần đường dẫn tuyệt đối) |
+
+### A2.5c cut_long_lines(lines, max_line_chars)
+
+Dòng dài hơn `max_line_chars` (800 `[ASSUMPTION]`) và **không** khớp `ERROR_RE` → `<300 ký tự đầu> …[N chars]… <200 ký tự cuối>`. Không áp cho `gitdiff`.
+
+### A2.6 budget_cut(lines, max_lines, max_tokens, head)
 
 ```
-if len ≤ max: return lines
-tail = max(max − head − 20, 20)
-keep = {0..head−1} ∪ {len−tail..len−1}
-room = max − |keep|
-duyệt i tăng dần: nếu i ∉ keep và lines[i] khớp ERROR_RE và room > 0 → thêm i, room−−
+err  = {i : lines[i] khớp ERROR_RE}          # luôn giữ, không tính vào ngân sách (bất biến tuyệt đối)
+rest = các chỉ số còn lại
+if |rest| ≤ max_lines và Σ est_tokens(rest) ≤ max_tokens: return lines
+tail = max(max_lines − head − 20, 20)
+chọn từ rest: head phần tử đầu và tail phần tử cuối
+bớt dần tail rồi head (mỗi bên tối thiểu 5) cho tới khi |chọn| ≤ max_lines và Σ est_tokens(chọn) ≤ max_tokens × 1.05
+keep = err ∪ chọn
 xuất theo thứ tự tăng; chỗ nhảy cóc chèn "  … k lines omitted …"
+error_overflow = 1 nếu Σ est_tokens(err) > max_tokens (ghi vào bảng runs)
 ```
+
+- `max_tokens` mặc định 3.000 `[ASSUMPTION]`; cả `max_lines` và `max_tokens` đều nhân đôi khi lệnh fail.
 
 Lý do: lỗi thường nằm ở cuối (stack trace, summary), còn ngữ cảnh lệnh nằm ở đầu. Dòng lỗi ở giữa được ưu tiên giữ.
 
@@ -149,6 +183,8 @@ tokopt recall <id> [--grep REGEX] [--lines a:b]
 
 In output gốc, có thể lọc theo regex (kèm số dòng) hoặc theo đoạn dòng. File tee tự xoá sau `tee_keep_days` (7 ngày); việc dọn chạy ngẫu nhiên khoảng 1/50 lần `run`.
 
+Mỗi lần chạy, `recall` ghi một dòng vào bảng `recalls(ts, tee_id)` (best-effort như `record_run`). Đây là dữ liệu cho tỉ lệ recall trong `gain` (A6.2).
+
 ### Kiểm chứng A2 (dùng fixture thật trong `tests/fixtures/`)
 
 | Fixture | Điều kiện đạt |
@@ -159,7 +195,11 @@ In output gốc, có thể lọc theo regex (kèm số dòng) hoặc theo đoạ
 | `npm_install.txt` | 6 dòng deprecated gộp thành 1 dòng; còn `added 172 packages` và `7 vulnerabilities` |
 | `git_log.txt` | ≤ 31 dòng; dòng đầu có dạng `<9 hex> … : <subject>` |
 | `git_status.txt` | Không còn dòng `(use "git` |
-| Mọi fixture | exit code giữ nguyên; mọi dòng khớp `ERROR_RE` trong input vẫn có mặt trong output (property test) |
+| Mọi fixture | exit code giữ nguyên; mọi dòng khớp `ERROR_RE` trong input vẫn có mặt **nguyên văn** trong output (property test) |
+| Mọi fixture trừ gitdiff | phần không khớp ERROR_RE của output ≤ `max_tokens × 1.05` (tính bằng `est_tokens`) |
+| `build_longlines.txt` (viết tay) | dòng > 800 ký tự không khớp ERROR_RE bị cắt còn ≤ 520 ký tự; dòng lỗi dài vẫn nguyên văn; có tee |
+| `build_timestamps.txt` (viết tay) | timestamp chỉ còn ở dòng đầu và dòng cuối của mỗi chuỗi ≥ 4 dòng |
+| Output sinh trong test có 500 dòng `FAILED …` | cả 500 dòng còn nguyên; `runs.error_overflow = 1` |
 
 ---
 
@@ -201,9 +241,12 @@ Read(file_path, offset?, limit?):
               n > guard_repeat_reads (2) → deny "already read this exact range N times; file unchanged; content is still in context."
 Grep/Glob(path):
   path nằm trong junk → deny kèm gợi ý tìm trong thư mục source
+Grep(output_mode = "content", không có head_limit) và grep_head_limit > 0:
+  → updatedInput: {...tool_input, head_limit: grep_head_limit}     # mặc định 200 [ASSUMPTION]
 mọi lần deny: ghi bảng guard(session, rule, path, est_tokens = size/4)
 ```
 
+- `[ASSUMPTION]` Giới hạn Grep cần kiểm chứng ở P2-T4: (1) `updatedInput` có được áp dụng khi không có `permissionDecision`; (2) khi `head_limit` cắt bớt, Claude Code có báo cho agent là kết quả đã bị cắt không. Nếu (2) không có thì đặt mặc định `grep_head_limit = 0`, vì cắt im lặng có thể làm agent kết luận sai ("chỉ có 200 chỗ gọi").
 - **Reset ledger:** hook `SessionStart` với `source ∈ {compact, clear}` xoá các dòng `reads` của session đó. Sau compaction, nội dung file cũ không còn trong context nên phải cho phép đọc lại.
 - **Vì sao R3 cho phép 2 lần:** lần thứ 2 có thể hợp lệ (đọc lại sau khi tự sửa file nhưng mtime chưa đổi theo giây, hoặc sau một compaction mà hook không bắt được).
 - `[ASSUMPTION]` Bản Claude Code mới có thể đã tự trả stub "file unchanged" cho lần Read lặp. Nếu đúng vậy thì R3 thừa. Kiểm chứng ở P2-T4; nếu thừa thì mặc định đặt `guard_repeat_reads = 0`.
@@ -283,11 +326,48 @@ Ngôn ngữ khác: không hỗ trợ → outline trả 200 dòng đầu kèm th�
 
 | Lệnh | Tính gì |
 |---|---|
-| `report --days N` | sessions, tổng các loại token, ETU/session, ETU/lượt gọi, cache hit = cache_read/(input+cache_write+cache_read), token tool output ước lượng, top 10 session theo ETU |
-| `waste --days N` | (1) top 10 họ tool theo token output (`Bash:<prog>`, `Read:<path>`); (2) các output đơn lẻ ≥ 5k token; (3) lần đọc hoặc lệnh chạm junk; (4) file bị Read ≥ 3 lần trong một session; (5) session > 80 lượt gọi. Mỗi nhóm kèm gợi ý sửa |
-| `gain` | Từ SQLite: Σ(raw_chars − out_chars)/4 theo kind, Σ est_tokens từ guard theo rule, top 10 lệnh tiết kiệm nhiều nhất, tỉ lệ lệnh bị bọc trên tổng lệnh Bash (lấy từ transcript) |
-| `context` | Token ước lượng của các instruction file sẽ được nạp (global/project CLAUDE.md, CLAUDE.local.md, .claude/rules/*.md, AGENTS.md, GEMINI.md) + số MCP server (~/.claude.json, .mcp.json); cảnh báo khi > 1.500 |
+| `report --days N` | sessions, tổng các loại token, ETU/session, ETU/lượt gọi, cache hit = cache_read/(input+cache_write+cache_read), token tool output ước lượng, **tỉ trọng output = Σ(output·w_out)/Σ ETU** (theo phiên và tổng), top 10 session theo ETU |
+| `waste --days N` | (1) top 10 họ tool theo `reread_cost` (`Bash:<prog>`, `Read:<path>`), hiện cả T và ETU; (2) các output đơn lẻ ≥ 5k token, xếp theo `reread_cost`; (3) lần đọc hoặc lệnh chạm junk; (4) file bị Read ≥ 3 lần trong một session; (5) session > 80 lượt gọi; (6) cache vỡ (A6.5); (7) phiên có tỉ trọng output > 35% `[ASSUMPTION]`, kèm phân rã output (A6.6). Mỗi nhóm kèm gợi ý sửa |
+| `gain` | Từ SQLite: tiết kiệm **trực tiếp** theo kind (token ước lượng của raw − out), Σ est_tokens từ guard theo rule, top 10 lệnh tiết kiệm nhiều nhất, tỉ lệ lệnh bị bọc trên tổng lệnh Bash (lấy từ transcript). Thêm: (a) tiết kiệm **tính cả đọc lại (ước tính)** = trực tiếp × (w_cw + w_cr·R̄), R̄ = trung vị số request còn lại sau mỗi tool_result Bash trong transcript N ngày; chưa có transcript thì R̄ = 20 `[ASSUMPTION]` và ghi rõ "dùng giá trị mặc định"; (b) theo kind: số lần cắt, số tee_id bị recall (đếm khác nhau), tỉ lệ recall; tỉ lệ > 20% với ≥ 10 lần cắt `[ASSUMPTION]` → cảnh báo "bộ lọc <kind> có thể cắt quá tay"; (c) số lần chạy có `error_overflow = 1` |
+| `context` | Token ước lượng của các instruction file sẽ được nạp (global/project CLAUDE.md, CLAUDE.local.md, .claude/rules/*.md, AGENTS.md, GEMINI.md) + số MCP server (~/.claude.json, .mcp.json); cảnh báo khi > 1.500. Thêm: MCP server đã cấu hình (`~/.claude.json`, `.mcp.json`, settings của project) và skill (người dùng, project, plugin), kèm số lần được gọi trong N ngày (đếm `tool_use` tên `mcp__<server>__*` và input `skill` của tool `Skill`); 0 lần → gợi ý tắt, không tự tắt. Chỉ báo token schema MCP khi đọc được schema `[ASSUMPTION]` |
 | `snapshot --label L` | Lưu bản tóm tắt report vào `~/.tokopt/results/snapshot-L.json` |
+
+- Các phép tính theo phiên bỏ qua request của subagent.
+
+### A6.4 Hiệu chỉnh tỉ lệ ký tự/token (chỉ Claude Code, chỉ cho báo cáo)
+
+```
+mẫu: hai request liên tiếp k, k+1 trong cùng phiên, không có compaction hay cache vỡ (A6.5) ở giữa
+  context = input + cache_read + cache_write
+  y = context_{k+1} − context_k − output_k
+  x = (chars_default, chars_hex, chars_non_ascii) của các tool_result nằm giữa k và k+1
+bỏ mẫu y ≤ 0 và mẫu ngoại lai
+hồi quy bình phương tối thiểu không hệ số chặn (giải hệ phương trình chuẩn 3×3), cần ≥ 200 mẫu
+ratio_lớp = 1 / hệ số_lớp
+lưu ~/.tokopt/calibration.json theo agent; chỉ dùng khi sai số trung vị trên tập kiểm tra < 15% [ASSUMPTION]
+```
+
+- Rủi ro: output_k chứa thinking, mà thinking có thể không còn trong context ở request sau. Lọc mẫu và ngưỡng chất lượng ở trên xử lý việc này.
+- Tên lệnh (lệnh riêng hay chạy trong `report`) do người làm chọn.
+
+### A6.5 Cache vỡ giữa phiên (chỉ Claude Code)
+
+```
+request k là một lần vỡ nếu cache_read_k < 0.5 · (cache_read_{k−1} + cache_write_{k−1})
+                         và cache_write_k ≥ 10.000                         [ASSUMPTION]
+nguyên nhân (theo thứ tự ưu tiên):
+  compact  có ranh giới compaction trước k       → bình thường, không tính lãng phí
+  model    message.model khác request trước
+  idle     khoảng cách timestamp > cache_ttl_seconds (mặc định 300; nhận biết TTL 1 giờ từ usage nếu có)
+  unknown  còn lại (đổi MCP/tool, sửa instruction, cập nhật Claude Code)
+ETU mất = cache_write_k · (w_cw − w_cr)
+```
+
+Gợi ý trong `waste`: idle → /clear hoặc chấp nhận khi nghỉ lâu; model → tránh đổi model giữa phiên; unknown → kiểm tra MCP/instruction vừa đổi.
+
+### A6.6 Phân rã output
+
+`usage.output_tokens` chỉ có tổng, nên phân rã theo tỉ lệ ký tự của các khối trong message assistant: thinking, văn bản trả lời, input của tool ghi file (Write, Edit, MultiEdit, NotebookEdit), input tool khác. Nếu thinking bị ẩn trong transcript thì phần thinking = output_tokens − ước lượng phần nhìn thấy. Gợi ý theo nhóm lớn nhất: Write → "sửa file có sẵn bằng Edit"; văn bản → rules viết ngắn; thinking → chỉ gợi ý giảm effort cho việc đơn giản (tokopt không tự đổi cấu hình).
 
 ### A6.3 Bench A/B (bằng chứng nhân quả)
 
@@ -310,6 +390,12 @@ compare A B:
     INCONCLUSIVE nếu các trường hợp còn lại
 ```
 
+**Chọn rules bằng bench:**
+
+- `bench --rules <file>`: chèn rules block vào CLAUDE.md / AGENTS.md của **worktree** (giữa marker như A8) trước khi chạy agent. Nếu CLAUDE.md global của người dùng đã có block tokopt thì cảnh báo và ghi trạng thái đó vào kết quả (bench không ghi ra ngoài `~/.tokopt/` và worktree, nên không tự cô lập).
+- `compare` thêm cột median output tokens và verdict riêng cho output.
+- Nhánh A luôn là rules v1; mỗi biến thể là một nhánh B, so riêng từng cặp với v1. Biến thể thắng khi pass rate không giảm, median output tokens giảm ≥ 10% và cận trên CI 95% bootstrap của mức thay đổi output < 0. Nhiều biến thể cùng thắng thì chọn biến thể giảm output nhiều nhất.
+
 ---
 
 ## A7. Statusline (`tokopt statusline`)
@@ -319,7 +405,7 @@ stdin: JSON Claude Code gửi cho statusLine (có transcript_path, model.display
 ctx = usage của lượt assistant cuối: input + cache_read + cache_write
 pct = ctx / context_window (mặc định 200k, đổi trong config)
 session_etu = ETU cộng dồn cả transcript (đọc tăng dần, cache offset trong ~/.tokopt/sl-<session>.json)
-saved = gain của session này (bảng runs và guard, lọc theo ts ≥ thời điểm bắt đầu session)
+saved = gain trực tiếp của session này (bảng runs và guard, lọc theo ts ≥ thời điểm bắt đầu session; không nhân hệ số đọc lại)
 in:  "ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%"   (màu vàng ≥ 60%, đỏ ≥ 80%)
 yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tăng dần từ offset đã lưu
 ```

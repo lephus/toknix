@@ -4,6 +4,7 @@ CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini
 
 - **Kế hoạch:** `docs/PLAN.md`
 - **Thuật toán:** `docs/ALGORITHMS.md` (nguồn sự thật duy nhất, nếu mâu thuẫn thì sửa tài liệu trước rồi mới sửa code)
+- **Thiết kế mở rộng (lý do của các mục N…):** `docs/superpowers/specs/2026-10-18-token-optimizations-design.md`
 
 ## Cách làm việc
 
@@ -12,14 +13,14 @@ CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini
   2. Viết test trước, chạy cho fail, rồi implement.
   3. Xong thì đổi `[ ]` thành `[x]` trong PLAN.md và commit `P<n>-T<m>: …`.
 - Test: `python -m unittest discover -s tests -v`. Mọi test phải xanh trước khi commit.
-- Gặp `[TBD]` hoặc `[ASSUMPTION]` cần quyết định thì dừng lại và hỏi người dùng, không tự chọn.
+- Gặp `[TBD]`, hoặc `[ASSUMPTION]` về hành vi của agent/Claude Code, thì dừng lại và hỏi người dùng, không tự chọn. `[ASSUMPTION]` gắn cho một con số là giá trị mặc định ban đầu, được chỉnh theo fixture (xem phần quy ước đầu `docs/ALGORITHMS.md`).
 
 ## Ràng buộc
 
 - Python ≥ 3.9, **chỉ stdlib**, cả trong test. Không thêm dependency.
 - Hook không bao giờ được làm hỏng agent: mọi exception đều thành exit 0, không in gì (bật `TOKOPT_DEBUG=1` để in ra stderr).
 - `tokopt run` phải giữ nguyên exit code của lệnh gốc.
-- Không bộ lọc nào được bỏ dòng khớp `ERROR_RE`.
+- Không bộ lọc nào được bỏ hay sửa dòng khớp `ERROR_RE`, kể cả khi vượt ngân sách token (A2.4).
 - Không ghi ra ngoài `~/.tokopt/`, trừ khi người dùng chạy `install` hoặc `init-project`. Test phải dùng `HOME` / `TOKOPT_HOME` tạm.
 - Code đa nền tảng: dùng `pathlib`; không giả định `/`; chạy được trên Windows qua Git Bash.
 

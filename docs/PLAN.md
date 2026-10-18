@@ -2,6 +2,8 @@
 
 Đọc `docs/ALGORITHMS.md` trước. Kế hoạch này chỉ nói **làm theo thứ tự nào** và **khi nào thì coi là xong**.
 
+Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duyệt ngày 2026-10-18: `docs/superpowers/specs/2026-10-18-token-optimizations-design.md`. Đọc mục tương ứng trong thiết kế nếu cần biết lý do.
+
 ## Mục tiêu sản phẩm
 
 Đây là CLI Python (chỉ stdlib) cho người dùng Claude Code, Codex CLI và Gemini CLI. Nó làm ba việc:
@@ -26,7 +28,10 @@
 **Ngoài phạm vi**
 
 - Hook native cho Codex và Gemini (v0.2)
-- Nén prompt hoặc output của model
+- Nén prompt; nén output của model sau khi đã sinh (làm model *viết ít hơn* qua rules thì nằm trong phạm vi, xem P3-T5)
+- Huấn luyện hoặc thay tokenizer
+- Tự đổi cấu hình model/effort của người dùng
+- Tự nới bộ lọc dựa trên tỉ lệ recall (v0.2; v0.1 chỉ đo)
 - Định tuyến model
 - Proxy API
 - Đọc transcript Gemini
@@ -60,6 +65,7 @@
 **P1-T2 `[ ]` Test cho `textutil` và `classify` (A2.2, A2.3)**
 - Có ≥ 25 test case cho `program_of` và `classify`, bao phủ: `VAR=x cmd`, `npx jest`, `uv run pytest`, `python -m pytest`, `sudo docker build`, `npm run test:unit`, `yarn` không tham số, `git -C dir status` (`[TBD]`: hiện đang ra generic, quyết định có hỗ trợ không).
 - `normalize` xử lý đúng ANSI, `\r` (progress bar) và `\r\n`.
+- **(N1.2a)** `est_tokens` theo lớp ký tự (A1): test riêng cho chuỗi ASCII, hex/base64 ≥ 16 ký tự, tiếng Việt có dấu, và chuỗi trộn; tỉ lệ đọc từ `token_ratios` trong config.
 
 **P1-T3 `[ ]` Test bộ lọc trên fixture thật (A2.4 đến A2.6)**
 - Mọi điều kiện trong bảng "Kiểm chứng A2" đều có test và pass.
@@ -68,17 +74,27 @@
 - Sửa 2 lỗi đã phát hiện trong bản nháp khi chạy thử trên fixture:
   - BUG-1: `f_install` không bỏ được dòng progress `━━━… 46.4/46.4 kB`. Regex dùng `\b` sau `━`, mà `━` không phải ký tự word nên `\b` không khớp.
   - BUG-2: `f_gitlog` trên `git_log.txt` (125 commit) trả về 30 dòng nhưng thiếu dòng `[tokopt] 95 older commits omitted`.
+- Sửa cho khớp bất biến ERROR_RE tuyệt đối (A2.4): `budget_cut` giữ mọi dòng lỗi bất kể ngân sách; `f_lint` chỉ giới hạn 15 dòng không khớp ERROR_RE mỗi file. Property test kiểm tra dòng lỗi có mặt **nguyên văn**.
+
+**P1-T3b `[ ]` Bộ lọc nhận biết chi phí token (N1.2b–d; A2.5b, A2.5c, A2.6)**
+- `budget_cut(lines, max_lines, max_tokens, head)` theo A2.6; config thêm `max_tokens` (3000), `max_line_chars` (800), `normalize_hashes`, `normalize_timestamps` (bật), `normalize_paths` (tắt).
+- `normalize_costly` và `cut_long_lines` theo A2.5b, A2.5c; ngân sách token của `gitdiff` theo A2.4.
+- Bảng `runs` thêm cột `error_overflow`.
+- Mọi dòng mới trong bảng "Kiểm chứng A2" pass; fixture viết tay `build_longlines.txt`, `build_timestamps.txt` ghi nguồn trong `tests/fixtures/README.md`.
 
 **P1-T4 `[ ]` `tokopt run` và `recall` end-to-end**
 - `tokopt run -- "exit 3"` trả exit code 3.
 - `tokopt run -- "python -m pytest tests/fixtures_py"` (một suite có 2 test fail) in footer `tokopt recall <id>`; lệnh `tokopt recall <id>` in lại nguyên output gốc.
 - `TOKOPT_RAW=1` cho ra output nguyên văn.
+- **(N2.1)** `recall` ghi 1 dòng vào bảng `recalls(ts, tee_id)`; tee được lưu cả khi có biến đổi mất thông tin dù kích thước giảm < 10% (A2.1).
 - Chạy được trên Windows qua Git Bash (CI xanh trên `windows-latest`).
 
 **P1-T5 `[ ]` `tokopt gain`**
 - Đọc bảng `runs` và `guard`, in tổng token tiết kiệm ước lượng theo kind và theo rule, cùng top 10 lệnh.
 - Có `--json`.
 - DB chưa tồn tại thì in "no data yet", không crash.
+- **(N1.1)** Hiện hai số: tiết kiệm trực tiếp và tiết kiệm tính cả đọc lại (ước tính, R̄ = 20 kèm nhãn "dùng giá trị mặc định" cho tới khi P4-T2 xong).
+- **(N2.1)** Theo kind: số lần cắt, số lần bị recall, tỉ lệ recall; cảnh báo khi tỉ lệ > 20% với ≥ 10 lần cắt. Đếm số lần `error_overflow = 1`.
 
 ## P2 — Hook Claude Code
 
@@ -93,6 +109,7 @@
 - R2: file 2.000 dòng không có offset/limit bị deny, thông báo có lệnh `tokopt outline`; cùng file đó có `limit=100` thì được cho qua.
 - R3: đọc lần 3 cùng range thì deny; sau khi `touch` file thì cho qua; sau `session-start` với `source=compact` thì cho qua.
 - Mỗi lần deny ghi đúng 1 dòng vào bảng `guard`.
+- **(N1.4)** Grep `output_mode="content"` không có `head_limit` → `updatedInput` thêm `head_limit=200`; có `head_limit` sẵn hoặc mode khác → không đụng; `grep_head_limit=0` → tắt.
 
 **P2-T3 `[ ]` `tokopt install` / `uninstall` / `doctor` cho Claude Code (A8)**
 - Cài vào `settings.json` có sẵn nội dung của người dùng: giữ nguyên mọi key cũ, thêm đúng 3 hook và statusLine (chỉ khi chưa có).
@@ -108,6 +125,7 @@
   - Transcript cho thấy lệnh đã bị viết lại thành `tokopt run -- …`.
   - Agent vẫn sửa được test.
 - Ghi kết quả vào `docs/VERIFY.md` và chốt hai `[ASSUMPTION]` của A3 và A4 (updatedInput khi không có permissionDecision; Claude Code có tự dedupe Read không).
+- **(N1.4)** Chốt thêm: `updatedInput` cho Grep có được áp dụng không, và khi `head_limit` cắt bớt thì agent có được báo không. Không được báo → đổi mặc định `grep_head_limit` thành 0.
 
 ## P3 — Truy xuất code
 
@@ -135,6 +153,8 @@
   - chỉ trả về diff, không tóm tắt lại;
   - giữ đầy đủ suy luận khi debug, bảo mật, migration;
   - một task một session.
+  - **(N1.5b)** viết ít: không tóm tắt lại thay đổi vừa làm, không dán lại code đã có trong diff, sửa file có sẵn bằng Edit thay vì Write, trả lời ngắn khi không được hỏi giải thích.
+- Thêm ít nhất 1 biến thể ngắn gọn hơn trong `templates/variants/`, mỗi bản ≤ 350 token. Mặc định cài v1.
 - `install` chèn block vào CLAUDE.md, AGENTS.md, GEMINI.md đúng theo marker.
 
 ## P4 — Đo lường
@@ -142,10 +162,15 @@
 **P4-T1 `[ ]` Parser transcript Claude Code và Codex (A6.1)**
 - Fixture transcript giả lập có chunk trùng lặp: tổng usage phải đếm mỗi request 1 lần.
 - Dòng JSON hỏng bị bỏ qua, không crash.
+- **(N2.2)** Hiệu chỉnh tỉ lệ ký tự/token theo A6.4: fixture transcript tổng hợp với tỉ lệ biết trước → hồi quy tìm lại đúng tỉ lệ (sai ≤ 5%); < 200 mẫu hoặc sai số trung vị ≥ 15% → không ghi `calibration.json`. Bộ lọc không đọc file này.
 
 **P4-T2 `[ ]` `report`, `waste`, `context`, `snapshot` (A6.2)**
 - Mỗi lệnh có `--json`.
-- `waste` in đủ 5 nhóm, mỗi nhóm kèm dòng gợi ý sửa.
+- `waste` in đủ 7 nhóm, mỗi nhóm kèm dòng gợi ý sửa; nhóm (1), (2) xếp theo `reread_cost`.
+- **(N1.1)** R̄ tính từ transcript, thay giá trị mặc định 20 trong `gain`.
+- **(N1.3)** Cache vỡ theo A6.5: fixture có đủ 4 loại nguyên nhân, phân loại đúng; lần vỡ do compact không tính vào ETU mất. `context` liệt kê MCP server và skill kèm số lần gọi, gợi ý tắt cái 0 lần.
+- **(N1.5a)** `report` có tỉ trọng output; phân rã output theo A6.6, kể cả trường hợp thinking bị ẩn.
+- Request của subagent không bị tính vào số liệu theo phiên.
 
 **P4-T3 `[ ]` `bench` và `compare` (A6.3)**
 - Test với agent giả (script trong `tests/fake_agents/` in JSON giống `claude -p`):
@@ -153,6 +178,7 @@
   - REJECT khi pass rate giảm;
   - INCONCLUSIVE khi chênh lệch nằm trong nhiễu.
 - Worktree luôn được xoá kể cả khi agent bị timeout.
+- **(N1.5c)** `bench --rules <file>` chèn block vào CLAUDE.md của worktree; cảnh báo khi CLAUDE.md global đã có block tokopt. `compare` có cột median output tokens và verdict output theo A6.3 (agent giả: biến thể giảm output 30%, pass như nhau → thắng; giảm 5% → không thắng).
 
 **P4-T4 `[ ]` `tokopt statusline` (A7)**
 - Transcript 20 MB: lần chạy đầu < 1 giây, các lần sau < 150 ms (đọc tăng dần).
@@ -185,6 +211,7 @@
 2. `tokopt bench --label baseline` khi chưa cài hook.
 3. Cài hook, `tokopt bench --label v01`.
 4. `tokopt compare baseline v01`.
+5. **(N1.5c)** Chạy bench với từng biến thể rules so với v1; nếu có biến thể thắng thì đổi mặc định cài sang biến thể đó.
 
 Đạt khi:
 - Verdict là ACCEPT.
