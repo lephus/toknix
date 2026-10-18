@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tokopt"
+dynamic = ["version"]
+description = "Cut the tokens AI coding agents waste, and prove it."
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+]
+
+[project.scripts]
+tokopt = "tokopt.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "tokopt.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

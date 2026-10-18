@@ -1,0 +1,51 @@
+"""Command-line entry point. Each v0.1 command is registered here; later tasks replace the stubs."""
+from __future__ import annotations
+
+import argparse
+import sys
+
+from tokopt import __version__
+
+COMMANDS = [
+    ("run", "run a command and print filtered output (A2)"),
+    ("recall", "print the full output of a filtered run (A2.7)"),
+    ("gain", "tokens saved by filters and guards (A6.2)"),
+    ("hook", "Claude Code hook entry point: bash | read | session-start (A3, A4)"),
+    ("outline", "symbols of a file with line ranges (A5)"),
+    ("symbol", "print the code of a symbol (A5)"),
+    ("refs", "list references to a name (A5)"),
+    ("map", "ranked repo map within a token budget (A5)"),
+    ("report", "token usage from agent transcripts (A6.2)"),
+    ("waste", "where tokens are wasted, with fixes (A6.2)"),
+    ("context", "instruction files, MCP servers and skills loaded each session (A6.2)"),
+    ("snapshot", "save a report summary under a label (A6.2)"),
+    ("bench", "run A/B tasks with a real agent (A6.3)"),
+    ("compare", "compare two bench labels (A6.3)"),
+    ("statusline", "Claude Code status line (A7)"),
+    ("install", "install hooks and rules (A8)"),
+    ("uninstall", "remove hooks and rules (A8)"),
+    ("init-project", "add project-level deny rules (A8)"),
+    ("doctor", "check the installation (A8)"),
+]
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="tokopt", description="Cut the tokens AI coding agents waste, and prove it.")
+    parser.add_argument("--version", action="version", version=f"tokopt {__version__}")
+    sub = parser.add_subparsers(dest="command", metavar="<command>")
+    for name, help_text in COMMANDS:
+        p = sub.add_parser(name, help=help_text)
+        p.add_argument("args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    ns = parser.parse_args(argv)
+    if ns.command is None:
+        parser.print_help()
+        return 0
+    if ns.command == "hook":
+        return 0  # a hook must never break the agent; stays silent until implemented
+    print(f"tokopt {ns.command}: not implemented yet", file=sys.stderr)
+    return 2

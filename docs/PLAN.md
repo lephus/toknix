@@ -57,7 +57,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 ## P1 — Lõi lọc output
 
-**P1-T1 `[ ]` Hoàn thiện cấu trúc package**
+**P1-T1 `[x]` Hoàn thiện cấu trúc package**
 - Có `pyproject.toml` (build backend: setuptools, khai báo `[project.scripts] tokopt = "tokopt.cli:main"`, `requires-python >= 3.9`).
 - Có `src/tokopt/cli.py` dùng argparse, subcommand rỗng cho mọi lệnh ở phạm vi v0.1.
 - `pip install -e .` thành công và `tokopt --version` in `0.1.0`.

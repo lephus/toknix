@@ -1,0 +1,80 @@
+import io
+import os
+import subprocess
+import sys
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+
+import support  # noqa: F401  (puts src/ on sys.path)
+
+from tokopt import __version__, cli
+
+V01_COMMANDS = [
+    "run", "recall", "gain", "hook",
+    "outline", "symbol", "refs", "map",
+    "report", "waste", "context", "snapshot", "bench", "compare",
+    "statusline",
+    "install", "uninstall", "init-project", "doctor",
+]
+
+
+def call(argv):
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        try:
+            code = cli.main(argv)
+        except SystemExit as e:
+            code = e.code
+    return code, out.getvalue(), err.getvalue()
+
+
+class TestCli(unittest.TestCase):
+    def test_version_is_0_1_0(self):
+        self.assertEqual(__version__, "0.1.0")
+        code, out, _ = call(["--version"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip(), "tokopt 0.1.0")
+
+    def test_every_v01_command_is_registered(self):
+        parser = cli.build_parser()
+        for name in V01_COMMANDS:
+            with self.subTest(command=name):
+                ns = parser.parse_args([name])
+                self.assertEqual(ns.command, name)
+
+    def test_stub_reports_not_implemented(self):
+        code, out, err = call(["gain"])
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("not implemented", err)
+
+    def test_stub_accepts_extra_arguments(self):
+        code, _, err = call(["run", "--", "echo hi"])
+        self.assertEqual(code, 2)
+        self.assertIn("not implemented", err)
+
+    def test_hook_stub_is_silent_and_exits_0(self):
+        # A hook must never break the agent, even before it is implemented.
+        code, out, err = call(["hook", "bash"])
+        self.assertEqual((code, out, err), (0, "", ""))
+
+    def test_no_command_prints_help(self):
+        code, out, _ = call([])
+        self.assertEqual(code, 0)
+        self.assertIn("usage: tokopt", out)
+
+    def test_unknown_command_is_a_usage_error(self):
+        code, _, err = call(["nope"])
+        self.assertEqual(code, 2)
+        self.assertIn("invalid choice", err)
+
+    def test_python_dash_m_tokopt(self):
+        env = dict(os.environ, PYTHONPATH=str(support.SRC))
+        p = subprocess.run([sys.executable, "-m", "tokopt", "--version"],
+                           capture_output=True, text=True, env=env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stdout.strip(), "tokopt 0.1.0")
+
+
+if __name__ == "__main__":
+    unittest.main()
