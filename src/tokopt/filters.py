@@ -48,6 +48,20 @@ def program_of(cmd: str) -> tuple[str, list[str]]:
     return prog, words[1:]
 
 
+def _git_sub(args: list[str]) -> str:
+    """Subcommand after git's global options (`-C dir`, `-c k=v`, `--no-pager`, `--git-dir=…`)."""
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a in ("-C", "-c", "--git-dir", "--work-tree"):
+            i += 2
+        elif a == "--no-pager" or a.startswith(("--git-dir=", "--work-tree=")):
+            i += 1
+        else:
+            return a
+    return ""
+
+
 def classify(cmd: str) -> str:
     prog, args = program_of(cmd)
     sub = args[0] if args else ""
@@ -76,6 +90,7 @@ def classify(cmd: str) -> str:
     if prog in ("tsc", "eslint", "ruff", "mypy", "flake8", "pylint"):
         return "lint"
     if prog == "git":
+        sub = _git_sub(args)
         return {"status": "gitstatus", "log": "gitlog", "diff": "gitdiff", "show": "gitdiff",
                 "push": "gitnet", "pull": "gitnet", "fetch": "gitnet", "clone": "gitnet"}.get(sub, "generic")
     if prog in ("ls", "find", "tree", "du"):

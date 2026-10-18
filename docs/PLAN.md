@@ -62,8 +62,8 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Có `src/tokopt/cli.py` dùng argparse, subcommand rỗng cho mọi lệnh ở phạm vi v0.1.
 - `pip install -e .` thành công và `tokopt --version` in `0.1.0`.
 
-**P1-T2 `[ ]` Test cho `textutil` và `classify` (A2.2, A2.3)**
-- Có ≥ 25 test case cho `program_of` và `classify`, bao phủ: `VAR=x cmd`, `npx jest`, `uv run pytest`, `python -m pytest`, `sudo docker build`, `npm run test:unit`, `yarn` không tham số, `git -C dir status` (`[TBD]`: hiện đang ra generic, quyết định có hỗ trợ không).
+**P1-T2 `[x]` Test cho `textutil` và `classify` (A2.2, A2.3)**
+- Có ≥ 25 test case cho `program_of` và `classify`, bao phủ: `VAR=x cmd`, `npx jest`, `uv run pytest`, `python -m pytest`, `sudo docker build`, `npm run test:unit`, `yarn` không tham số, `git -C dir status` (đã chốt 2026-10-18: hỗ trợ, bỏ global option của git theo A2.3).
 - `normalize` xử lý đúng ANSI, `\r` (progress bar) và `\r\n`.
 - **(N1.2a)** `est_tokens` theo lớp ký tự (A1): test riêng cho chuỗi ASCII, hex/base64 ≥ 16 ký tự, tiếng Việt có dấu, và chuỗi trộn; tỉ lệ đọc từ `token_ratios` trong config.
 

@@ -33,6 +33,7 @@ reread_cost(T, R) = T·w_cw + T·w_cr·R              # T token vào context khi
                                                    # ví dụ T=5.000, R=50 → ≈ 31.000 ETU
 ```
 
+- Chuỗi hex: `[0-9a-fA-F]{16,}`. Chuỗi base64: `[A-Za-z0-9+/]{16,}={0,2}` và phải có đủ chữ hoa, chữ thường, chữ số, để từ thường dài (`internationalization`) hay đường dẫn (`usr/lib/python3`) không bị tính vào lớp hex.
 - `est_tokens` chạy một lượt regex. Hook read vẫn dùng `size // 4` để giữ tốc độ.
 - Bộ lọc (`tokopt run`) **luôn** dùng `token_ratios` trong config. Kết quả hiệu chỉnh (A6.4) chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`), để lượng output agent nhận được không tự thay đổi.
 
@@ -97,6 +98,7 @@ rstrip mỗi dòng
    - `uv/poetry/pipenv/pdm/hatch run`,
    - `python -m`.
 3. Từ còn lại đầu tiên là `prog`. Lấy basename, trừ trường hợp bắt đầu bằng `./`.
+   - Với `git`: bỏ global option đứng trước subcommand: `-C <dir>`, `-c <k=v>`, `--no-pager`, `--git-dir=…`, `--work-tree=…` (cả dạng `--git-dir <dir>`). Ví dụ `git -C sub log` → `gitlog`.
 4. Tra bảng:
 
 | prog / sub | kind |

@@ -31,6 +31,7 @@ DEFAULTS: dict = {
     "pass_through_chars": 4000,
     "head_lines": 30,            # kept from the top when the budget forces a cut
     "tee_keep_days": 7,
+    "token_ratios": {"default": 4.0, "hex": 2.0, "non_ascii": 1.5},  # chars per token by class (A1)
     # Bash hook: only these programs are wrapped (first word after env/sudo/npx/uv run...)
     "wrap_programs": [
         "pytest", "py.test", "jest", "vitest", "mocha", "go", "cargo", "npm", "pnpm", "yarn", "bun",
