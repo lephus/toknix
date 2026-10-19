@@ -190,11 +190,12 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 ## P5 — Phân phối
 
-**P5-T1 `[ ]` `install.sh` và `install.ps1` (A8)**
+**P5-T1 `[x]` `install.sh` và `install.ps1` (A8)**
 - Một lệnh `curl -fsSL …/install.sh | sh` cài xong trên Ubuntu 24.04 (có PEP 668) và macOS.
 - `irm …/install.ps1 | iex` cài xong trên Windows 11.
 - Script có `--uninstall` và `--dry-run`.
 - Kiểm tra bằng shellcheck và PSScriptAnalyzer trong CI.
+  - Kết quả (2026-10-19): macOS cài thật xong cả hai nhánh (uv, venv) với `--from`; shellcheck sạch. Lệnh `curl … | sh` thật chỉ chạy được sau khi code được push lên `lephus/toknix`. Ubuntu 24.04 (PEP 668), Windows 11 và PSScriptAnalyzer được kiểm trong CI (P5-T2).
 
 **P5-T2 `[ ]` CI GitHub Actions**
 - Ma trận ubuntu, macos, windows × Python 3.9, 3.13.

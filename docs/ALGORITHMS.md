@@ -611,3 +611,12 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
 - **Script bootstrap một lệnh:**
   - `install.sh`: cần python3 ≥ 3.9. Ưu tiên `uv tool install`; nếu không có thì tạo `python3 -m venv ~/.tokopt/venv`, `pip install`, rồi symlink `~/.local/bin/tokopt`. Cuối cùng chạy `tokopt install`.
   - `install.ps1`: tương tự, dùng `venv\Scripts\tokopt.exe`.
+  - Chi tiết đã chốt khi implement (P5-T1):
+    - **Nguồn cài:** `git+https://github.com/lephus/toknix@main` (tokopt là gốc của repo, người dùng chốt 2026-10-19); `TOKOPT_REPO` và `TOKOPT_REF` đổi được nguồn; `--from SOURCE` cài từ thư mục cục bộ hoặc URL khác.
+    - **Lệnh một dòng:** `curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh` (thêm `-s -- --dry-run` để chạy thử) và `irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 | iex`.
+    - **`install.sh`:** viết bằng POSIX sh, sạch shellcheck. Có `--dry-run` (in từng lệnh `+ …`, không đổi gì), `--uninstall`, `--no-hooks`.
+      - Không có uv: venv riêng `~/.tokopt/venv`, nên không đụng Python "externally managed" (PEP 668), cộng symlink `~/.local/bin/tokopt`. Python thiếu `venv`/`ensurepip` → báo cài uv hoặc `python3-venv`.
+      - Cuối cùng chạy `tokopt install` và `tokopt doctor`; nhắc nếu `~/.local/bin` chưa có trong PATH.
+    - **`install.ps1`:** `irm | iex` không truyền được tham số, nên có thêm biến môi trường `TOKOPT_DRY_RUN`, `TOKOPT_UNINSTALL`, `TOKOPT_FROM`, `TOKOPT_NO_HOOKS`. Không có uv thì thêm `venv\Scripts` vào PATH của user.
+    - **`--uninstall`:** chạy `tokopt uninstall` (gỡ hook và rules), rồi gỡ tool của uv hoặc xoá venv và symlink. Dữ liệu trong `~/.tokopt` được giữ lại.
+    - **Đã kiểm 2026-10-19 trên macOS** (HOME tạm, `--from` thư mục repo): cả nhánh uv lẫn nhánh venv (Python 3.9.6 của hệ thống) đều cài xong, `tokopt --version` chạy, và gỡ cài đặt xoá sạch file do install tạo. Ubuntu 24.04 và Windows 11 kiểm trong CI (P5-T2).
