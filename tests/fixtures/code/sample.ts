@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): TypeScript.
+// Sample for `toknix outline` (P3-T2): TypeScript.
 import { Injectable } from "./di";
 
 export interface Item {

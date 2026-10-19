@@ -1,8 +1,8 @@
-"""`tokopt install` / `uninstall` / `doctor` for Claude Code (A8).
+"""`toknix install` / `uninstall` / `doctor` for Claude Code (A8).
 
 install adds three hooks and a statusLine to Claude Code's settings.json, keeping everything else;
 uninstall removes exactly what install added. What install created (the file, an empty `hooks`
-object…) is recorded in ~/.tokopt/install.json so uninstall can put back the settings as they were.
+object…) is recorded in ~/.toknix/install.json so uninstall can put back the settings as they were.
 The rules block for CLAUDE.md / AGENTS.md / GEMINI.md comes with P3-T5.
 """
 from __future__ import annotations
@@ -20,14 +20,15 @@ import sys
 import time
 from pathlib import Path, PureWindowsPath
 
-from tokopt import __version__, runner, store
-from tokopt.config import claude_dir, codex_dir, gemini_dir, tokopt_home
+from toknix import __version__, runner, store
+from toknix.config import claude_dir, codex_dir, gemini_dir, toknix_home
 
 HOOKS = [("PreToolUse", "Bash", "bash"), ("PreToolUse", "Read|Grep|Glob", "read"),
          ("SessionStart", "compact|clear", "session-start")]
-# Also matches a quoted path (`'/my dir/tokopt' hook bash`) and `python -m tokopt hook bash`.
-HOOK_RE = re.compile(r"tokopt(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start)\b")
-STATUS_RE = re.compile(r"tokopt(?:\.exe)?['\"]?\s+statusline\b")
+# Also matches a quoted path (`'/my dir/toknix' hook bash`) and `python -m toknix hook bash`.
+# `tokopt` is the name toknix was published under for its first day: its entries are taken over too.
+HOOK_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start)\b")
+STATUS_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+statusline\b")
 
 
 class InstallError(Exception):
@@ -38,17 +39,17 @@ def settings_path():
     return claude_dir() / "settings.json"
 
 
-def tokopt_command(argv0: str | None = None, which=shutil.which, python: str | None = None) -> str:
-    """How Claude Code should start tokopt: this console script, else `tokopt` on PATH, else `python -m tokopt`."""
+def toknix_command(argv0: str | None = None, which=shutil.which, python: str | None = None) -> str:
+    """How Claude Code should start toknix: this console script, else `toknix` on PATH, else `python -m toknix`."""
     argv0 = sys.argv[0] if argv0 is None else argv0
-    if re.split(r"[/\\]", argv0)[-1].lower() in ("tokopt", "tokopt.exe"):
+    if re.split(r"[/\\]", argv0)[-1].lower() in ("toknix", "toknix.exe"):
         absolute = os.path.isabs(argv0) or argv0.startswith(("/", "\\")) or PureWindowsPath(argv0).is_absolute()
         path = argv0 if absolute else os.path.abspath(argv0)
         if not PureWindowsPath(path).suffix and os.path.exists(path + ".exe"):
             path += ".exe"  # Windows console scripts get argv[0] without it
         return _quote(path)
-    found = which("tokopt")
-    return _quote(found) if found else f"{_quote(python or sys.executable)} -m tokopt"
+    found = which("toknix")
+    return _quote(found) if found else f"{_quote(python or sys.executable)} -m toknix"
 
 
 def _quote(path: str) -> str:
@@ -74,28 +75,28 @@ def _load(path) -> dict | None:
 
 def _save(path, data: dict):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tokopt-tmp")
+    tmp = path.with_name(path.name + ".toknix-tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     os.replace(tmp, path)
 
 
 def _backup(path):
     if path.exists():
-        d = tokopt_home() / "backups" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        d = toknix_home() / "backups" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         d.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, d / path.name)
 
 
 def _records() -> dict:
     try:
-        data = json.loads((tokopt_home() / "install.json").read_text(encoding="utf-8"))
+        data = json.loads((toknix_home() / "install.json").read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
         return {}
 
 
 def _save_records(records: dict):
-    f = tokopt_home() / "install.json"
+    f = toknix_home() / "install.json"
     if records:
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
@@ -126,10 +127,10 @@ def _is_ours(status) -> bool:
 def install(exe: str | None = None) -> list[str]:
     msgs = []
     if not exe:
-        exe = tokopt_command()
-        if exe.endswith(" -m tokopt"):
-            msgs.append(f"note: tokopt is not on PATH, so hooks run `{exe}`; "
-                        f"check that it works outside this shell with `tokopt doctor`")
+        exe = toknix_command()
+        if exe.endswith(" -m toknix"):
+            msgs.append(f"note: toknix is not on PATH, so hooks run `{exe}`; "
+                        f"check that it works outside this shell with `toknix doctor`")
     path = settings_path()
     current = _load(path)
     s = copy.deepcopy(current) if current is not None else {}
@@ -165,7 +166,7 @@ def install(exe: str | None = None) -> list[str]:
     elif _is_ours(status):
         status["command"] = f"{exe} statusline"
     else:
-        msgs.append("statusLine kept: you already have one (tokopt statusline is optional)")
+        msgs.append("statusLine kept: you already have one (toknix statusline is optional)")
     if s != current:
         _backup(path)
         _save(path, s)
@@ -224,15 +225,16 @@ def _uninstall_settings(records: dict) -> list[str]:
     _backup(path)
     if s == {} and created and "file" in created:
         path.unlink()
-        return [f"removed {removed} tokopt entries; deleted {path} (tokopt had created it)"]
+        return [f"removed {removed} toknix entries; deleted {path} (toknix had created it)"]
     _save(path, s)
-    return [f"removed {removed} tokopt entries from {path}"]
+    return [f"removed {removed} toknix entries from {path}"]
 
 
 # --------------------------------------------------------------------------- rules block (A8 step 3, P3-T5)
 RULES_VERSION = 1
 TEMPLATES = Path(__file__).resolve().parent / "templates"
-RULES_BLOCK_RE = re.compile(r"<!-- tokopt:begin v(\d+) -->\r?\n.*?<!-- tokopt:end -->(?:\r?\n)?", re.S)
+RULES_BLOCK_RE = re.compile(r"<!-- (?:toknix|tokopt):begin v(\d+) -->\r?\n.*?<!-- (?:toknix|tokopt):end -->(?:\r?\n)?",
+                            re.S)
 
 
 def rules_targets() -> list[tuple[str, Path, Path | None]]:
@@ -245,8 +247,8 @@ def rules_targets() -> list[tuple[str, Path, Path | None]]:
 
 def _rules_block(newline: str) -> str:
     rules = (TEMPLATES / "rules.md").read_text(encoding="utf-8")
-    return (f"<!-- tokopt:begin v{RULES_VERSION} -->{newline}" + rules.replace("\n", newline)
-            + f"<!-- tokopt:end -->{newline}")
+    return (f"<!-- toknix:begin v{RULES_VERSION} -->{newline}" + rules.replace("\n", newline)
+            + f"<!-- toknix:end -->{newline}")
 
 
 def _read_instructions(path: Path) -> str | None:
@@ -256,7 +258,7 @@ def _read_instructions(path: Path) -> str | None:
     try:
         return path.read_bytes().decode("utf-8")
     except UnicodeDecodeError:
-        raise InstallError(f"{path} is not UTF-8; tokopt leaves it alone") from None
+        raise InstallError(f"{path} is not UTF-8; toknix leaves it alone") from None
 
 
 def _install_rules(records: dict) -> list[str]:
@@ -308,7 +310,7 @@ def _uninstall_rules(records: dict) -> list[str]:
         _backup(path)
         if record and record["created"] and not new:
             path.unlink()
-            msgs.append(f"removed rules; deleted {path} (tokopt had created it)")
+            msgs.append(f"removed rules; deleted {path} (toknix had created it)")
         else:
             path.write_bytes(new.encode("utf-8"))
             msgs.append(f"removed rules from {path}")
@@ -319,7 +321,7 @@ def _uninstall_rules(records: dict) -> list[str]:
 def init_project(root) -> list[str]:
     """Deny Read of the junk directories (Claude Code applies Read rules to Grep and Glob too) in the
     project's .claude/settings.json, and list them in .geminiignore. Existing entries are kept; idempotent."""
-    from tokopt.config import load
+    from toknix.config import load
     root = Path(root)
     dirs = [p.strip("/") for p in load()["junk_patterns"] if p.startswith("/") and p.endswith("/")]
     msgs = []
@@ -351,9 +353,9 @@ def init_project(root) -> list[str]:
 
 # --------------------------------------------------------------------------- doctor
 def _program(command: str) -> str:
-    """The program of a hook command: what comes before `[-m tokopt] hook|statusline`, unquoted. Not shlex:
+    """The program of a hook command: what comes before `[-m toknix] hook|statusline`, unquoted. Not shlex:
     in POSIX mode it would eat the backslashes of a Windows path."""
-    prefix = re.split(r"\s+(?:-m\s+tokopt\s+)?(?:hook|statusline)\b", command, maxsplit=1)[0].strip()
+    prefix = re.split(r"\s+(?:-m\s+(?:toknix|tokopt)\s+)?(?:hook|statusline)\b", command, maxsplit=1)[0].strip()
     if len(prefix) >= 2 and prefix[0] == prefix[-1] and prefix[0] in "'\"":
         prefix = prefix[1:-1]
     return prefix
@@ -369,14 +371,14 @@ def _missing_program(command: str) -> str | None:
 
 
 def _does_not_run(command: str) -> str | None:
-    """Why `<tokopt part of the hook command> --version`, run by bash as Claude Code runs hooks, fails (None: it works)."""
+    """Why `<toknix part of the hook command> --version`, run by bash as Claude Code runs hooks, fails (None: it works)."""
     probe = command.rsplit(" hook ", 1)[0] + " --version"
     try:
         p = subprocess.run(runner.shell_argv(probe), capture_output=True, timeout=30)
     except (OSError, subprocess.TimeoutExpired) as e:
         return str(e)
     out = p.stdout.decode("utf-8", errors="replace").strip()
-    if p.returncode == 0 and out.startswith("tokopt "):
+    if p.returncode == 0 and out.startswith("toknix "):
         return None
     err = p.stderr.decode("utf-8", errors="replace").strip().splitlines()
     return err[-1] if err else out or f"exit {p.returncode}"
@@ -384,7 +386,7 @@ def _does_not_run(command: str) -> str | None:
 
 def doctor() -> tuple[list[str], bool]:
     path = settings_path()
-    lines = [f"tokopt {__version__}", f"  command:  {tokopt_command()}",
+    lines = [f"toknix {__version__}", f"  command:  {toknix_command()}",
              f"  Python {sys.version.split()[0]} ({sys.executable})", f"  settings: {path}"]
     ok = True
     try:
@@ -392,7 +394,7 @@ def doctor() -> tuple[list[str], bool]:
     except InstallError as e:
         lines.append(f"  ⚠ {e}")
         settings, ok = {}, False
-    probed: dict = {}  # tokopt command → why it fails, checked once
+    probed: dict = {}  # toknix command → why it fails, checked once
     for event, matcher, name in HOOKS:
         entry = _find_hook(_groups(settings, event), name)
         if entry is None:
@@ -410,7 +412,7 @@ def doctor() -> tuple[list[str], bool]:
         lines.append(f"  hook {name:<14} installed: {entry['command']}{problem}")
         ok = ok and not problem
     status = settings.get("statusLine")
-    lines.append(f"  statusLine          {'tokopt' if _is_ours(status) else 'yours (kept)' if status else 'none'}")
+    lines.append(f"  statusLine          {'toknix' if _is_ours(status) else 'yours (kept)' if status else 'none'}")
     for agent, rules_path, needs in rules_targets():
         if needs is not None and not needs.is_dir():
             lines.append(f"  {'rules':<19} {agent} not installed (no {needs})")
@@ -422,21 +424,21 @@ def doctor() -> tuple[list[str], bool]:
             ok = False
             continue
         if m:
-            old = "" if int(m.group(1)) == RULES_VERSION else f" (current is v{RULES_VERSION}: run `tokopt install`)"
+            old = "" if int(m.group(1)) == RULES_VERSION else f" (current is v{RULES_VERSION}: run `toknix install`)"
             lines.append(f"  {'rules':<19} v{m.group(1)} in {rules_path}{old}")
         else:
             lines.append(f"  {'rules':<19} missing in {rules_path}")
             ok = False
     runs = guard = 0
-    if (tokopt_home() / "tokopt.db").exists():
+    if (toknix_home() / "toknix.db").exists():
         since = time.time() - 7 * 86400
         try:
             with store.db() as c:
                 runs = c.execute("SELECT COUNT(*) FROM runs WHERE ts >= ?", (since,)).fetchone()[0]
                 guard = c.execute("SELECT COUNT(*) FROM guard WHERE ts >= ?", (since,)).fetchone()[0]
         except sqlite3.Error as e:
-            lines.append(f"  ⚠ cannot read {tokopt_home() / 'tokopt.db'}: {e}")
+            lines.append(f"  ⚠ cannot read {toknix_home() / 'toknix.db'}: {e}")
     lines.append(f"  last 7 days: {runs} runs, {guard} guard events")
     if not ok:
-        lines.append("  fix: run `tokopt install`, then restart Claude Code")
+        lines.append("  fix: run `toknix install`, then restart Claude Code")
     return lines, ok

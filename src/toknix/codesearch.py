@@ -1,4 +1,4 @@
-"""`tokopt symbol`, `tokopt refs` and `tokopt map` (A5.2): find code by name without reading whole files.
+"""`toknix symbol`, `toknix refs` and `toknix map` (A5.2): find code by name without reading whole files.
 
 symbol and refs list the repo's source files once (git ls-files when possible), keep only the files
 whose bytes can hold a result, and only then parse them, so a large repo stays fast. map parses every
@@ -17,10 +17,10 @@ from collections import Counter
 from pathlib import Path
 from typing import NamedTuple
 
-from tokopt import langs, outline
-from tokopt.config import is_junk, load
-from tokopt.runner import write_out
-from tokopt.textutil import est_tokens
+from toknix import langs, outline
+from toknix.config import is_junk, load
+from toknix.runner import write_out
+from toknix.textutil import est_tokens
 
 SOURCE_EXT = set(langs.LANG_BY_EXT) | outline.PYTHON_EXT
 MAX_BYTES = 1_000_000
@@ -171,7 +171,7 @@ def symbol(query: str, path: str | None = None, kind: str | None = None) -> int:
     found = find_symbols(query, files, kind)
     if not found:
         what = f"{kind} " if kind else ""
-        print(f"tokopt symbol: no {what}symbol named {query!r} in {len(files)} source files", file=sys.stderr)
+        print(f"toknix symbol: no {what}symbol named {query!r} in {len(files)} source files", file=sys.stderr)
         return 1
     out = []
     for p, s in found[:MAX_SHOWN]:
@@ -254,7 +254,7 @@ def refs(name: str, path: str | None = None) -> int:
     files = source_files(Path(path or "."))
     found, defs = find_refs(name, files)
     if not found:
-        print(f"tokopt refs: no references to {name!r} in {len(files)} source files", file=sys.stderr)
+        print(f"toknix refs: no references to {name!r} in {len(files)} source files", file=sys.stderr)
         return 1
     out, hidden, current = [], {}, None
     for k, (p, line, text) in enumerate(found):

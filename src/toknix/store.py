@@ -5,7 +5,7 @@ import sqlite3
 import time
 from contextlib import contextmanager
 
-from tokopt.config import tokopt_home
+from toknix.config import toknix_home
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs(
@@ -28,9 +28,9 @@ CLASSES = ("default", "hex", "non_ascii")
 
 @contextmanager
 def db():
-    home = tokopt_home()
+    home = toknix_home()
     home.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(home / "tokopt.db"), timeout=5)
+    con = sqlite3.connect(str(home / "toknix.db"), timeout=5)
     try:
         con.executescript(SCHEMA)
         cols = {r[1] for r in con.execute("PRAGMA table_info(runs)")}

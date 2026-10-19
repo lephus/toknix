@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): Dart.
+// Sample for `toknix outline` (P3-T2): Dart.
 import 'dart:async';
 import 'dart:convert';
 

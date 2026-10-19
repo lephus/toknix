@@ -1,4 +1,4 @@
-"""Symbols of a source file with their line ranges (A5.1), and `tokopt outline` (A5.2).
+"""Symbols of a source file with their line ranges (A5.1), and `toknix outline` (A5.2).
 
 Python goes through `ast`, so it is exact. Other languages come with P3-T2; until then outline
 prints the first lines of the file instead.
@@ -12,10 +12,10 @@ import tokenize
 from pathlib import Path
 from typing import NamedTuple
 
-from tokopt import langs
-from tokopt.config import load
-from tokopt.runner import write_out
-from tokopt.textutil import est_tokens
+from toknix import langs
+from toknix.config import load
+from toknix.runner import write_out
+from toknix.textutil import est_tokens
 
 PYTHON_EXT = {".py", ".pyi", ".pyw"}
 FALLBACK_LINES = 200
@@ -131,14 +131,14 @@ def render(path, symbols: list[Symbol], text: str, ratios: dict) -> str:
 def run(file: str) -> int:
     path = Path(file)
     if not path.exists():
-        print(f"tokopt outline: no such file: {file}", file=sys.stderr)
+        print(f"toknix outline: no such file: {file}", file=sys.stderr)
         return 1
     if path.is_dir():
-        print(f"tokopt outline: {file} is a directory", file=sys.stderr)
+        print(f"toknix outline: {file} is a directory", file=sys.stderr)
         return 1
     data = path.read_bytes()
     if b"\x00" in data[:8192]:
-        print(f"tokopt outline: {file} looks like a binary file", file=sys.stderr)
+        print(f"toknix outline: {file} looks like a binary file", file=sys.stderr)
         return 1
     try:
         symbols = extract(path)
@@ -149,7 +149,7 @@ def run(file: str) -> int:
         text = data.decode("utf-8", errors="replace").replace("\r\n", "\n")
         lines = text.split("\n")[:_line_count(text)]
         head = lines[:FALLBACK_LINES]
-        write_out("\n".join([f"[tokopt: {reason}; first {len(head)} of {len(lines)} lines]"] + head) + "\n")
+        write_out("\n".join([f"[toknix: {reason}; first {len(head)} of {len(lines)} lines]"] + head) + "\n")
         return 0
     text = read_source(path) if path.suffix.lower() in PYTHON_EXT else read_text(path)
     write_out(render(path, symbols, text, load().get("token_ratios")) + "\n")

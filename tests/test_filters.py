@@ -6,9 +6,9 @@ import unittest
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import config, filters
-from tokopt.filters import ERROR_RE, apply, budget_cut, f_build, f_lint
-from tokopt.textutil import normalize
+from toknix import config, filters
+from toknix.filters import ERROR_RE, apply, budget_cut, f_build, f_lint
+from toknix.textutil import normalize
 
 # fixture -> (command that produced it, exit code)
 FIXTURES = {
@@ -86,7 +86,7 @@ class TestFixtureConditions(unittest.TestCase):
     def test_npm_install(self):
         _, out, kind = run_fixture("npm_install.txt")
         self.assertEqual(kind, "install")
-        merged = [l for l in out if l.startswith("[tokopt] 6 deprecation warnings:")]
+        merged = [l for l in out if l.startswith("[toknix] 6 deprecation warnings:")]
         self.assertEqual(len(merged), 1)
         self.assertFalse(any("npm warn deprecated" in l for l in out))
         self.assertTrue(any("added 172 packages" in l for l in out))
@@ -100,7 +100,7 @@ class TestFixtureConditions(unittest.TestCase):
 
     def test_git_log_reports_omitted_commits(self):  # BUG-2
         _, out, _ = run_fixture("git_log.txt")
-        self.assertTrue(out[-1].startswith("[tokopt] 95 older commits omitted"), out[-1])
+        self.assertTrue(out[-1].startswith("[toknix] 95 older commits omitted"), out[-1])
 
     def test_git_status(self):
         _, out, kind = run_fixture("git_status.txt")
@@ -163,7 +163,7 @@ class TestErrorInvariant(unittest.TestCase):
                 with self.subTest(fixture=name, exit_code=exit_code):
                     lines, out, kind = run_fixture(name, exit_code)
                     merged_deprecations = kind == "install" and any(
-                        re.match(r"\[tokopt\] \d+ deprecation warnings:", o) for o in out)
+                        re.match(r"\[toknix\] \d+ deprecation warnings:", o) for o in out)
                     for l in lines:
                         if not ERROR_RE.search(l):
                             continue
@@ -232,7 +232,7 @@ class TestLint(unittest.TestCase):
         out = f_lint(lines, True)
         self.assertEqual(sum(1 for l in out if ": error:" in l), 20)
         self.assertEqual(sum(1 for l in out if ": note:" in l), 15)
-        self.assertEqual(out[-1], "[tokopt] 40 diagnostics in 1 files")
+        self.assertEqual(out[-1], "[toknix] 40 diagnostics in 1 files")
 
     def test_cap_is_per_file(self):
         lines = [f"{f}:{i}: note: hint {i}" for f in ("a.py", "b.py") for i in range(1, 21)]

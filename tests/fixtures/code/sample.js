@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): plain JS with a little JSX.
+// Sample for `toknix outline` (P3-T2): plain JS with a little JSX.
 import React, { useState } from "react";
 
 const TEMPLATE = "{ not a block }";

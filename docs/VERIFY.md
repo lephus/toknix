@@ -1,4 +1,4 @@
-# Kiểm chứng tokopt trên Claude Code thật (P2-T4)
+# Kiểm chứng toknix trên Claude Code thật (P2-T4)
 
 Test tự động đã chứng minh hook trả đúng JSON. Còn câu hỏi Claude Code **làm gì** với JSON đó thì chỉ chạy thật mới biết. Tài liệu này hướng dẫn chạy một phiên Claude Code thật trên một repo mẫu, rồi ghi kết quả vào mục [Kết quả](#kết-quả) ở cuối.
 
@@ -8,18 +8,18 @@ Mất khoảng 30 phút và tốn một ít token Claude Code thật (vài lư�
 
 | # | Câu hỏi | Nguồn | Nếu câu trả lời là "không" |
 |---|---|---|---|
-| A | Claude Code có áp dụng `updatedInput` của hook Bash khi hook **không** gửi `permissionDecision`? | A3 `[ASSUMPTION]` | `[TBD]` của A3: chọn giữa (a) `hook_permission: "ask"` hoặc (b) chỉ cài rules để agent tự gõ `tokopt run --` |
+| A | Claude Code có áp dụng `updatedInput` của hook Bash khi hook **không** gửi `permissionDecision`? | A3 `[ASSUMPTION]` | `[TBD]` của A3: chọn giữa (a) `hook_permission: "ask"` hoặc (b) chỉ cài rules để agent tự gõ `toknix run --` |
 | B | Permission rule như `Bash(.venv/bin/python -m pytest:*)` còn khớp sau khi lệnh bị viết lại? | A3 `[ASSUMPTION]` | Ghi vào phần giới hạn của README |
 | C | Claude Code có tự trả stub kiểu "file unchanged" khi Read lặp lại không? | A4 `[ASSUMPTION]` | Có stub → R3 thừa → đổi mặc định `guard_repeat_reads` thành 0 |
 | D | `updatedInput` của Grep (thêm `head_limit`) có được áp dụng? Khi bị cắt, agent có được báo không? | N1.4 `[ASSUMPTION]` | Không được báo → đổi mặc định `grep_head_limit` thành 0 |
 | E | Matcher `compact\|clear` của SessionStart có chạy hook sau `/compact`? | P2-T3 | Sửa matcher trong `installer.py` |
 | F | Hook chạy được khi Claude Code khởi động từ môi trường bình thường (không có `PYTHONPATH`)? | P2-T3 | Sửa cách cài (P5-T1) |
-| H | Rule `Read(./**/node_modules/**)` do `tokopt init-project` thêm có chặn Read (và Grep) trong `node_modules/` không? | A8 `[ASSUMPTION]` | Đổi cú pháp rule trong `installer.init_project` |
+| H | Rule `Read(./**/node_modules/**)` do `toknix init-project` thêm có chặn Read (và Grep) trong `node_modules/` không? | A8 `[ASSUMPTION]` | Đổi cú pháp rule trong `installer.init_project` |
 
 Ba điều kiện đạt của P2-T4 nằm trong bước 4 (check A và G):
 
-- `tokopt gain` có ≥ 1 bản ghi kind ≠ passthrough;
-- transcript cho thấy lệnh đã bị viết lại thành `tokopt run -- …`;
+- `toknix gain` có ≥ 1 bản ghi kind ≠ passthrough;
+- transcript cho thấy lệnh đã bị viết lại thành `toknix run -- …`;
 - agent vẫn sửa được test.
 
 ## 0. Chuẩn bị
@@ -31,18 +31,18 @@ Ghi lại để điền vào bảng kết quả:
 ```bash
 claude --version
 python3 --version
-git -C <đường-dẫn-repo-tokopt> log --oneline -1
+git -C <đường-dẫn-repo-toknix> log --oneline -1
 ```
 
-`tokopt install` tự backup `~/.claude/settings.json` vào `~/.tokopt/backups/<thời điểm>/` trước khi sửa. Nếu muốn chắc thêm thì tự copy một bản:
+`toknix install` tự backup `~/.claude/settings.json` vào `~/.toknix/backups/<thời điểm>/` trước khi sửa. Nếu muốn chắc thêm thì tự copy một bản:
 
 ```bash
-cp ~/.claude/settings.json ~/settings.json.before-tokopt 2>/dev/null || true
+cp ~/.claude/settings.json ~/settings.json.before-toknix 2>/dev/null || true
 ```
 
-## 1. Cài tokopt lên PATH
+## 1. Cài toknix lên PATH
 
-Hook chạy trong môi trường của Claude Code, nên `tokopt` phải gọi được mà không cần `PYTHONPATH`. Dùng script cài, chạy ở thư mục repo tokopt:
+Hook chạy trong môi trường của Claude Code, nên `toknix` phải gọi được mà không cần `PYTHONPATH`. Dùng script cài, chạy ở thư mục repo toknix:
 
 ```bash
 sh install.sh --from . --no-hooks   # trước khi code có trên GitHub
@@ -50,30 +50,30 @@ sh install.sh --from . --no-hooks   # trước khi code có trên GitHub
 # curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh -s -- --no-hooks
 ```
 
-Script dùng `uv tool install` nếu có uv; nếu không thì tạo venv `~/.tokopt/venv` và link `~/.local/bin/tokopt`. `--no-hooks` để bước 2 tự chạy `tokopt install`. Mở **terminal mới** rồi kiểm tra:
+Script dùng `uv tool install` nếu có uv; nếu không thì tạo venv `~/.toknix/venv` và link `~/.local/bin/toknix`. `--no-hooks` để bước 2 tự chạy `toknix install`. Mở **terminal mới** rồi kiểm tra:
 
 ```bash
-command -v tokopt        # phải ra một đường dẫn, ví dụ ~/.local/bin/tokopt
-tokopt --version         # tokopt 0.1.0
+command -v toknix        # phải ra một đường dẫn, ví dụ ~/.local/bin/toknix
+toknix --version         # toknix 0.1.0
 ```
 
 ## 2. Cài hook và kiểm tra (check F)
 
 ```bash
-tokopt install
-env -u PYTHONPATH tokopt doctor; echo "exit $?"
+toknix install
+env -u PYTHONPATH toknix doctor; echo "exit $?"
 ```
 
 Đạt khi `doctor` exit 0, có 3 dòng `installed:` và không dòng nào có `⚠`. Nếu thấy `does not run` hoặc `not found` thì dừng lại và gửi output cho người phát triển.
 
-Nếu `doctor` báo `statusLine yours (kept)`: tokopt không đụng statusLine của bạn. Còn nếu tokopt đã thêm statusLine thì lúc này thanh trạng thái sẽ trống; đó là bình thường, statusline thật có ở P4-T4.
+Nếu `doctor` báo `statusLine yours (kept)`: toknix không đụng statusLine của bạn. Còn nếu toknix đã thêm statusLine thì lúc này thanh trạng thái sẽ trống; đó là bình thường, statusline thật có ở P4-T4.
 
 ## 3. Tạo repo mẫu
 
-Repo mẫu nằm ở `~/tokopt-verify/shop`. Nó có 42 test, trong đó 2 test fail do 2 bug thật trong `shop.py`. Ngoài ra có một file 2.400 dòng `big/catalog.py` (600 hàm) để thử R2 và Grep. Script dưới đây cũng tạo `~/tokopt-verify/show.py` để xem transcript.
+Repo mẫu nằm ở `~/toknix-verify/shop`. Nó có 42 test, trong đó 2 test fail do 2 bug thật trong `shop.py`. Ngoài ra có một file 2.400 dòng `big/catalog.py` (600 hàm) để thử R2 và Grep. Script dưới đây cũng tạo `~/toknix-verify/show.py` để xem transcript.
 
 ```bash
-mkdir -p ~/tokopt-verify/shop && cd ~/tokopt-verify/shop
+mkdir -p ~/toknix-verify/shop && cd ~/toknix-verify/shop
 
 cat > shop.py <<'EOF'
 def cart_total(prices, discount=0):
@@ -130,11 +130,11 @@ python3 -m venv .venv && .venv/bin/python -m pip install -q pytest
 printf '.venv/\n__pycache__/\n' > .gitignore
 git init -q && git add . && git commit -qm "shop with two bugs"
 
-cat > ~/tokopt-verify/show.py <<'EOF'
+cat > ~/toknix-verify/show.py <<'EOF'
 """Print the tool calls and tool results of the newest Claude Code session of a project."""
 import glob, json, os, sys
 
-pattern = os.path.expanduser("~/.claude/projects/*tokopt-verify-shop*/*.jsonl")
+pattern = os.path.expanduser("~/.claude/projects/*toknix-verify-shop*/*.jsonl")
 files = sorted(glob.glob(pattern), key=os.path.getmtime)
 if not files:
     sys.exit(f"no transcript matches {pattern}")
@@ -160,25 +160,25 @@ EOF
 
 ## 4. Hook Bash (check A, B, G)
 
-Trong `~/tokopt-verify/shop`, chạy `claude` (chế độ permission mặc định). Gõ `/hooks` và kiểm tra có 3 hook của tokopt: PreToolUse `Bash`, PreToolUse `Read|Grep|Glob`, SessionStart `compact|clear`. Không thấy thì thoát Claude Code, mở lại rồi kiểm tra lại.
+Trong `~/toknix-verify/shop`, chạy `claude` (chế độ permission mặc định). Gõ `/hooks` và kiểm tra có 3 hook của toknix: PreToolUse `Bash`, PreToolUse `Read|Grep|Glob`, SessionStart `compact|clear`. Không thấy thì thoát Claude Code, mở lại rồi kiểm tra lại.
 
 Gửi prompt:
 
 > Chạy test bằng đúng lệnh `.venv/bin/python -m pytest`, rồi sửa code trong `shop.py` để mọi test pass. Không sửa file test. Sau khi sửa, chạy lại đúng lệnh đó.
 
-Nếu Claude Code hỏi quyền chạy lệnh thì cho phép. Ghi lại **lệnh hiện trong hộp hỏi quyền** là lệnh gốc hay `tokopt run -- …`.
+Nếu Claude Code hỏi quyền chạy lệnh thì cho phép. Ghi lại **lệnh hiện trong hộp hỏi quyền** là lệnh gốc hay `toknix run -- …`.
 
 Khi agent xong, mở terminal khác:
 
 ```bash
-tokopt gain --days 1
-python3 ~/tokopt-verify/show.py | grep -n -B1 -A3 "tokopt" | head -60
+toknix gain --days 1
+python3 ~/toknix-verify/show.py | grep -n -B1 -A3 "toknix" | head -60
 ```
 
 **Check A** đạt khi cả hai điều sau đúng:
 
-- `tokopt gain` có dòng `pytest` với `runs ≥ 1`;
-- trong output của `show.py`, kết quả của lệnh pytest có footer `[tokopt: N → M lines; full output: tokopt recall <id>; exit 1]`.
+- `toknix gain` có dòng `pytest` với `runs ≥ 1`;
+- trong output của `show.py`, kết quả của lệnh pytest có footer `[toknix: N → M lines; full output: toknix recall <id>; exit 1]`.
 
 Nếu `gain` in `no data yet` và không có footer thì `updatedInput` **không** được áp dụng. Khi đó ghi lại và dừng: các bước sau phụ thuộc vào check này.
 
@@ -200,17 +200,17 @@ Xong thì xoá `.claude/settings.local.json`.
 
 ## 5. Read guard và Read lặp lại (check C, E)
 
-**Check C** — Claude Code có tự chặn Read lặp lại không. Tạm tắt R3 của tokopt để nhìn thấy hành vi gốc của Claude Code:
+**Check C** — Claude Code có tự chặn Read lặp lại không. Tạm tắt R3 của toknix để nhìn thấy hành vi gốc của Claude Code:
 
 ```bash
-mkdir -p ~/.tokopt && echo '{"guard_repeat_reads": 0}' > ~/.tokopt/config.json
+mkdir -p ~/.toknix && echo '{"guard_repeat_reads": 0}' > ~/.toknix/config.json
 ```
 
 Trong một phiên `claude` mới, gửi:
 
 > Để kiểm tra một hook: dùng tool Read đọc `shop.py`, rồi dùng tool Read đọc lại đúng file đó thêm một lần nữa, không đổi gì. Sau đó chỉ trả lời "xong".
 
-Rồi chạy `python3 ~/tokopt-verify/show.py 300` và xem kết quả `<<` của lần Read thứ hai. Có hai khả năng:
+Rồi chạy `python3 ~/toknix-verify/show.py 300` và xem kết quả `<<` của lần Read thứ hai. Có hai khả năng:
 
 - nội dung file đầy đủ như lần một → Claude Code **không** tự chặn, R3 có ích;
 - một thông báo ngắn kiểu "file unchanged since last read" → Claude Code tự chặn, R3 thừa. Chép nguyên văn thông báo đó.
@@ -218,20 +218,20 @@ Rồi chạy `python3 ~/tokopt-verify/show.py 300` và xem kết quả `<<` củ
 Bật lại R3:
 
 ```bash
-rm ~/.tokopt/config.json
+rm ~/.toknix/config.json
 ```
 
 **Check E** — R3 và việc reset sau `/compact`. Trong một phiên `claude` mới, gửi:
 
 > Để kiểm tra một hook: dùng tool Read đọc `shop.py` ba lần liên tiếp, không đổi gì. Báo lại nguyên văn kết quả của lần thứ ba.
 
-Lần thứ ba phải bị chặn với thông báo `tokopt: you already read this exact range … still in your context`. Tiếp theo, gõ `/compact`, rồi gửi:
+Lần thứ ba phải bị chặn với thông báo `toknix: you already read this exact range … still in your context`. Tiếp theo, gõ `/compact`, rồi gửi:
 
 > Dùng tool Read đọc lại `shop.py` một lần.
 
 Đạt khi lần đọc này **không** bị chặn. Nếu bị chặn nghĩa là hook session-start không chạy sau `/compact`.
 
-**Quan sát thêm (R2, không phải check):** gửi *"Đọc toàn bộ big/catalog.py rồi cho biết có bao nhiêu hàm."* Lần Read cả file sẽ bị chặn, kèm gợi ý `tokopt outline` (lệnh này chưa có, P3-T1). Ghi lại agent xử lý thế nào, ví dụ đọc theo `offset`/`limit` hay dùng Grep, và có bị kẹt không.
+**Quan sát thêm (R2, không phải check):** gửi *"Đọc toàn bộ big/catalog.py rồi cho biết có bao nhiêu hàm."* Lần Read cả file sẽ bị chặn, kèm gợi ý `toknix outline` (lệnh này chưa có, P3-T1). Ghi lại agent xử lý thế nào, ví dụ đọc theo `offset`/`limit` hay dùng Grep, và có bị kẹt không.
 
 ## 6. Grep `head_limit` (check D)
 
@@ -239,7 +239,7 @@ Trong phiên `claude` mới, gửi:
 
 > Để kiểm tra một hook: dùng tool Grep với `output_mode: "content"`, pattern `^def item_`, path `big`, không đặt `head_limit`. Cho biết bạn nhận được bao nhiêu dòng kết quả và kết quả có ghi là bị cắt bớt không.
 
-Rồi chạy `python3 ~/tokopt-verify/show.py 100000 | grep -A3 '>> Grep'` để xem kết quả thật. File có đúng 600 dòng khớp.
+Rồi chạy `python3 ~/toknix-verify/show.py 100000 | grep -A3 '>> Grep'` để xem kết quả thật. File có đúng 600 dòng khớp.
 
 - Nhận ≤ 200 dòng → `updatedInput` của Grep được áp dụng.
 - Nhận đủ 600 dòng → không được áp dụng.
@@ -248,26 +248,26 @@ Rồi chạy `python3 ~/tokopt-verify/show.py 100000 | grep -A3 '>> Grep'` để
 ## 6b. Rule của `init-project` (check H)
 
 ```bash
-cd ~/tokopt-verify/shop && mkdir -p node_modules/pkg && echo "module.exports = 1" > node_modules/pkg/index.js
-tokopt init-project
+cd ~/toknix-verify/shop && mkdir -p node_modules/pkg && echo "module.exports = 1" > node_modules/pkg/index.js
+toknix init-project
 ```
 
-Trong một phiên `claude` mới, gửi: *"Dùng tool Read đọc dòng 1 của `node_modules/pkg/index.js` (offset 1, limit 1)."* Read guard của tokopt cho phép đọc lát cắt, nên nếu bị chặn thì chính rule deny đã có tác dụng. Ghi lại thông báo chặn.
+Trong một phiên `claude` mới, gửi: *"Dùng tool Read đọc dòng 1 của `node_modules/pkg/index.js` (offset 1, limit 1)."* Read guard của toknix cho phép đọc lát cắt, nên nếu bị chặn thì chính rule deny đã có tác dụng. Ghi lại thông báo chặn.
 
 ## 7. Dọn dẹp
 
 ```bash
-tokopt uninstall
-tokopt doctor; echo "exit $?"          # bây giờ phải báo missing, exit 1
-sh install.sh --uninstall              # gỡ cả lệnh tokopt (uv tool hoặc venv)
-rm -rf ~/tokopt-verify                  # repo mẫu
-rm -rf ~/.tokopt                        # dữ liệu tokopt (tuỳ chọn)
+toknix uninstall
+toknix doctor; echo "exit $?"          # bây giờ phải báo missing, exit 1
+sh install.sh --uninstall              # gỡ cả lệnh toknix (uv tool hoặc venv)
+rm -rf ~/toknix-verify                  # repo mẫu
+rm -rf ~/.toknix                        # dữ liệu toknix (tuỳ chọn)
 ```
 
 Kiểm tra `~/.claude/settings.json` đã trở về như trước:
 
 ```bash
-diff <(python3 -m json.tool ~/settings.json.before-tokopt) <(python3 -m json.tool ~/.claude/settings.json) && echo "giống hệt"
+diff <(python3 -m json.tool ~/settings.json.before-toknix) <(python3 -m json.tool ~/.claude/settings.json) && echo "giống hệt"
 ```
 
 Nếu trước khi cài bạn chưa có `~/.claude/settings.json` thì không có bản để so; khi đó `uninstall` xoá luôn file mà `install` đã tạo, nên chỉ cần kiểm tra file không còn tồn tại.
@@ -282,7 +282,7 @@ Nếu trước khi cài bạn chưa có `~/.claude/settings.json` thì không c�
 | Hệ điều hành | |
 | `claude --version` | |
 | `python3 --version` | |
-| Commit tokopt | |
+| Commit toknix | |
 
 | Check | Kết quả (đạt / không đạt / ghi chú) | Bằng chứng (dán output ngắn) |
 |---|---|---|
@@ -293,7 +293,7 @@ Nếu trước khi cài bạn chưa có `~/.claude/settings.json` thì không c�
 | G — agent sửa xong, `42 passed`, chỉ đổi `shop.py` | | |
 | B — rule `Bash(.venv/bin/python -m pytest:*)` còn khớp (không hỏi quyền) | | |
 | C — Read lần 2 khi tắt R3: nội dung đầy đủ hay stub (chép nguyên văn stub) | | |
-| E — lần Read thứ 3 bị tokopt chặn | | |
+| E — lần Read thứ 3 bị toknix chặn | | |
 | E — sau `/compact`, đọc lại được | | |
 | D — Grep nhận bao nhiêu dòng (200 hay 600) | | |
 | D — có báo bị cắt / phân trang không (chép nguyên văn) | | |

@@ -1,4 +1,4 @@
-# tokopt
+# toknix
 
 CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini CLI).
 
@@ -18,22 +18,22 @@ CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini
 ## Ràng buộc
 
 - Python ≥ 3.9, **chỉ stdlib**, cả trong test. Không thêm dependency.
-- Hook không bao giờ được làm hỏng agent: mọi exception đều thành exit 0, không in gì (bật `TOKOPT_DEBUG=1` để in ra stderr).
-- `tokopt run` phải giữ nguyên exit code của lệnh gốc.
+- Hook không bao giờ được làm hỏng agent: mọi exception đều thành exit 0, không in gì (bật `TOKNIX_DEBUG=1` để in ra stderr).
+- `toknix run` phải giữ nguyên exit code của lệnh gốc.
 - Không bộ lọc nào được bỏ hay sửa dòng khớp `ERROR_RE`, kể cả khi vượt ngân sách token (A2.4).
-- Không ghi ra ngoài `~/.tokopt/`, trừ khi người dùng chạy `install` hoặc `init-project`. Test phải dùng `HOME` / `TOKOPT_HOME` tạm.
+- Không ghi ra ngoài `~/.toknix/`, trừ khi người dùng chạy `install` hoặc `init-project`. Test phải dùng `HOME` / `TOKNIX_HOME` tạm.
 - Code đa nền tảng: dùng `pathlib`; không giả định `/`; chạy được trên Windows qua Git Bash.
 
 ## Cấu trúc
 
 ```
-src/tokopt/      cli.py, config.py, textutil.py, store.py, filters.py, runner.py, hooks.py,
+src/toknix/      cli.py, config.py, textutil.py, store.py, filters.py, runner.py, hooks.py,
                  outline.py, langs.py (regex-language extract), codesearch.py (symbol, refs),
                  transcripts.py, measure.py (gain, calibration), reports.py (report, waste, context,
                  snapshot), bench.py, statusline.py, installer.py
 tests/           test_*.py, fixtures/ (output thật, không sửa tay), fake_agents/
 scripts/         bench_codesearch.py (đo symbol/refs trên repo 2.000 file)
-src/tokopt/templates/  rules.md, variants/ (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md; nằm trong package để pip/uv mang theo)
+src/toknix/templates/  rules.md, variants/ (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md; nằm trong package để pip/uv mang theo)
 docs/            PLAN.md, ALGORITHMS.md, VERIFY.md
 install.sh, install.ps1
 ```

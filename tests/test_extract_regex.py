@@ -16,7 +16,7 @@ from unittest import mock
 
 import support
 
-from tokopt import cli, outline
+from toknix import cli, outline
 
 CODE = support.FIXTURES / "code"
 SAMPLES = ["sample.js", "sample.ts", "sample.go", "sample.java", "sample.rs", "sample.php", "sample.rb",
@@ -173,7 +173,7 @@ class TestOutlineOtherLanguages(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        patcher = mock.patch.dict(os.environ, {"TOKOPT_HOME": tmp.name})
+        patcher = mock.patch.dict(os.environ, {"TOKNIX_HOME": tmp.name})
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -204,7 +204,7 @@ class TestOutlineOtherLanguages(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "x.lua"
             p.write_text("function f() end\n")
-            self.assertEqual(self.outline(p)[0], "[tokopt: no outline for .lua files yet; first 1 of 1 lines]")
+            self.assertEqual(self.outline(p)[0], "[toknix: no outline for .lua files yet; first 1 of 1 lines]")
 
 
 if __name__ == "__main__":

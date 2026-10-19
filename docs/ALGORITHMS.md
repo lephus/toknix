@@ -1,4 +1,4 @@
-# tokopt — Thuật toán
+# toknix — Thuật toán
 
 Tài liệu này mô tả **cái gì** và **vì sao**. Nó đủ chi tiết để implement mà không phải đoán. Mỗi mục gồm: mục tiêu, input/output, pseudocode, edge case, và cách kiểm chứng.
 
@@ -35,14 +35,14 @@ reread_cost(T, R) = T·w_cw + T·w_cr·R              # T token vào context khi
 
 - Chuỗi hex: `[0-9a-fA-F]{16,}`. Chuỗi base64: `[A-Za-z0-9+/]{16,}={0,2}` và phải có đủ chữ hoa, chữ thường, chữ số, để từ thường dài (`internationalization`) hay đường dẫn (`usr/lib/python3`) không bị tính vào lớp hex.
 - `est_tokens` chạy một lượt regex. Hook read vẫn dùng `size // 4` để giữ tốc độ.
-- Bộ lọc (`tokopt run`) **luôn** dùng `token_ratios` trong config. Kết quả hiệu chỉnh (A6.4) chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`), để lượng output agent nhận được không tự thay đổi.
+- Bộ lọc (`toknix run`) **luôn** dùng `token_ratios` trong config. Kết quả hiệu chỉnh (A6.4) chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`), để lượng output agent nhận được không tự thay đổi.
 
 - Token của model **luôn lấy từ `usage` trong transcript** (số chính xác của provider), không ước lượng.
 - Trọng số đọc từ `config.weights`. Codex và Gemini có tỉ lệ giá khác nên người dùng tự đặt.
 
 ---
 
-## A2. Bộ lọc output lệnh (`tokopt run -- "<cmd>"`)
+## A2. Bộ lọc output lệnh (`toknix run -- "<cmd>"`)
 
 **Mục tiêu:** agent nhận đủ thông tin để hành động (lỗi, tóm tắt, exit code), bỏ phần chỉ để lướt (progress, PASSED, download). Output gốc được giữ lại để lấy lại khi cần.
 
@@ -54,7 +54,7 @@ run(cmd):
                                          # PIP_PROGRESS_BAR=off, npm_config_progress=false
   p = subprocess.run([bash, "-c", cmd], stdout=PIPE, stderr=STDOUT, env=env)   # gộp stderr để giữ thứ tự
   text = decode(p.stdout, utf-8, errors=replace)
-  if TOKOPT_RAW=1: print(text); return p.returncode
+  if TOKNIX_RAW=1: print(text); return p.returncode
 
   lines = normalize(text)               # A2.2
   if len(lines) ≤ pass_through_lines(40) and len(text) ≤ pass_through_chars(4000):
@@ -71,17 +71,17 @@ run(cmd):
 
   lossy = normalize_costly hoặc cut_long_lines đã đổi ≥ 1 dòng
   if lossy or len(join(out)) < 0.9 × len(text):   # lưu tee khi thật sự cắt hoặc có biến đổi mất thông tin
-      id = random hex(6); save p.stdout (bytes gốc) → ~/.tokopt/tee/<id>.log
-      append footer: "[tokopt: N → M lines; full output: tokopt recall <id>; exit X]"
+      id = random hex(6); save p.stdout (bytes gốc) → ~/.toknix/tee/<id>.log
+      append footer: "[toknix: N → M lines; full output: toknix recall <id>; exit X]"
   print(out); record_run(...)           # A6
   return p.returncode                   # BẮT BUỘC giữ nguyên exit code; bị kill bởi signal N → 128 + N như shell
 ```
 
-- **Shell:** luôn chạy bằng `bash` (lấy qua `shutil.which("bash")`), fallback `/bin/sh`. Agent viết cú pháp bash, nên không dùng `$SHELL` vì người dùng có thể đang dùng fish hoặc zsh. `TOKOPT_SHELL` ghi đè tất cả.
+- **Shell:** luôn chạy bằng `bash` (lấy qua `shutil.which("bash")`), fallback `/bin/sh`. Agent viết cú pháp bash, nên không dùng `$SHELL` vì người dùng có thể đang dùng fish hoặc zsh. `TOKNIX_SHELL` ghi đè tất cả.
 - **Windows:** dùng bash của Git Bash, vì Claude Code trên Windows cũng chạy qua Git Bash. `[ASSUMPTION]` Thứ tự tìm: `CLAUDE_CODE_GIT_BASH_PATH` (biến Claude Code dùng), `bin\bash.exe` cạnh `git.exe` trên PATH, rồi `bash` trên PATH nếu không nằm trong `System32` hay `WindowsApps` (đó là launcher của WSL, chạy lệnh trong hệ điều hành khác).
 - **Output:** ghi byte UTF-8 thẳng vào stdout, không phụ thuộc encoding của console và không đổi `\n` thành `\r\n` trên Windows. Footer chỉ in khi lưu tee thành công.
-- **Không bao giờ làm mất output:** lỗi bất kỳ trong bước lọc (config hỏng, bug bộ lọc) → in nguyên văn output gốc, giữ exit code, không in gì thêm (trừ khi `TOKOPT_DEBUG=1`). `~/.tokopt` không ghi được → vẫn in output đã lọc, chỉ mất tee và thống kê.
-- **Dòng lệnh:** `tokopt run -- "<cmd>"` (một chuỗi, như hook A3 viết) chạy nguyên chuỗi; nhiều từ (`tokopt run -- npm test`) được ghép lại bằng `shlex.join`. `--` là tuỳ chọn.
+- **Không bao giờ làm mất output:** lỗi bất kỳ trong bước lọc (config hỏng, bug bộ lọc) → in nguyên văn output gốc, giữ exit code, không in gì thêm (trừ khi `TOKNIX_DEBUG=1`). `~/.toknix` không ghi được → vẫn in output đã lọc, chỉ mất tee và thống kê.
+- **Dòng lệnh:** `toknix run -- "<cmd>"` (một chuỗi, như hook A3 viết) chạy nguyên chuỗi; nhiều từ (`toknix run -- npm test`) được ghép lại bằng `shlex.join`. `--` là tuỳ chọn.
 - **Đếm dòng:** N trong footer là số dòng của output gốc (không tính phần rỗng sau dấu xuống dòng cuối), cùng cách đánh số với `recall --lines` / `--grep`.
 
 ### A2.2 normalize
@@ -125,7 +125,7 @@ Bất biến của mọi bộ lọc:
 
 - Không bỏ dòng khớp `ERROR_RE`: error, failed, fail, fatal, exception, traceback, panic, assert, cannot, could not, not found, undefined, denied, refused, segfault, warning, warn, `^E\s`, `^\s*at .+:\d+`.
 - Luôn giữ dòng tổng kết cuối.
-- Bất biến ERROR_RE là **tuyệt đối** (người dùng chốt 2026-10-18): dòng khớp luôn được giữ **nguyên văn**, kể cả khi vượt ngân sách; không bị cắt dòng dài, không bị chuẩn hoá. Hai ngoại lệ không làm mất nội dung: `dedupe_runs` gộp các dòng giống hệt liên tiếp thành `… [×N]`; bộ lọc install gộp các dòng `deprecated`. Ngoại lệ thứ ba (người dùng chốt 2026-10-19): khi `gitdiff` vượt ngân sách, khối file bị rút gọn thành `path (+a -d)` kể cả khi có dòng khớp `ERROR_RE`, vì đó là code trong diff chứ không phải lỗi lúc chạy; agent lấy lại bằng `git diff -- <file>` hoặc `tokopt recall`.
+- Bất biến ERROR_RE là **tuyệt đối** (người dùng chốt 2026-10-18): dòng khớp luôn được giữ **nguyên văn**, kể cả khi vượt ngân sách; không bị cắt dòng dài, không bị chuẩn hoá. Hai ngoại lệ không làm mất nội dung: `dedupe_runs` gộp các dòng giống hệt liên tiếp thành `… [×N]`; bộ lọc install gộp các dòng `deprecated`. Ngoại lệ thứ ba (người dùng chốt 2026-10-19): khi `gitdiff` vượt ngân sách, khối file bị rút gọn thành `path (+a -d)` kể cả khi có dòng khớp `ERROR_RE`, vì đó là code trong diff chứ không phải lỗi lúc chạy; agent lấy lại bằng `git diff -- <file>` hoặc `toknix recall`.
 
 | kind | Bỏ | Giữ / biến đổi |
 |---|---|---|
@@ -133,8 +133,8 @@ Bất biến của mọi bộ lọc:
 | jest | dòng bắt đầu bằng `✓ √ PASS ○ ↓` | `FAIL`, khối `●`, `Tests:`, `Test Suites:` |
 | gotest | `=== RUN/PAUSE/CONT`, `--- PASS:`, `PASS`, `ok  ` | khối FAIL, panic |
 | cargotest | `test x ... ok`, `Compiling/Downloaded/Fresh/Checking` | failures, `test result:` |
-| install | Collecting, Downloading, Using cached, Requirement already satisfied, Building wheel, `━`, Resolved, Prepared, Fetching, Progress, Downloaded, Compiling | Gộp mọi dòng `deprecated` thành 1 dòng `[tokopt] N deprecation warnings: a, b, …` (tối đa 8 tên); giữ added/audited/vulnerabilities/error |
-| lint, compile | — | Nhóm theo file (regex `^path.ext[(:]`), tối đa 15 dòng **không** khớp ERROR_RE mỗi file (diagnostic khớp ERROR_RE luôn giữ hết), thêm dòng `[tokopt] N diagnostics in F files` |
+| install | Collecting, Downloading, Using cached, Requirement already satisfied, Building wheel, `━`, Resolved, Prepared, Fetching, Progress, Downloaded, Compiling | Gộp mọi dòng `deprecated` thành 1 dòng `[toknix] N deprecation warnings: a, b, …` (tối đa 8 tên); giữ added/audited/vulnerabilities/error |
+| lint, compile | — | Nhóm theo file (regex `^path.ext[(:]`), tối đa 15 dòng **không** khớp ERROR_RE mỗi file (diagnostic khớp ERROR_RE luôn giữ hết), thêm dòng `[toknix] N diagnostics in F files` |
 | gitstatus | dòng gợi ý `(use "git …")` | Mọi dòng còn lại |
 | gitlog | — | Nếu là format mặc định (`commit <sha>`): chuyển thành `sha9 date author: subject`, tối đa 30 commit, kèm dòng báo số commit bị bỏ. Format khác: không đổi |
 | gitdiff | — | Giữ **trọn khối file** (`diff --git …`) cho tới khi chạm ngân sách 400 dòng hoặc `max_tokens` (trần nào trước); khối file mà riêng nó đã vượt ngân sách cũng chỉ được liệt kê; các file còn lại liệt kê `path (+a -d)` kèm gợi ý `git diff -- <file>`. Không bao giờ cắt giữa hunk |
@@ -184,10 +184,10 @@ Lý do: lỗi thường nằm ở cuối (stack trace, summary), còn ngữ cả
 ### A2.7 recall
 
 ```
-tokopt recall <id> [--grep REGEX] [--lines a:b]
+toknix recall <id> [--grep REGEX] [--lines a:b]
 ```
 
-Không có tuỳ chọn: in **nguyên văn từng byte** output gốc. Có `--grep` / `--lines`: in các dòng đã qua `normalize` (bỏ ANSI, frame cuối của progress bar), để regex khớp được cả output có màu. `--lines a:b` đánh số từ 1, gồm cả hai đầu (`a:`, `:b`, `a` đều hợp lệ); dùng cả hai thì `--grep` lọc trong đoạn `--lines` và giữ số dòng gốc. Tham số sai → exit 2; id không tồn tại → exit 1. Id chỉ gồm chữ số hex, nên không đọc được file ngoài `~/.tokopt/tee/`. File tee tự xoá sau `tee_keep_days` (7 ngày); việc dọn chạy ngẫu nhiên khoảng 1/50 lần `run`.
+Không có tuỳ chọn: in **nguyên văn từng byte** output gốc. Có `--grep` / `--lines`: in các dòng đã qua `normalize` (bỏ ANSI, frame cuối của progress bar), để regex khớp được cả output có màu. `--lines a:b` đánh số từ 1, gồm cả hai đầu (`a:`, `:b`, `a` đều hợp lệ); dùng cả hai thì `--grep` lọc trong đoạn `--lines` và giữ số dòng gốc. Tham số sai → exit 2; id không tồn tại → exit 1. Id chỉ gồm chữ số hex, nên không đọc được file ngoài `~/.toknix/tee/`. File tee tự xoá sau `tee_keep_days` (7 ngày); việc dọn chạy ngẫu nhiên khoảng 1/50 lần `run`.
 
 Mỗi lần chạy với id hợp lệ (kể cả id đã hết hạn), `recall` ghi một dòng vào bảng `recalls(ts, tee_id)` (best-effort như `record_run`). Đây là dữ liệu cho tỉ lệ recall trong `gain` (A6.2).
 
@@ -209,14 +209,14 @@ Mỗi lần chạy với id hợp lệ (kể cả id đã hết hạn), `recall`
 
 ---
 
-## A3. Hook Bash cho Claude Code (`tokopt hook bash`, PreToolUse matcher `Bash`)
+## A3. Hook Bash cho Claude Code (`toknix hook bash`, PreToolUse matcher `Bash`)
 
-**Mục tiêu:** tự động bọc các lệnh ồn bằng `tokopt run --` mà agent không cần biết.
+**Mục tiêu:** tự động bọc các lệnh ồn bằng `toknix run --` mà agent không cần biết.
 
 ```
 input (stdin JSON): {session_id, cwd, tool_name:"Bash", tool_input:{command, run_in_background?, ...}}
 should_wrap(cmd):
-  false nếu: rỗng | đã chứa "tokopt run" | bắt đầu "TOKOPT_RAW=" | run_in_background | kết thúc bằng "&"
+  false nếu: rỗng | đã chứa "toknix run" | bắt đầu "TOKNIX_RAW=" | run_in_background | kết thúc bằng "&"
              | chứa heredoc "<<"
              | chứa lệnh có trạng thái ở đầu một câu lệnh: cd pushd popd export unset source . alias set ulimit exec
                (Claude Code giữ cwd/env giữa các lần gọi; bọc vào subshell sẽ làm mất trạng thái đó)
@@ -225,19 +225,19 @@ should_wrap(cmd):
   true nếu program_of(cmd) ∈ config.wrap_programs
 output nếu wrap:
   {"hookSpecificOutput":{"hookEventName":"PreToolUse",
-     "updatedInput": {...tool_input, "command": "tokopt run -- " + shlex.quote(cmd)}}}
+     "updatedInput": {...tool_input, "command": "toknix run -- " + shlex.quote(cmd)}}}
 ```
 
 - **Input:** đọc stdin dưới dạng byte rồi giải mã UTF-8, không dùng code page của console (cp1252 trên Windows sẽ làm hỏng lệnh có tiếng Việt khi ghi lại vào `updatedInput`). Output là JSON ASCII.
-- **Lỗi:** JSON hỏng, field sai kiểu, tên hook lạ, kể cả lỗi import → exit 0, không in gì (`TOKOPT_DEBUG=1` in lý do ra stderr).
-- **Thời gian:** đo 2026-10-19 trên macOS, Python 3.14, trạng thái warm: trung vị 58 ms, bằng `python -c pass`. Phần tokopt thêm vào nằm trong sai số đo.
+- **Lỗi:** JSON hỏng, field sai kiểu, tên hook lạ, kể cả lỗi import → exit 0, không in gì (`TOKNIX_DEBUG=1` in lý do ra stderr).
+- **Thời gian:** đo 2026-10-19 trên macOS, Python 3.14, trạng thái warm: trung vị 58 ms, bằng `python -c pass`. Phần toknix thêm vào nằm trong sai số đo.
 - **Quyết định bảo mật:** mặc định KHÔNG gửi `permissionDecision`, để luật permission của người dùng vẫn áp dụng. Nếu gửi `"allow"` thì mọi lệnh được bọc (kể cả `git push --force`) sẽ bỏ qua bước hỏi quyền. Config `hook_permission` (mặc định `null`; nhận `"allow"` hoặc `"ask"`, giá trị khác bị bỏ qua) cho phép bật, kèm cảnh báo trong README.
-- `[ASSUMPTION]` Claude Code áp dụng `updatedInput` khi không có `permissionDecision`. Kiểm chứng ở task P2-T4: chạy một session thật, kiểm tra bảng `runs` có bản ghi. Nếu không áp dụng, phải chọn lại giữa hai phương án: (a) dùng `"ask"`, (b) chỉ cài rules để agent tự gõ `tokopt run --`. Đây là `[TBD]`.
+- `[ASSUMPTION]` Claude Code áp dụng `updatedInput` khi không có `permissionDecision`. Kiểm chứng ở task P2-T4: chạy một session thật, kiểm tra bảng `runs` có bản ghi. Nếu không áp dụng, phải chọn lại giữa hai phương án: (a) dùng `"ask"`, (b) chỉ cài rules để agent tự gõ `toknix run --`. Đây là `[TBD]`.
 - `[ASSUMPTION]` Permission rule dạng `Bash(npm test:*)` có thể không khớp sau khi lệnh bị viết lại. Ghi vào README phần giới hạn.
 
 ---
 
-## A4. Read guard (`tokopt hook read`, PreToolUse matcher `Read|Grep|Glob`)
+## A4. Read guard (`toknix hook read`, PreToolUse matcher `Read|Grep|Glob`)
 
 **Mục tiêu:** chặn ba loại đọc lãng phí nhất. Mỗi lần chặn phải chỉ ra cách đọc đúng, để agent không bị kẹt.
 
@@ -250,7 +250,7 @@ Read(file_path, offset?, limit?):
               So khớp: pattern `/dir/` khớp một đoạn đường dẫn; `.ext` khớp đuôi; còn lại khớp nguyên tên file
               (`package-lock.json` không khớp `my-package-lock.json`). Đường dẫn Windows đổi `\` thành `/` trước.
   R2 bigfile: không có offset/limit và size > big_lines×40 bytes và đếm dòng > big_lines (800)
-              → deny "… has N lines (~T tokens). Run `tokopt outline <path>`, then Read the range with offset/limit."
+              → deny "… has N lines (~T tokens). Run `toknix outline <path>`, then Read the range with offset/limit."
   R3 reread:  key = (session, realpath, f"{offset}:{limit}"); nếu mtime không đổi thì n++, mtime đổi thì n=1
               n > guard_repeat_reads (2) → deny "already read this exact range N times; file unchanged; content is still in context."
 Grep/Glob(path):
@@ -301,7 +301,7 @@ Ngôn ngữ khác: không hỗ trợ → outline trả 200 dòng đầu kèm th�
 | Rust | `^\s*(pub(\(\w+\))?\s+)?(async\s+)?fn\s+(\w+)`, `(struct\|enum\|trait\|impl)\s+…` |
 | PHP | `function\s+(\w+)`, `class\s+(\w+)` |
 
-Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
+Chi tiết đã chốt khi implement (P3-T2, `src/toknix/langs.py`):
 
 - **Che trước, so sau.** Lexer thay nội dung chuỗi và comment bằng khoảng trắng (giữ xuống dòng), rồi mới chạy regex và đếm ngoặc. Đặc thù theo ngôn ngữ:
   - template literal JS/TS và interpolation có chuỗi lồng: `${"}"}`, Kotlin/Dart `${…}`, Ruby `#{…}`, C# `$"…{x}…"` với `{{`;
@@ -350,14 +350,14 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
 
 ### A5.2 Lệnh
 
-- `tokopt outline <file>`: in mỗi symbol một dòng, thụt lề 2 dấu cách mỗi cấp parent: `L12-40  def foo(a, b)`. Dòng cuối: `[N lines, ~T tokens; Read with offset=12 limit=29]`, với ví dụ offset/limit là symbol top-level dài nhất (bằng nhau thì lấy cái đầu); T tính bằng `est_tokens` với `token_ratios` trong config. Không có symbol → `no functions or classes` + `[N lines, ~T tokens]`. Ngôn ngữ chưa hỗ trợ hoặc file không parse được → `[tokopt: <lý do>; first 200 of N lines]` rồi 200 dòng đầu, exit 0. File không tồn tại, thư mục, file nhị phân (có byte NUL trong 8 KB đầu) → exit 1.
-- `tokopt symbol <name> [--path DIR] [--kind K]`:
+- `toknix outline <file>`: in mỗi symbol một dòng, thụt lề 2 dấu cách mỗi cấp parent: `L12-40  def foo(a, b)`. Dòng cuối: `[N lines, ~T tokens; Read with offset=12 limit=29]`, với ví dụ offset/limit là symbol top-level dài nhất (bằng nhau thì lấy cái đầu); T tính bằng `est_tokens` với `token_ratios` trong config. Không có symbol → `no functions or classes` + `[N lines, ~T tokens]`. Ngôn ngữ chưa hỗ trợ hoặc file không parse được → `[toknix: <lý do>; first 200 of N lines]` rồi 200 dòng đầu, exit 0. File không tồn tại, thư mục, file nhị phân (có byte NUL trong 8 KB đầu) → exit 1.
+- `toknix symbol <name> [--path DIR] [--kind K]`:
   1. Liệt kê file nguồn bằng `git ls-files` nếu là git repo, nếu không thì duyệt thư mục (bỏ junk_patterns, file > 1 MB, file nhị phân).
   2. Tiền lọc nhanh: chỉ giữ file chứa chuỗi `name`.
   3. Chạy `extract` trên các file đó, khớp đúng tên (hoặc `Class.method`).
   4. In code của symbol kèm số dòng. Tối đa 3 kết quả và 300 dòng mỗi kết quả; các kết quả khác chỉ liệt kê vị trí.
-- `tokopt refs <name>`: regex `\bname\b` trên các file nguồn, nhóm theo file, tối đa 50 dòng. Bỏ dòng định nghĩa.
-- Chi tiết đã chốt khi implement (P3-T3, `src/tokopt/codesearch.py`):
+- `toknix refs <name>`: regex `\bname\b` trên các file nguồn, nhóm theo file, tối đa 50 dòng. Bỏ dòng định nghĩa.
+- Chi tiết đã chốt khi implement (P3-T3, `src/toknix/codesearch.py`):
   - **File nguồn:**
     - lấy từ `git ls-files --cached --others --exclude-standard`, nên gồm cả file mới chưa commit nhưng không file nào bị ignore; không phải git repo thì duyệt thư mục;
     - chỉ các ngôn ngữ `extract` hỗ trợ, bỏ `junk_patterns` (cùng hàm `config.is_junk` với read guard), file > 1 MB, file có byte NUL trong 8 KB đầu;
@@ -380,7 +380,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   - **Đo 2026-10-19:**
     - repo tổng hợp 2.000 file (`scripts/bench_codesearch.py`): 0,15–0,2 s mỗi lệnh, tính cả khởi động Python;
     - một project thật có 4.678 file nguồn: 0,4–0,9 s.
-- `tokopt map [DIR] [--budget 1500]` (repo map kiểu aider, bản rút gọn):
+- `toknix map [DIR] [--budget 1500]` (repo map kiểu aider, bản rút gọn):
   ```
   defs = extract mọi file
   ref_count[name] = số file khác (không phải file định nghĩa) chứa \bname\b   # tiền lọc bằng `in`
@@ -391,7 +391,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   ```
   Repo > 5.000 file: chỉ quét các file đã thay đổi trong 90 ngày (`git log --since`) cộng các thư mục người dùng chỉ định. `[ASSUMPTION]`
   - Chi tiết đã chốt khi implement (P3-T4, `codesearch.repo_map`):
-    - **Chia cho `definers`** (khác bản đầu của A5.2). Khi một tên được định nghĩa ở nhiều file, không thể biết một tham chiếu trỏ về file nào, nên các file đó chia nhau phần điểm. Trên chính repo tokopt, thiếu phép chia thì 5 file mẫu `tests/fixtures/code/sample.*` (cùng định nghĩa `Item`, `Cart`, `Store`, `parse`) đứng đầu map; có phép chia thì `filters.py`, `codesearch.py`, `outline.py` đứng đầu. Tên chỉ có một định nghĩa thì công thức không đổi.
+    - **Chia cho `definers`** (khác bản đầu của A5.2). Khi một tên được định nghĩa ở nhiều file, không thể biết một tham chiếu trỏ về file nào, nên các file đó chia nhau phần điểm. Trên chính repo toknix, thiếu phép chia thì 5 file mẫu `tests/fixtures/code/sample.*` (cùng định nghĩa `Item`, `Cart`, `Store`, `parse`) đứng đầu map; có phép chia thì `filters.py`, `codesearch.py`, `outline.py` đứng đầu. Tên chỉ có một định nghĩa thì công thức không đổi.
     - **`ref_count`:** mỗi file được tách thành tập identifier đúng một lần (`[A-Za-z_$][\w$]*` trên văn bản gốc, nên tên trong chuỗi và comment cũng được tính, như "tiền lọc bằng `in`"). Như vậy đếm chỉ là tra tập, không phải quét số symbol × số file.
     - **Một dòng symbol:** `  L{start}  {signature}`, signature cắt ở 120 ký tự kèm `…`. File không có symbol top-level thì không in. Một file chỉ còn chỗ cho tên mà không cho symbol nào thì bỏ cả tên.
     - **Ngân sách:** mỗi dòng được tính bằng `est_tokens` riêng. Tổng các phần không bao giờ nhỏ hơn ước lượng của cả văn bản, nên output luôn ≤ `--budget`. Phần cho dòng cuối được giữ trước theo trường hợp xấu nhất.
@@ -408,7 +408,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
     - Mẫu: 2026-10-19, khoảng 7.000 file trên máy người dùng (các project, node_modules, pub-cache, crates).
     - Kết quả: 0 crash, 0 file chậm hơn 5 s.
     - Lệch ngoặc: 0% ở mọi ngôn ngữ trừ JS/TS (0,1–0,6%), và toàn bộ số đó là code đã minify.
-  - `tokopt symbol` trên chính repo tokopt tìm đúng `budget_cut` và in đúng thân hàm.
+  - `toknix symbol` trên chính repo toknix tìm đúng `budget_cut` và in đúng thân hàm.
 
 ---
 
@@ -425,7 +425,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   - `function_call` nối với `function_call_output` theo `call_id`.
   - `[ASSUMPTION]` Schema có thể đổi theo phiên bản, nên parser phải phòng thủ: field thiếu thì bỏ qua, không crash.
 - **Gemini:** ngoài phạm vi v0.1. Hướng dẫn dùng `npx ccusage gemini`.
-- Chi tiết đã chốt khi implement (P4-T1, `src/tokopt/transcripts.py`):
+- Chi tiết đã chốt khi implement (P4-T1, `src/toknix/transcripts.py`):
   - **Claude Code:**
     - `FACT`, đếm trên transcript thật của người dùng ngày 2026-10-19: mỗi dòng `assistant` chứa đúng 1 block; một request trải trên 1–6 dòng, mọi dòng mang cùng một usage. Vậy parser khử trùng lặp theo `(message.id, requestId)` và gộp các block. Đếm mọi dòng sẽ thổi output token lên 2,59 lần (209 session).
     - `type=system`, `subtype=compact_boundary` là ranh giới compaction; `isSidechain=true` là request của subagent; `usage.cache_creation.ephemeral_1h_input_tokens` cho biết TTL 1 giờ.
@@ -443,10 +443,10 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
 | `waste --days N` | (1) top 10 họ tool theo `reread_cost` (`Bash:<prog>`, `Read:<path>`), hiện cả T và ETU; (2) các output đơn lẻ ≥ 5k token, xếp theo `reread_cost`; (3) lần đọc hoặc lệnh chạm junk; (4) file bị Read ≥ 3 lần trong một session; (5) session > 80 lượt gọi; (6) cache vỡ (A6.5); (7) phiên có tỉ trọng output > 35% `[ASSUMPTION]`, kèm phân rã output (A6.6). Mỗi nhóm kèm gợi ý sửa |
 | `gain` | Từ SQLite: tiết kiệm **trực tiếp** theo kind (token ước lượng của raw − out), Σ est_tokens từ guard theo rule, top 10 lệnh tiết kiệm nhiều nhất, tỉ lệ lệnh bị bọc trên tổng lệnh Bash (lấy từ transcript). Thêm: (a) tiết kiệm **tính cả đọc lại (ước tính)** = trực tiếp × (w_cw + w_cr·R̄), R̄ = trung vị số request còn lại sau mỗi tool_result Bash trong transcript N ngày; chưa có transcript thì R̄ = 20 `[ASSUMPTION]` và ghi rõ "dùng giá trị mặc định"; (b) theo kind: số lần cắt, số tee_id bị recall (đếm khác nhau), tỉ lệ recall; tỉ lệ > 20% với ≥ 10 lần cắt `[ASSUMPTION]` → cảnh báo "bộ lọc <kind> có thể cắt quá tay"; (c) số lần chạy có `error_overflow = 1`. `--json`, `--days N` (mặc định: toàn bộ). Chưa có DB hoặc DB rỗng → `no data yet` (không tạo DB). Ngưỡng cảnh báo recall nằm trong config (`recall_warn_rate`, `recall_warn_min_cuts`), R̄ mặc định là `reread_default`. "Số lần cắt" = số lần chạy có lưu tee. Tỉ lệ lệnh bị bọc cần transcript nên thêm ở P4-T2 |
 | `context` | Token ước lượng của các instruction file sẽ được nạp (global/project CLAUDE.md, CLAUDE.local.md, .claude/rules/*.md, AGENTS.md, GEMINI.md) + số MCP server (~/.claude.json, .mcp.json); cảnh báo khi > 1.500. Thêm: MCP server đã cấu hình (`~/.claude.json`, `.mcp.json`, settings của project) và skill (người dùng, project, plugin), kèm số lần được gọi trong N ngày (đếm `tool_use` tên `mcp__<server>__*` và input `skill` của tool `Skill`); 0 lần → gợi ý tắt, không tự tắt. Chỉ báo token schema MCP khi đọc được schema `[ASSUMPTION]` |
-| `snapshot --label L` | Lưu bản tóm tắt report vào `~/.tokopt/results/snapshot-L.json` |
+| `snapshot --label L` | Lưu bản tóm tắt report vào `~/.toknix/results/snapshot-L.json` |
 
 - Các phép tính theo phiên bỏ qua request của subagent.
-- Chi tiết đã chốt khi implement (P4-T2, `src/tokopt/reports.py`):
+- Chi tiết đã chốt khi implement (P4-T2, `src/toknix/reports.py`):
   - **Mặc định và tuỳ chọn:** `--days` mặc định là 7 (`context`: 30); mọi lệnh có `--json`; `context --path DIR`. Không có transcript → `no transcripts in the last N days`.
   - **Số liệu theo phiên:** chỉ tính chuỗi chính; "lượt gọi" là request.
   - **Token tool output:** `est_tokens` (tỉ lệ của báo cáo) trên text của tool_result.
@@ -469,7 +469,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   - **`snapshot --label L`:** nhãn chỉ gồm chữ, số, `.`, `_`, `-`. File lưu tóm tắt report và số mục của từng nhóm waste (P6 so nhóm (2) giữa hai snapshot).
   - **`gain` từ transcript:**
     - R̄ là trung vị R của các tool_result Bash trong `gain_transcript_days` (30) ngày.
-    - Lệnh bị bọc: command có `tokopt run`, hoặc kết quả có footer `[tokopt: `. P2-T4 sẽ cho biết transcript giữ lệnh gốc hay lệnh đã viết lại; footer chỉ có khi output bị cắt, nên số này có thể thấp hơn thật.
+    - Lệnh bị bọc: command có `toknix run`, hoặc kết quả có footer `[toknix: `. P2-T4 sẽ cho biết transcript giữ lệnh gốc hay lệnh đã viết lại; footer chỉ có khi output bị cắt, nên số này có thể thấp hơn thật.
   - **Đo trên transcript thật** (2026-10-19, 56 session/7 ngày): `report` 4,8 s, `waste` 4,0 s, `context` 3,0 s.
 - **Lưu số liệu cho `gain`:** mỗi bản ghi `runs` lưu số ký tự tiết kiệm theo lớp của A1 (`saved_default`, `saved_hex`, `saved_non_ascii` = ký tự của output gốc − ký tự của output agent nhận, kể cả footer). Token = Σ ký tự_lớp / tỉ lệ_lớp, tính lúc báo cáo, nên đổi tỉ lệ (config, hoặc hiệu chỉnh A6.4) thì áp được cho cả dữ liệu cũ. Bản ghi trước P1-T5 chỉ có tổng ký tự → (raw_chars − out_chars) / tỉ lệ `default`. Guard vẫn lưu `est_tokens = size // 4` (A1: giữ tốc độ hook).
 
@@ -483,7 +483,7 @@ mẫu: hai request liên tiếp k, k+1 trong cùng phiên, không có compaction
 bỏ mẫu y ≤ 0 và mẫu ngoại lai
 hồi quy bình phương tối thiểu không hệ số chặn (giải hệ phương trình chuẩn 3×3), cần ≥ 200 mẫu
 ratio_lớp = 1 / hệ số_lớp
-lưu ~/.tokopt/calibration.json theo agent; chỉ dùng khi sai số trung vị trên tập kiểm tra < 15% [ASSUMPTION]
+lưu ~/.toknix/calibration.json theo agent; chỉ dùng khi sai số trung vị trên tập kiểm tra < 15% [ASSUMPTION]
 ```
 
 - Rủi ro: output_k chứa thinking, mà thinking có thể không còn trong context ở request sau. Lọc mẫu và ngưỡng chất lượng ở trên xử lý việc này.
@@ -511,7 +511,7 @@ Gợi ý trong `waste`: idle → /clear hoặc chấp nhận khi nghỉ lâu; mo
 
 ### A6.6 Phân rã output
 
-`usage.output_tokens` chỉ có tổng, nên phân rã theo tỉ lệ ký tự của các khối trong message assistant: thinking, văn bản trả lời, input của tool ghi file (Write, Edit, MultiEdit, NotebookEdit), input tool khác. Nếu thinking bị ẩn trong transcript thì phần thinking = output_tokens − ước lượng phần nhìn thấy. Gợi ý theo nhóm lớn nhất: Write → "sửa file có sẵn bằng Edit"; văn bản → rules viết ngắn; thinking → chỉ gợi ý giảm effort cho việc đơn giản (tokopt không tự đổi cấu hình).
+`usage.output_tokens` chỉ có tổng, nên phân rã theo tỉ lệ ký tự của các khối trong message assistant: thinking, văn bản trả lời, input của tool ghi file (Write, Edit, MultiEdit, NotebookEdit), input tool khác. Nếu thinking bị ẩn trong transcript thì phần thinking = output_tokens − ước lượng phần nhìn thấy. Gợi ý theo nhóm lớn nhất: Write → "sửa file có sẵn bằng Edit"; văn bản → rules viết ngắn; thinking → chỉ gợi ý giảm effort cho việc đơn giản (toknix không tự đổi cấu hình).
 
 ### A6.3 Bench A/B (bằng chứng nhân quả)
 
@@ -534,16 +534,16 @@ compare A B:
     INCONCLUSIVE nếu các trường hợp còn lại
 ```
 
-- Chi tiết đã chốt khi implement (P4-T3, `src/tokopt/bench.py`):
-  - **Lệnh:** `tokopt bench TASKS.json --label L [--rules FILE] [--repeat N]`, kết quả ở `~/.tokopt/results/bench-L.jsonl`, mỗi lần chạy một dòng:
+- Chi tiết đã chốt khi implement (P4-T3, `src/toknix/bench.py`):
+  - **Lệnh:** `toknix bench TASKS.json --label L [--rules FILE] [--repeat N]`, kết quả ở `~/.toknix/results/bench-L.jsonl`, mỗi lần chạy một dòng:
     - `label`, `task`, `repeat`, `agent`, `passed`, `timeout`, `agent_exit`;
     - `usage {input, cache_write, cache_read, output}`, `etu`, `cost`, `turns`, `wall`;
     - `rules`, `global_rules`, `ts`.
-    Lệnh so sánh là `tokopt compare A B [--json]`.
+    Lệnh so sánh là `toknix compare A B [--json]`.
   - **`tasks.json`:** `check` và `setup` là một chuỗi (chạy bằng bash) hoặc một list argv. `agent_args` ở cấp file hoặc cấp task, ví dụ `["--permission-mode", "acceptEdits"]`. `agent_cmd` thay chương trình gọi agent (agent giả trong test, wrapper). Mặc định: `repeat` 1, `timeout` 900 s.
-  - **Môi trường của agent:** có thêm `TOKOPT_BENCH_LABEL`, `TOKOPT_BENCH_TASK`, `TOKOPT_BENCH_REPEAT`.
+  - **Môi trường của agent:** có thêm `TOKNIX_BENCH_LABEL`, `TOKNIX_BENCH_TASK`, `TOKNIX_BENCH_REPEAT`.
   - **Mỗi lần chạy:** worktree tạo trong một thư mục tạm riêng. Agent và check chạy trong process group riêng, timeout thì cả nhóm bị kill. `finally` luôn chạy `git worktree remove --force` và xoá thư mục tạm; cuối bench chạy `git worktree prune`. Lần chạy bị timeout thì không chạy check và tính là fail.
-  - **`--rules`:** block nằm giữa `<!-- tokopt:begin bench -->` và `<!-- tokopt:end -->` trong `CLAUDE.md` (Codex: `AGENTS.md`, Gemini: `GEMINI.md`) của worktree; block có sẵn thì bị thay. CLAUDE.md toàn cục có block tokopt → cảnh báo ra stderr và ghi `global_rules: true`.
+  - **`--rules`:** block nằm giữa `<!-- toknix:begin bench -->` và `<!-- toknix:end -->` trong `CLAUDE.md` (Codex: `AGENTS.md`, Gemini: `GEMINI.md`) của worktree; block có sẵn thì bị thay. CLAUDE.md toàn cục có block toknix → cảnh báo ra stderr và ghi `global_rules: true`.
   - **`compare`:**
     - CI dùng bootstrap từng nhánh riêng: lấy mẫu có hoàn lại cho từng nhánh, tính `median(B)/median(A) − 1`, 2.000 lần, seed 42, phân vị 2,5% và 97,5%.
     - Ngưỡng `min_saving` 10% và `max_drop` 0 nằm trong config (`bench_min_saving`, `bench_max_pass_drop`).
@@ -552,26 +552,26 @@ compare A B:
 
 **Chọn rules bằng bench:**
 
-- `bench --rules <file>`: chèn rules block vào CLAUDE.md / AGENTS.md của **worktree** (giữa marker như A8) trước khi chạy agent. Nếu CLAUDE.md global của người dùng đã có block tokopt thì cảnh báo và ghi trạng thái đó vào kết quả (bench không ghi ra ngoài `~/.tokopt/` và worktree, nên không tự cô lập).
+- `bench --rules <file>`: chèn rules block vào CLAUDE.md / AGENTS.md của **worktree** (giữa marker như A8) trước khi chạy agent. Nếu CLAUDE.md global của người dùng đã có block toknix thì cảnh báo và ghi trạng thái đó vào kết quả (bench không ghi ra ngoài `~/.toknix/` và worktree, nên không tự cô lập).
 - `compare` thêm cột median output tokens và verdict riêng cho output.
 - Nhánh A luôn là rules v1; mỗi biến thể là một nhánh B, so riêng từng cặp với v1. Biến thể thắng khi pass rate không giảm, median output tokens giảm ≥ 10% và cận trên CI 95% bootstrap của mức thay đổi output < 0. Nhiều biến thể cùng thắng thì chọn biến thể giảm output nhiều nhất.
 
 ---
 
-## A7. Statusline (`tokopt statusline`)
+## A7. Statusline (`toknix statusline`)
 
 ```
 stdin: JSON Claude Code gửi cho statusLine (có transcript_path, model.display_name)
 ctx = usage của lượt assistant cuối: input + cache_read + cache_write
 pct = ctx / context_window (mặc định 200k, đổi trong config)
-session_etu = ETU cộng dồn cả transcript (đọc tăng dần, cache offset trong ~/.tokopt/sl-<session>.json)
+session_etu = ETU cộng dồn cả transcript (đọc tăng dần, cache offset trong ~/.toknix/sl-<session>.json)
 saved = gain trực tiếp của session này (bảng runs và guard, lọc theo ts ≥ thời điểm bắt đầu session; không nhân hệ số đọc lại)
 in:  "ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%"   (màu vàng ≥ 60%, đỏ ≥ 80%)
 yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tăng dần từ offset đã lưu
 ```
 
-- Chi tiết đã chốt khi implement (P4-T4, `src/tokopt/statusline.py`):
-  - **Đọc tăng dần:** cache `~/.tokopt/sl-<session>.json` giữ `offset` (byte), ETU cộng dồn, ctx, thời điểm bắt đầu, và 64 khoá request gần nhất.
+- Chi tiết đã chốt khi implement (P4-T4, `src/toknix/statusline.py`):
+  - **Đọc tăng dần:** cache `~/.toknix/sl-<session>.json` giữ `offset` (byte), ETU cộng dồn, ctx, thời điểm bắt đầu, và 64 khoá request gần nhất.
     - Chỉ đọc tới dòng hoàn chỉnh cuối cùng; dòng đang ghi dở chờ lần sau.
     - Các dòng của một request đến ở hai lần đọc khác nhau vẫn chỉ được tính một lần, nhờ danh sách khoá.
     - File ngắn hơn offset, hoặc đổi đường dẫn → đọc lại từ đầu.
@@ -580,47 +580,47 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
   - **Context window:** `context_window` trong config (200k). Model id có `[1m]` hoặc tên có `1M` → 1.000.000. ctx lớn hơn window đã cấu hình → window chuẩn nhỏ nhất (200k, 1M) chứa được ctx. Một phiên thật 69 MB từng hiện `ctx 467%` với 200k.
   - **Thanh:** 10 ô, làm tròn xuống. Vàng từ `statusline_warn` (0,6), đỏ từ `statusline_alert` (0,8); `NO_COLOR` tắt màu.
   - **saved:** các run có `ts` ≥ thời điểm bắt đầu phiên, cộng guard của `session_id` này. Dùng tỉ lệ của báo cáo, không nhân hệ số đọc lại.
-  - **Lỗi:** mọi lỗi → không in gì, exit 0 (`TOKOPT_DEBUG=1` in traceback). Gõ tay (stdin là terminal) → in một dòng hướng dẫn ra stderr.
+  - **Lỗi:** mọi lỗi → không in gì, exit 0 (`TOKNIX_DEBUG=1` in traceback). Gõ tay (stdin là terminal) → in một dòng hướng dẫn ra stderr.
   - **Đo 2026-10-19:** transcript thật 69 MB: lần đầu 134 ms, các lần sau 30 ms (tính cả khởi động Python).
 
 ---
 
-## A8. Cài đặt và gỡ (`tokopt install` / `tokopt uninstall`)
+## A8. Cài đặt và gỡ (`toknix install` / `toknix uninstall`)
 
 - **Cài đặt** idempotent:
-  1. Backup sang `~/.tokopt/backups/<ts>/`.
-  2. **Claude Code** `~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`): thêm hook với `command = "<đường dẫn tuyệt đối tới tokopt> hook …"`. Đã có entry chứa `tokopt hook <tên>` thì không thêm entry mới; nếu đường dẫn khác (cài lại ở chỗ khác) thì cập nhật command của entry đó tại chỗ, để hook không trỏ vào file đã mất.
-     - Đường dẫn tokopt: console script đang chạy, rồi `tokopt` trên PATH, cuối cùng `<python> -m tokopt` (kèm cảnh báo, vì Claude Code có thể không import được tokopt). Đường dẫn Windows ghi dạng `C:/…`, có dấu cách thì đặt trong nháy kép, để chạy được cả trong Git Bash lẫn cmd `[ASSUMPTION]` (chưa biết Claude Code trên Windows chạy hook bằng shell nào; kiểm ở P5-T2).
+  1. Backup sang `~/.toknix/backups/<ts>/`.
+  2. **Claude Code** `~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`): thêm hook với `command = "<đường dẫn tuyệt đối tới toknix> hook …"`. Đã có entry chứa `toknix hook <tên>` thì không thêm entry mới; nếu đường dẫn khác (cài lại ở chỗ khác) thì cập nhật command của entry đó tại chỗ, để hook không trỏ vào file đã mất.
+     - Đường dẫn toknix: console script đang chạy, rồi `toknix` trên PATH, cuối cùng `<python> -m toknix` (kèm cảnh báo, vì Claude Code có thể không import được toknix). Đường dẫn Windows ghi dạng `C:/…`, có dấu cách thì đặt trong nháy kép, để chạy được cả trong Git Bash lẫn cmd `[ASSUMPTION]` (chưa biết Claude Code trên Windows chạy hook bằng shell nào; kiểm ở P5-T2).
      - `settings.json` không phải JSON hợp lệ hoặc không phải object → dừng, exit 1, không ghi đè.
-     - Những gì install tự tạo (file, `hooks`, `hooks.<event>`) ghi vào `~/.tokopt/install.json`, để uninstall trả lại đúng như trước, kể cả container rỗng mà người dùng đã có. Ghi file kiểu atomic (file tạm + `os.replace`).
+     - Những gì install tự tạo (file, `hooks`, `hooks.<event>`) ghi vào `~/.toknix/install.json`, để uninstall trả lại đúng như trước, kể cả container rỗng mà người dùng đã có. Ghi file kiểu atomic (file tạm + `os.replace`).
      - PreToolUse `Bash` → `hook bash`
      - PreToolUse `Read|Grep|Glob` → `hook read`
      - SessionStart `compact|clear` → `hook session-start`
-     - `statusLine` → `tokopt statusline`, chỉ khi người dùng chưa có statusLine.
-  3. (P3-T5) Rules block giữa marker `<!-- tokopt:begin vN -->`…`<!-- tokopt:end -->` trong CLAUDE.md, AGENTS.md, GEMINI.md. Thay thế block cũ, giữ nguyên nội dung khác.
-     - File đích là file chỉ dẫn toàn cục của từng agent: `$CLAUDE_CONFIG_DIR` hoặc `~/.claude/CLAUDE.md` (luôn ghi), `$CODEX_HOME` hoặc `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`. Hai file sau chỉ được ghi khi thư mục của agent đã tồn tại; tokopt không tạo thư mục cho agent không dùng.
-     - Nội dung là `src/tokopt/templates/rules.md` (v1, ≤ 350 token theo A1). Biến thể nằm trong `templates/variants/` để bench chọn (N1.5c). Chưa có bench thì cài v1.
+     - `statusLine` → `toknix statusline`, chỉ khi người dùng chưa có statusLine.
+  3. (P3-T5) Rules block giữa marker `<!-- toknix:begin vN -->`…`<!-- toknix:end -->` trong CLAUDE.md, AGENTS.md, GEMINI.md. Thay thế block cũ, giữ nguyên nội dung khác.
+     - File đích là file chỉ dẫn toàn cục của từng agent: `$CLAUDE_CONFIG_DIR` hoặc `~/.claude/CLAUDE.md` (luôn ghi), `$CODEX_HOME` hoặc `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`. Hai file sau chỉ được ghi khi thư mục của agent đã tồn tại; toknix không tạo thư mục cho agent không dùng.
+     - Nội dung là `src/toknix/templates/rules.md` (v1, ≤ 350 token theo A1). Biến thể nằm trong `templates/variants/` để bench chọn (N1.5c). Chưa có bench thì cài v1.
      - Có block (bất kỳ vN) thì thay đúng chỗ đó. Chưa có thì nối vào cuối, sau một dòng trống; file chưa có thì tạo mới. Phần ngăn cách đã thêm được ghi vào `install.json` (`rules:<path>`).
      - File được đọc và ghi dạng byte UTF-8, giữ nguyên CRLF (block cũng dùng CRLF). File không phải UTF-8 → dừng, không ghi.
      - Gỡ: bỏ block và đúng phần ngăn cách đã thêm, nên file trở về đúng từng byte; file do install tạo thì bị xoá. Nội dung người dùng thêm quanh block sau khi cài vẫn được giữ. Không có bản ghi thì bỏ block cùng một dòng trống ngay trước nó.
      - `doctor` liệt kê từng file: `v1 in <path>`, `missing in <path>` (tính là lỗi), hoặc `<agent> not installed`.
-  4. **Codex, Gemini:** v0.1 chỉ cài rules block, hướng dẫn agent tự dùng `tokopt run --` và `tokopt outline`. Hook native cho hai agent này là `[TBD]`.
-- **Gỡ:** xoá đúng các entry chứa `tokopt hook` hoặc `tokopt statusline`, xoá rules block; không đụng vào gì khác. Group/event/`hooks` bị rỗng do việc gỡ chỉ bị xoá khi install đã tạo chúng (theo `install.json`; không có bản ghi thì xoá). File do install tạo mà gỡ xong còn `{}` thì xoá file. Mỗi lần ghi đều backup trước.
-- **`tokopt doctor`:** phiên bản, lệnh tokopt sẽ cài, Python (phiên bản, đường dẫn), đường dẫn settings, từng hook: `installed`/`missing`, chương trình không tồn tại (`not found`) hoặc chạy `<lệnh> --version` qua bash (như Claude Code chạy hook) không ra `tokopt …` (`does not run: <lý do>`), statusLine (`tokopt`/`yours (kept)`/`none`), số bản ghi `runs` và `guard` 7 ngày qua. Exit 1 khi thiếu hook hoặc hook không chạy được.
-- `tokopt init-project`: thêm `permissions.deny` cho các thư mục junk vào `.claude/settings.json` của project, và tạo `.geminiignore`.
+  4. **Codex, Gemini:** v0.1 chỉ cài rules block, hướng dẫn agent tự dùng `toknix run --` và `toknix outline`. Hook native cho hai agent này là `[TBD]`.
+- **Gỡ:** xoá đúng các entry chứa `toknix hook` hoặc `toknix statusline`, xoá rules block; không đụng vào gì khác. Group/event/`hooks` bị rỗng do việc gỡ chỉ bị xoá khi install đã tạo chúng (theo `install.json`; không có bản ghi thì xoá). File do install tạo mà gỡ xong còn `{}` thì xoá file. Mỗi lần ghi đều backup trước.
+- **`toknix doctor`:** phiên bản, lệnh toknix sẽ cài, Python (phiên bản, đường dẫn), đường dẫn settings, từng hook: `installed`/`missing`, chương trình không tồn tại (`not found`) hoặc chạy `<lệnh> --version` qua bash (như Claude Code chạy hook) không ra `toknix …` (`does not run: <lý do>`), statusLine (`toknix`/`yours (kept)`/`none`), số bản ghi `runs` và `guard` 7 ngày qua. Exit 1 khi thiếu hook hoặc hook không chạy được.
+- `toknix init-project`: thêm `permissions.deny` cho các thư mục junk vào `.claude/settings.json` của project, và tạo `.geminiignore`.
   - Chi tiết đã chốt khi implement:
     - Với mỗi pattern thư mục của `junk_patterns` (`/node_modules/`…), thêm một rule `Read(./**/<dir>/**)` vào `<project>/.claude/settings.json`, và dòng `<dir>/` vào `.geminiignore`. Rule đã có thì giữ nguyên; chạy lại không thêm trùng; `--path DIR` chọn project.
     - Chỉ thư mục, không thêm lockfile hay `.min.js`, vì read guard đã chặn đọc cả file nhưng vẫn cho đọc lát cắt (A4 R1); rule deny thì chặn luôn cả lát cắt.
     - `[ASSUMPTION]` Claude Code khớp `**` trong permission rule như gitignore và áp rule Read cho cả Grep/Glob. Kiểm ở P2-T4 (`docs/VERIFY.md`, check H).
 - **Script bootstrap một lệnh:**
-  - `install.sh`: cần python3 ≥ 3.9. Ưu tiên `uv tool install`; nếu không có thì tạo `python3 -m venv ~/.tokopt/venv`, `pip install`, rồi symlink `~/.local/bin/tokopt`. Cuối cùng chạy `tokopt install`.
-  - `install.ps1`: tương tự, dùng `venv\Scripts\tokopt.exe`.
+  - `install.sh`: cần python3 ≥ 3.9. Ưu tiên `uv tool install`; nếu không có thì tạo `python3 -m venv ~/.toknix/venv`, `pip install`, rồi symlink `~/.local/bin/toknix`. Cuối cùng chạy `toknix install`.
+  - `install.ps1`: tương tự, dùng `venv\Scripts\toknix.exe`.
   - Chi tiết đã chốt khi implement (P5-T1):
-    - **Nguồn cài:** `git+https://github.com/lephus/toknix@main` (tokopt là gốc của repo, người dùng chốt 2026-10-19); `TOKOPT_REPO` và `TOKOPT_REF` đổi được nguồn; `--from SOURCE` cài từ thư mục cục bộ hoặc URL khác.
+    - **Nguồn cài:** `git+https://github.com/lephus/toknix@main` (toknix là gốc của repo, người dùng chốt 2026-10-19); `TOKNIX_REPO` và `TOKNIX_REF` đổi được nguồn; `--from SOURCE` cài từ thư mục cục bộ hoặc URL khác.
     - **Lệnh một dòng:** `curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh` (thêm `-s -- --dry-run` để chạy thử) và `irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 | iex`.
     - **`install.sh`:** viết bằng POSIX sh, sạch shellcheck. Có `--dry-run` (in từng lệnh `+ …`, không đổi gì), `--uninstall`, `--no-hooks`.
-      - Không có uv: venv riêng `~/.tokopt/venv`, nên không đụng Python "externally managed" (PEP 668), cộng symlink `~/.local/bin/tokopt`. Python thiếu `venv`/`ensurepip` → báo cài uv hoặc `python3-venv`.
-      - Cuối cùng chạy `tokopt install` và `tokopt doctor`; nhắc nếu `~/.local/bin` chưa có trong PATH.
-    - **`install.ps1`:** `irm | iex` không truyền được tham số, nên có thêm biến môi trường `TOKOPT_DRY_RUN`, `TOKOPT_UNINSTALL`, `TOKOPT_FROM`, `TOKOPT_NO_HOOKS`. Không có uv thì thêm `venv\Scripts` vào PATH của user.
-    - **`--uninstall`:** chạy `tokopt uninstall` (gỡ hook và rules), rồi gỡ tool của uv hoặc xoá venv và symlink. Dữ liệu trong `~/.tokopt` được giữ lại.
-    - **Đã kiểm 2026-10-19 trên macOS** (HOME tạm, `--from` thư mục repo): cả nhánh uv lẫn nhánh venv (Python 3.9.6 của hệ thống) đều cài xong, `tokopt --version` chạy, và gỡ cài đặt xoá sạch file do install tạo. Ubuntu 24.04 và Windows 11 kiểm trong CI (P5-T2).
+      - Không có uv: venv riêng `~/.toknix/venv`, nên không đụng Python "externally managed" (PEP 668), cộng symlink `~/.local/bin/toknix`. Python thiếu `venv`/`ensurepip` → báo cài uv hoặc `python3-venv`.
+      - Cuối cùng chạy `toknix install` và `toknix doctor`; nhắc nếu `~/.local/bin` chưa có trong PATH.
+    - **`install.ps1`:** `irm | iex` không truyền được tham số, nên có thêm biến môi trường `TOKNIX_DRY_RUN`, `TOKNIX_UNINSTALL`, `TOKNIX_FROM`, `TOKNIX_NO_HOOKS`. Không có uv thì thêm `venv\Scripts` vào PATH của user.
+    - **`--uninstall`:** chạy `toknix uninstall` (gỡ hook và rules), rồi gỡ tool của uv hoặc xoá venv và symlink. Dữ liệu trong `~/.toknix` được giữ lại.
+    - **Đã kiểm 2026-10-19 trên macOS** (HOME tạm, `--from` thư mục repo): cả nhánh uv lẫn nhánh venv (Python 3.9.6 của hệ thống) đều cài xong, `toknix --version` chạy, và gỡ cài đặt xoá sạch file do install tạo. Ubuntu 24.04 và Windows 11 kiểm trong CI (P5-T2).

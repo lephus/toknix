@@ -38,29 +38,29 @@ class TestInstallSh(unittest.TestCase):
         p = self.sh("--dry-run")
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual(self.plan(p), ["uv tool install --force --reinstall git+https://github.com/lephus/toknix@main",
-                                        "tokopt install", "tokopt doctor"])
-        self.assertFalse((self.home / ".tokopt").exists())  # a dry run changes nothing
+                                        "toknix install", "toknix doctor"])
+        self.assertFalse((self.home / ".toknix").exists())  # a dry run changes nothing
 
     def test_dry_run_without_uv_uses_a_private_venv(self):
         p = self.sh("--dry-run", uv=False)
         self.assertEqual(p.returncode, 0, p.stderr)
-        venv = self.home / ".tokopt" / "venv"
+        venv = self.home / ".toknix" / "venv"
         steps = self.plan(p)
         self.assertTrue(steps[0].endswith(f"-m venv {venv}"))
         self.assertIn(f"{venv}/bin/python -m pip install --quiet --upgrade --force-reinstall --no-deps git+https://github.com/lephus/toknix@main",
                       steps)
-        self.assertIn(f"ln -sf {venv}/bin/tokopt {self.home}/.local/bin/tokopt", steps)
+        self.assertIn(f"ln -sf {venv}/bin/toknix {self.home}/.local/bin/toknix", steps)
 
     def test_from_ref_repo_and_no_hooks(self):
-        self.assertIn("uv tool install --force --reinstall /src/tokopt", self.plan(self.sh("--dry-run", "--from", "/src/tokopt")))
-        p = self.sh("--dry-run", TOKOPT_REPO="me/fork", TOKOPT_REF="v0.1.0")
+        self.assertIn("uv tool install --force --reinstall /src/toknix", self.plan(self.sh("--dry-run", "--from", "/src/toknix")))
+        p = self.sh("--dry-run", TOKNIX_REPO="me/fork", TOKNIX_REF="v0.1.0")
         self.assertIn("uv tool install --force --reinstall git+https://github.com/me/fork@v0.1.0", self.plan(p))
-        self.assertNotIn("tokopt install", self.plan(self.sh("--dry-run", "--no-hooks")))
+        self.assertNotIn("toknix install", self.plan(self.sh("--dry-run", "--no-hooks")))
 
     def test_uninstall_dry_run(self):
         p = self.sh("--dry-run", "--uninstall")
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertIn("tokopt command not found", p.stdout)
+        self.assertIn("toknix command not found", p.stdout)
 
     def test_bad_option_and_missing_python(self):
         p = self.sh("--bogus")
@@ -79,7 +79,7 @@ class TestInstallPs1(unittest.TestCase):
     def test_same_source_and_switches_as_install_sh(self):
         text = PS1.read_text(encoding="utf-8")
         for needle in ('"lephus/toknix"', '"main"', "git+https://github.com/$Repo@$Ref", "[switch]$DryRun",
-                       "[switch]$Uninstall", "TOKOPT_DRY_RUN", "TOKOPT_UNINSTALL", "TOKOPT_FROM", "\"tool\", \"install\", \"--force\", \"--reinstall\""):
+                       "[switch]$Uninstall", "TOKNIX_DRY_RUN", "TOKNIX_UNINSTALL", "TOKNIX_FROM", "\"tool\", \"install\", \"--force\", \"--reinstall\""):
             with self.subTest(needle=needle):
                 self.assertIn(needle, text)
 

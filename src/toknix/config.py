@@ -1,4 +1,4 @@
-"""Paths and user configuration (~/.tokopt/config.json overrides DEFAULTS)."""
+"""Paths and user configuration (~/.toknix/config.json overrides DEFAULTS)."""
 from __future__ import annotations
 
 import json
@@ -6,8 +6,8 @@ import os
 from pathlib import Path
 
 # Home is read at call time (never at import), so a test or a caller that changes HOME is honoured.
-def tokopt_home() -> Path:
-    return Path(os.environ.get("TOKOPT_HOME") or Path.home() / ".tokopt")
+def toknix_home() -> Path:
+    return Path(os.environ.get("TOKNIX_HOME") or Path.home() / ".toknix")
 
 
 def claude_dir() -> Path:
@@ -53,7 +53,7 @@ DEFAULTS: dict = {
         "/.git/", "/__pycache__/", ".min.js", ".min.css", ".map", "package-lock.json",
         "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "Cargo.lock", "composer.lock", "go.sum",
     ],
-    # tokopt map (A5.2): a bigger repo maps only the files changed in the last map_recent_days days
+    # toknix map (A5.2): a bigger repo maps only the files changed in the last map_recent_days days
     "map_max_files": 5000,
     "map_recent_days": 90,
     # statusline / measurement
@@ -96,7 +96,7 @@ def is_junk(path: str, patterns: list[str]) -> str | None:
 
 def load() -> dict:
     cfg = dict(DEFAULTS)
-    f = tokopt_home() / "config.json"
+    f = toknix_home() / "config.json"
     if f.exists():
         try:
             cfg.update(json.loads(f.read_text(encoding="utf-8")))

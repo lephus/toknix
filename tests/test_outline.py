@@ -1,4 +1,4 @@
-"""P3-T1: Python `extract` and `tokopt outline` (A5.1, A5.2)."""
+"""P3-T1: Python `extract` and `toknix outline` (A5.1, A5.2)."""
 from __future__ import annotations
 
 import io
@@ -15,8 +15,8 @@ from unittest import mock
 
 import support
 
-from tokopt import cli, hooks, outline
-from tokopt.textutil import est_tokens
+from toknix import cli, hooks, outline
+from toknix.textutil import est_tokens
 
 CODE = support.FIXTURES / "code"
 
@@ -30,7 +30,7 @@ class TempDir(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.dir = Path(tmp.name)
-        patcher = mock.patch.dict(os.environ, {"TOKOPT_HOME": str(self.dir / ".tokopt")})  # default token ratios
+        patcher = mock.patch.dict(os.environ, {"TOKNIX_HOME": str(self.dir / ".toknix")})  # default token ratios
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -113,14 +113,14 @@ class TestOutlineCommand(TempDir):
         code, out, _ = self.outline(str(p))
         lines = out.splitlines()
         self.assertEqual(code, 0)
-        self.assertEqual(lines[0], "[tokopt: no outline for .lua files yet; first 200 of 250 lines]")
+        self.assertEqual(lines[0], "[toknix: no outline for .lua files yet; first 200 of 250 lines]")
         self.assertEqual(lines[1:], [f"print({i})" for i in range(200)])
 
     def test_python_that_does_not_parse_prints_the_first_200_lines(self):
         p = self.write("broken.py", "def f(:\n    pass\n")
         code, out, _ = self.outline(str(p))
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"^\[tokopt: cannot outline broken\.py \(.+ at line 1\); first 2 of 2 lines\]\n")
+        self.assertRegex(out, r"^\[toknix: cannot outline broken\.py \(.+ at line 1\); first 2 of 2 lines\]\n")
         self.assertTrue(out.endswith("def f(:\n    pass\n"))
 
     def test_errors(self):
@@ -139,7 +139,7 @@ class TestOutlineCommand(TempDir):
 
 
 class TestReadGuardHint(TempDir):
-    """R2 tells the agent to run `tokopt outline <path>`; that exact command must work."""
+    """R2 tells the agent to run `toknix outline <path>`; that exact command must work."""
 
     def test_hint_command_runs(self):
         big = self.write("my module.py", "".join(f"def f{i}(x):\n    return x + {i}  # {'pad ' * 6}\n\n"
@@ -147,9 +147,9 @@ class TestReadGuardHint(TempDir):
         reply = hooks.hook_read({"session_id": "", "tool_name": "Read", "tool_input": {"file_path": str(big)}})
         reason = reply["hookSpecificOutput"]["permissionDecisionReason"]
         command = reason.split("`")[1]
-        self.assertTrue(command.startswith("tokopt outline "))
+        self.assertTrue(command.startswith("toknix outline "))
         env = dict(os.environ, PYTHONPATH=str(support.SRC))
-        p = subprocess.run([sys.executable, "-m", "tokopt", *shlex.split(command)[1:]], capture_output=True,
+        p = subprocess.run([sys.executable, "-m", "toknix", *shlex.split(command)[1:]], capture_output=True,
                            env=env, timeout=60)
         self.assertEqual(p.returncode, 0, p.stderr)
         out = p.stdout.decode("utf-8").splitlines()

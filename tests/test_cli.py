@@ -10,7 +10,7 @@ from contextlib import redirect_stderr, redirect_stdout
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import __version__, cli
+from toknix import __version__, cli
 
 V01_COMMANDS = [
     "run", "recall", "gain", "hook",
@@ -36,7 +36,7 @@ class TestCli(unittest.TestCase):
         self.assertEqual(__version__, "0.1.0")
         code, out, _ = call(["--version"])
         self.assertEqual(code, 0)
-        self.assertEqual(out.strip(), "tokopt 0.1.0")
+        self.assertEqual(out.strip(), "toknix 0.1.0")
 
     def test_every_v01_command_is_registered(self):
         sub = next(a for a in cli.build_parser()._actions if isinstance(a, argparse._SubParsersAction))
@@ -65,7 +65,7 @@ class TestCli(unittest.TestCase):
         # Installed into settings.json by P2-T3; until P4-T4 it must not show an error in Claude Code.
         payload = json.dumps({"session_id": "s", "transcript_path": "/x.jsonl", "model": {"display_name": "Opus"}})
         env = dict(os.environ, PYTHONPATH=str(support.SRC))
-        p = subprocess.run([sys.executable, "-m", "tokopt", "statusline"], input=payload.encode("utf-8"),
+        p = subprocess.run([sys.executable, "-m", "toknix", "statusline"], input=payload.encode("utf-8"),
                            capture_output=True, env=env, timeout=30)
         self.assertEqual((p.returncode, p.stdout, p.stderr), (0, b"", b""))
         with mock.patch.object(sys, "stdin", io.StringIO(payload)):
@@ -74,19 +74,19 @@ class TestCli(unittest.TestCase):
     def test_no_command_prints_help(self):
         code, out, _ = call([])
         self.assertEqual(code, 0)
-        self.assertIn("usage: tokopt", out)
+        self.assertIn("usage: toknix", out)
 
     def test_unknown_command_is_a_usage_error(self):
         code, _, err = call(["nope"])
         self.assertEqual(code, 2)
         self.assertIn("invalid choice", err)
 
-    def test_python_dash_m_tokopt(self):
+    def test_python_dash_m_toknix(self):
         env = dict(os.environ, PYTHONPATH=str(support.SRC))
-        p = subprocess.run([sys.executable, "-m", "tokopt", "--version"],
+        p = subprocess.run([sys.executable, "-m", "toknix", "--version"],
                            capture_output=True, text=True, env=env)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(p.stdout.strip(), "tokopt 0.1.0")
+        self.assertEqual(p.stdout.strip(), "toknix 0.1.0")
 
 
 if __name__ == "__main__":

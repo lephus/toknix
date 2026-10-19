@@ -1,5 +1,5 @@
 """Transcript reports (A6.2): `report`, `waste`, `context`, `snapshot`, plus the transcript numbers `gain`
-uses (R̄ and the share of Bash calls tokopt wrapped). Session numbers use the main chain only: requests
+uses (R̄ and the share of Bash calls toknix wrapped). Session numbers use the main chain only: requests
 of subagents (sidechains) are left out.
 """
 from __future__ import annotations
@@ -11,24 +11,24 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from tokopt import filters, measure, transcripts
-from tokopt.config import claude_dir, codex_dir, gemini_dir, is_junk, load, tokopt_home
-from tokopt.runner import write_out
-from tokopt.textutil import est_tokens, fmt_num
+from toknix import filters, measure, transcripts
+from toknix.config import claude_dir, codex_dir, gemini_dir, is_junk, load, toknix_home
+from toknix.runner import write_out
+from toknix.textutil import est_tokens, fmt_num
 
 GROUPS = ["tool_families", "big_outputs", "junk", "repeated_reads", "long_sessions", "cache_breaks", "output_heavy"]
 HINTS = {
-    "tool_families": "biggest re-read cost first: filter these commands with `tokopt run`, or read a range "
-                     "(`tokopt outline` / `tokopt symbol`) instead of whole files",
-    "big_outputs": "each stays in context for every later request: cut it at the source (`tokopt run`, "
+    "tool_families": "biggest re-read cost first: filter these commands with `toknix run`, or read a range "
+                     "(`toknix outline` / `toknix symbol`) instead of whole files",
+    "big_outputs": "each stays in context for every later request: cut it at the source (`toknix run`, "
                    "--quiet flags, offset/limit) or start a new session after it",
-    "junk": "generated, vendored or lock files: read the source or manifest; `tokopt install` adds a read guard",
+    "junk": "generated, vendored or lock files: read the source or manifest; `toknix install` adds a read guard",
     "repeated_reads": "the content is still in context: use it, or read only the changed range",
     "long_sessions": "every request re-reads the whole context: one task per session, /clear between tasks",
     "cache_breaks": "idle → /clear or accept it after a long break; model → don't switch model mid-session; "
                     "unknown → check MCP servers or instruction files changed during the session",
     "output_heavy": "see the breakdown: Write → edit existing files with Edit; text → shorter answers "
-                    "(rules block); thinking → lower effort for simple tasks (tokopt never changes it)",
+                    "(rules block); thinking → lower effort for simple tasks (toknix never changes it)",
 }
 
 
@@ -145,7 +145,7 @@ def format_report(d: dict) -> str:
     if not d["sessions"]:
         return f"no transcripts in the last {d['days']} days"
     t = d["tokens"]
-    out = [f"tokopt report (last {d['days']} days)", "",
+    out = [f"toknix report (last {d['days']} days)", "",
            f"{d['sessions']} sessions, {d['requests']} requests; {fmt_num(d['etu'])} ETU "
            f"({fmt_num(d['etu_per_session'])}/session, {fmt_num(d['etu_per_request'])}/request)",
            f"tokens: input {fmt_num(t['input'])}, cache write {fmt_num(t['cache_write'])}, "
@@ -258,7 +258,7 @@ def format_waste(d: dict) -> str:
     if not d["sessions"]:
         return f"no transcripts in the last {d['days']} days"
     g = d["groups"]
-    out = [f"tokopt waste (last {d['days']} days, {d['sessions']} sessions)"]
+    out = [f"toknix waste (last {d['days']} days, {d['sessions']} sessions)"]
 
     def section(n: int, title: str, name: str, lines: list[str]):
         out.extend(["", f"({n}) {title}"] + (lines or ["  none"]) + [f"  fix: {HINTS[name]}"])
@@ -363,7 +363,7 @@ def context_data(days: int, directory: str | None = None, cfg: dict | None = Non
 
 
 def format_context(d: dict) -> str:
-    out = [f"tokopt context ({d['directory']})", "", "Instruction files loaded every session"]
+    out = [f"toknix context ({d['directory']})", "", "Instruction files loaded every session"]
     out += [f"  {fmt_num(f['tokens']):>7}  {f['path']}" for f in d["instruction_files"]] or ["  none"]
     warn = f"  ⚠ over {fmt_num(load()['context_warn_tokens'])}: trim them" if d["warn"] else ""
     out.append(f"  {fmt_num(d['instruction_tokens']):>7}  total{warn}")
@@ -389,7 +389,7 @@ def snapshot(label: str, days: int) -> Path:
                                            "output_share", "tool_output_tokens", "output_breakdown")},
             "waste": {name: len(g["items"]) for name, g in waste["groups"].items()}}
     data["waste"]["cache_break_etu_lost"] = waste["groups"]["cache_breaks"]["etu_lost"]
-    path = tokopt_home() / "results" / f"snapshot-{label}.json"
+    path = toknix_home() / "results" / f"snapshot-{label}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return path
@@ -397,8 +397,8 @@ def snapshot(label: str, days: int) -> Path:
 
 # --------------------------------------------------------------------------- for gain (N1.1)
 def bash_stats(days: int) -> dict:
-    """R values of Bash results (requests left after each) and how many Bash calls tokopt wrapped: the command
-    holds `tokopt run`, or its result carries tokopt's footer (whichever the transcript keeps)."""
+    """R values of Bash results (requests left after each) and how many Bash calls toknix wrapped: the command
+    holds `toknix run`, or its result carries toknix's footer (whichever the transcript keeps)."""
     rs, calls, wrapped = [], 0, 0
     for s in transcripts.sessions(days):
         for res, use, _, left in results(s):
@@ -411,7 +411,8 @@ def bash_stats(days: int) -> dict:
                 calls += 1
                 cmd = use.input.get("command")
                 cmd = " ".join(cmd) if isinstance(cmd, list) else cmd if isinstance(cmd, str) else ""
-                if "tokopt run" in cmd or (use.result and "[tokopt: " in use.result.text):
+                if re.search(r"tok(?:nix|opt) run", cmd) or (use.result and re.search(r"\[tok(?:nix|opt): ",
+                                                                                         use.result.text)):
                     wrapped += 1
     return {"r_values": rs, "bash_calls": calls, "wrapped": wrapped}
 
@@ -420,7 +421,7 @@ def bash_stats(days: int) -> dict:
 def run(command: str, days: int | None, as_json: bool, directory: str | None = None, label: str | None = None) -> int:
     if command == "snapshot":
         if not label or not SNAPSHOT_LABEL.match(label):
-            print("tokopt snapshot: --label must be letters, digits, '.', '_' or '-'", file=sys.stderr)
+            print("toknix snapshot: --label must be letters, digits, '.', '_' or '-'", file=sys.stderr)
             return 2
         path = snapshot(label, days or 7)
         write_out(f"saved {path}\n")

@@ -1,4 +1,4 @@
-"""P1-T5: `tokopt gain` (A6.2, N1.1, N2.1)."""
+"""P1-T5: `toknix gain` (A6.2, N1.1, N2.1)."""
 from __future__ import annotations
 
 import io
@@ -14,8 +14,8 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import cli, runner, store
-from tokopt.textutil import char_classes
+from toknix import cli, runner, store
+from toknix.textutil import char_classes
 
 # 4000 default + 200 hex + 30 non-ASCII chars → 1000 + 100 + 20 tokens with the default ratios
 SAVED = {"default": 4000, "hex": 200, "non_ascii": 30}
@@ -28,9 +28,9 @@ class TempHome(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+               if not k.startswith("TOKNIX_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
         # HOME too: gain reads transcripts (R̄), and the real ~/.claude must never leak into a test
-        patcher = mock.patch.dict(os.environ, dict(env, TOKOPT_HOME=tmp.name, HOME=tmp.name, USERPROFILE=tmp.name),
+        patcher = mock.patch.dict(os.environ, dict(env, TOKNIX_HOME=tmp.name, HOME=tmp.name, USERPROFILE=tmp.name),
                                   clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -54,7 +54,7 @@ class TempHome(unittest.TestCase):
 class TestNoData(TempHome):
     def test_no_db_says_no_data_and_creates_nothing(self):
         self.assertEqual(self.gain(), (0, "no data yet\n", ""))
-        self.assertFalse((self.home / "tokopt.db").exists())
+        self.assertFalse((self.home / "toknix.db").exists())
 
     def test_empty_db_says_no_data(self):
         with store.db():
@@ -62,10 +62,10 @@ class TestNoData(TempHome):
         self.assertEqual(self.gain()[1], "no data yet\n")
 
     def test_unreadable_db_is_reported(self):
-        (self.home / "tokopt.db").write_bytes(b"this is not sqlite" * 100)
+        (self.home / "toknix.db").write_bytes(b"this is not sqlite" * 100)
         code, out, err = self.gain()
         self.assertEqual((code, out), (1, ""))
-        self.assertIn("tokopt gain: cannot read", err)
+        self.assertIn("toknix gain: cannot read", err)
 
     def test_json_without_data_is_still_json(self):
         data = self.gain_json()
@@ -114,7 +114,7 @@ class TestTotals(TempHome):
     def test_days_window(self):
         self.run_row(at=1_000.0)  # long ago
         self.run_row()
-        with mock.patch("tokopt.measure.time.time", return_value=1_800_000_000.0 + 60):
+        with mock.patch("toknix.measure.time.time", return_value=1_800_000_000.0 + 60):
             self.assertEqual(self.gain_json("--days", "7")["filter_tokens"], SAVED_TOKENS)
             self.assertEqual(self.gain_json()["filter_tokens"], 2 * SAVED_TOKENS)
 
@@ -210,7 +210,7 @@ class TestRunnerRecordsCharClasses(TempHome):
         with mock.patch.object(runner.subprocess, "run", return_value=done), redirect_stdout(out):
             runner.run("pytest")
         raw, body = char_classes(text), char_classes(out.getvalue().rstrip("\n"))
-        con = sqlite3.connect(str(self.home / "tokopt.db"))
+        con = sqlite3.connect(str(self.home / "toknix.db"))
         row = con.execute("SELECT saved_default, saved_hex, saved_non_ascii FROM runs").fetchone()
         con.close()
         self.assertEqual(row, tuple(raw[k] - body[k] for k in ("default", "hex", "non_ascii")))
@@ -219,7 +219,7 @@ class TestRunnerRecordsCharClasses(TempHome):
 
 class TestOldDatabase(TempHome):
     def test_runs_table_from_p1_t3b_gains_the_columns(self):
-        con = sqlite3.connect(str(self.home / "tokopt.db"))
+        con = sqlite3.connect(str(self.home / "toknix.db"))
         con.execute("CREATE TABLE runs(ts REAL, kind TEXT, cmd TEXT, exit INTEGER, raw_chars INTEGER, "
                     "out_chars INTEGER, raw_lines INTEGER, out_lines INTEGER, tee_id TEXT, "
                     "error_overflow INTEGER DEFAULT 0)")

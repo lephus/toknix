@@ -11,9 +11,9 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import config, runner, store
-from tokopt.filters import ERROR_RE, apply, budget_cut, cut_long_lines, f_gitdiff, normalize_costly
-from tokopt.textutil import est_tokens, normalize
+from toknix import config, runner, store
+from toknix.filters import ERROR_RE, apply, budget_cut, cut_long_lines, f_gitdiff, normalize_costly
+from toknix.textutil import est_tokens, normalize
 from test_filters import FIXTURES, OMITTED_RE, cfg, read, run_fixture
 
 TS_RE = re.compile(r"^\s*\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}|\d{2}:\d{2}:\d{2})")
@@ -160,7 +160,7 @@ class TestGitdiffTokenBudget(unittest.TestCase):
         lines = self.block("a.py", 100) + self.block("b.py", 100) + self.block("c.py", 100)  # ~6000 tokens
         out = f_gitdiff(lines, False, max_tokens=3000)
         self.assertEqual(out[:104], lines[:104])
-        self.assertIn("[tokopt] 2 more files changed; view one with `git diff -- <file>`:", out)
+        self.assertIn("[toknix] 2 more files changed; view one with `git diff -- <file>`:", out)
         self.assertIn("  b.py (+100 -0)", out)
         self.assertIn("  c.py (+100 -0)", out)
 
@@ -260,13 +260,13 @@ class TestTimestampsFixture(unittest.TestCase):
 class TempHome(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        patcher = mock.patch.dict(os.environ, {"TOKOPT_HOME": self.tmp.name})
+        patcher = mock.patch.dict(os.environ, {"TOKNIX_HOME": self.tmp.name})
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(self.tmp.cleanup)
 
     def rows(self, cols: str) -> list[tuple]:
-        con = sqlite3.connect(os.path.join(self.tmp.name, "tokopt.db"))
+        con = sqlite3.connect(os.path.join(self.tmp.name, "toknix.db"))
         try:
             return con.execute(f"SELECT {cols} FROM runs").fetchall()
         finally:
@@ -279,7 +279,7 @@ class TestStore(TempHome):
         self.assertEqual(self.rows("tee_id, error_overflow"), [("abc123", 1)])
 
     def test_old_runs_table_gains_the_column(self):
-        con = sqlite3.connect(os.path.join(self.tmp.name, "tokopt.db"))
+        con = sqlite3.connect(os.path.join(self.tmp.name, "toknix.db"))
         con.execute("CREATE TABLE runs(ts REAL, kind TEXT, cmd TEXT, exit INTEGER, raw_chars INTEGER, "
                     "out_chars INTEGER, raw_lines INTEGER, out_lines INTEGER, tee_id TEXT)")
         con.execute("INSERT INTO runs VALUES(1, 'old', 'x', 0, 1, 1, 1, 1, '')")
@@ -306,7 +306,7 @@ class TestRunner(TempHome):
         printed = self.run_with_output("make", text, 0)
         ids = self.tee_ids()
         self.assertEqual(len(ids), 1)
-        self.assertIn(f"tokopt recall {ids[0]}", printed)
+        self.assertIn(f"toknix recall {ids[0]}", printed)
         with open(os.path.join(self.tmp.name, "tee", ids[0] + ".log"), encoding="utf-8") as f:
             self.assertEqual(f.read(), text)
 

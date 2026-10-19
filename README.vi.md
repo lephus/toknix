@@ -1,15 +1,15 @@
-# tokopt
+# toknix
 
 **Cắt token mà coding agent lãng phí, và chứng minh được.** · [English](README.md)
 
-tokopt là một công cụ dòng lệnh (Python ≥ 3.9, chỉ dùng thư viện chuẩn) cho Claude Code, Codex CLI và
+toknix là một công cụ dòng lệnh (Python ≥ 3.9, chỉ dùng thư viện chuẩn) cho Claude Code, Codex CLI và
 Gemini CLI. Nó làm ba việc:
 
 1. **Cắt phần lãng phí:** output lệnh ồn ào, đọc file sinh tự động, đọc cả file trong khi chỉ cần một hàm.
 2. **Đo phần đã cắt**, từ dữ liệu của chính nó và từ transcript của agent.
 3. **Chứng minh chất lượng không giảm**, bằng cách chạy A/B một agent thật trên task của chính bạn.
 
-Không có gì rời khỏi máy bạn. Mọi dữ liệu tokopt giữ nằm trong `~/.tokopt/`.
+Không có gì rời khỏi máy bạn. Mọi dữ liệu toknix giữ nằm trong `~/.toknix/`.
 
 ## Cài đặt
 
@@ -26,19 +26,19 @@ irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 | iex
 Script cài:
 
 - dùng `uv tool install` nếu máy có [uv](https://docs.astral.sh/uv/). Nếu không, nó tạo một venv riêng
-  trong `~/.tokopt/venv`, nên Python hệ thống bị đánh dấu "externally managed" (PEP 668, ví dụ Ubuntu 24.04)
-  không bị đụng tới, rồi tạo `~/.local/bin/tokopt` trỏ vào venv đó;
-- chạy `tokopt install`, rồi `tokopt doctor`.
+  trong `~/.toknix/venv`, nên Python hệ thống bị đánh dấu "externally managed" (PEP 668, ví dụ Ubuntu 24.04)
+  không bị đụng tới, rồi tạo `~/.local/bin/toknix` trỏ vào venv đó;
+- chạy `toknix install`, rồi `toknix doctor`.
 
 | Muốn | Chạy |
 |---|---|
 | xem trước sẽ làm gì | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
 | chỉ cài lệnh, không cài hook | `… \| sh -s -- --no-hooks` |
-| gỡ hết | `… \| sh -s -- --uninstall`, hoặc `tokopt uninstall` nếu chỉ muốn gỡ hook và rules |
-| cài không qua script | `uv tool install git+https://github.com/lephus/toknix && tokopt install` |
+| gỡ hết | `… \| sh -s -- --uninstall`, hoặc `toknix uninstall` nếu chỉ muốn gỡ hook và rules |
+| cài không qua script | `uv tool install git+https://github.com/lephus/toknix && toknix install` |
 
-Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKOPT_DRY_RUN = "1"` hoặc
-`$env:TOKOPT_UNINSTALL = "1"` trước khi chạy.
+Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKNIX_DRY_RUN = "1"` hoặc
+`$env:TOKNIX_UNINSTALL = "1"` trước khi chạy.
 
 ### Cập nhật
 
@@ -48,17 +48,17 @@ Chạy lại lệnh cài:
 curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
 ```
 
-- Lệnh cài lại tokopt từ bản mới nhất trên `main`, kể cả khi số version không đổi.
-- Sau đó `tokopt install` trỏ các hook vào bản vừa cài và thay rules block bằng bản mới. Nó không bao giờ
+- Lệnh cài lại toknix từ bản mới nhất trên `main`, kể cả khi số version không đổi.
+- Sau đó `toknix install` trỏ các hook vào bản vừa cài và thay rules block bằng bản mới. Nó không bao giờ
   tạo bản trùng.
-- Kiểm tra bằng `tokopt --version` và `tokopt doctor`. `doctor` cũng báo khi rules block cũ hơn bản tokopt
+- Kiểm tra bằng `toknix --version` và `toknix doctor`. `doctor` cũng báo khi rules block cũ hơn bản toknix
   đang cài.
 
 Muốn đứng yên ở một bản phát hành thay vì `main`:
-`curl -fsSL …/install.sh | TOKOPT_REF=v0.1.0 sh`.
+`curl -fsSL …/install.sh | TOKNIX_REF=v0.1.0 sh`.
 
 **Khi phát hành bản mới**:
-1. Tăng `__version__` trong `src/tokopt/__init__.py` và thêm một mục vào `CHANGELOG.md`.
+1. Tăng `__version__` trong `src/toknix/__init__.py` và thêm một mục vào `CHANGELOG.md`.
 2. Push lên `main`.
 3. Gắn tag cho bản phát hành (`git tag v0.1.1 && git push origin v0.1.1`) để người dùng có thể ghim bản đó.
 
@@ -72,58 +72,58 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh 
 
 Lệnh này làm ba việc:
 
-1. Chạy `tokopt uninstall`: bỏ 3 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
+1. Chạy `toknix uninstall`: bỏ 3 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
    `~/.claude/CLAUDE.md` (cùng `AGENTS.md` / `GEMINI.md` nếu có). Các file này trở về đúng như trước khi cài.
-2. Gỡ chính lệnh `tokopt`: `uv tool uninstall tokopt`, hoặc xoá venv `~/.tokopt/venv` và link
-   `~/.local/bin/tokopt`.
-3. Giữ lại dữ liệu trong `~/.tokopt` (thống kê, output đã lưu). Muốn xoá luôn thì chạy `rm -rf ~/.tokopt`.
+2. Gỡ chính lệnh `toknix`: `uv tool uninstall toknix`, hoặc xoá venv `~/.toknix/venv` và link
+   `~/.local/bin/toknix`.
+3. Giữ lại dữ liệu trong `~/.toknix` (thống kê, output đã lưu). Muốn xoá luôn thì chạy `rm -rf ~/.toknix`.
 
 Sau đó **khởi động lại Claude Code** để nó không còn nạp các hook cũ.
 
 | Muốn | Chạy |
 |---|---|
 | xem trước sẽ gỡ những gì | `curl -fsSL …/install.sh \| sh -s -- --uninstall --dry-run` |
-| tắt tokopt trong Claude Code nhưng giữ lệnh | `tokopt uninstall` (bật lại bằng `tokopt install`) |
-| gỡ trên Windows (PowerShell) | `$env:TOKOPT_UNINSTALL = "1"; irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 \| iex` |
+| tắt toknix trong Claude Code nhưng giữ lệnh | `toknix uninstall` (bật lại bằng `toknix install`) |
+| gỡ trên Windows (PowerShell) | `$env:TOKNIX_UNINSTALL = "1"; irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 \| iex` |
 
-### `tokopt install` thay đổi những gì
+### `toknix install` thay đổi những gì
 
 `~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`):
 
 | Hook | Lệnh |
 |---|---|
-| PreToolUse `Bash` | `tokopt hook bash` |
-| PreToolUse `Read\|Grep\|Glob` | `tokopt hook read` |
-| SessionStart `compact\|clear` | `tokopt hook session-start` |
+| PreToolUse `Bash` | `toknix hook bash` |
+| PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
+| SessionStart `compact\|clear` | `toknix hook session-start` |
 
-Lệnh cũng thêm `statusLine` → `tokopt statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
+Lệnh cũng thêm `statusLine` → `toknix statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
 khác của bạn giữ nguyên.
 
-Rules block được đặt giữa hai marker `<!-- tokopt:begin v1 -->` và `<!-- tokopt:end -->`, trong
+Rules block được đặt giữa hai marker `<!-- toknix:begin v1 -->` và `<!-- toknix:end -->`, trong
 `~/.claude/CLAUDE.md`. Nó cũng được đặt vào `~/.codex/AGENTS.md` và `~/.gemini/GEMINI.md`, nhưng chỉ khi
 máy có cài Codex hoặc Gemini CLI.
 
-Mọi thay đổi đều được backup trước vào `~/.tokopt/backups/`. `tokopt uninstall` trả các file về đúng như
-cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `tokopt doctor`.
+Mọi thay đổi đều được backup trước vào `~/.toknix/backups/`. `toknix uninstall` trả các file về đúng như
+cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `toknix doctor`.
 
-## Trong một phiên làm việc, tokopt làm gì
+## Trong một phiên làm việc, toknix làm gì
 
 - **Output lệnh:** hook Bash viết lại các lệnh ồn ào (test, build, cài gói, git, liệt kê file) thành
-  `tokopt run -- '<lệnh>'`.
+  `toknix run -- '<lệnh>'`.
   - Agent vẫn nhận đủ lỗi, phần tổng kết và exit code. Test pass, thanh tiến độ và log tải về bị bỏ.
   - **Dòng lỗi không bao giờ bị cắt.**
   - Khi có phần bị cắt, output kết thúc bằng
-    `[tokopt: 84 → 37 lines; full output: tokopt recall 851e91; exit 1]`.
-  - `tokopt recall <id>` in lại output gốc, đúng từng byte. `--grep` và `--lines` chỉ in một phần.
-  - Lệnh bắt đầu bằng `TOKOPT_RAW=1` không bao giờ bị viết lại.
+    `[toknix: 84 → 37 lines; full output: toknix recall 851e91; exit 1]`.
+  - `toknix recall <id>` in lại output gốc, đúng từng byte. `--grep` và `--lines` chỉ in một phần.
+  - Lệnh bắt đầu bằng `TOKNIX_RAW=1` không bao giờ bị viết lại.
 - **Read guard:** chặn ba kiểu đọc, và luôn nói cách đọc thay thế.
   - Đọc cả một file sinh tự động, file vendor hoặc lockfile (`node_modules/`, `package-lock.json`,
     `.min.js`…). Đọc một lát cắt bằng offset/limit vẫn được.
-  - Đọc cả một file dài hơn 800 dòng. Lời nhắc gợi ý dùng `tokopt outline`.
+  - Đọc cả một file dài hơn 800 dòng. Lời nhắc gợi ý dùng `toknix outline`.
   - Lần đọc thứ ba y hệt của một file không đổi. Bộ đếm reset sau `/compact` hoặc `/clear`.
 
   Nó cũng thêm `head_limit: 200` cho các lệnh Grep ở chế độ content chưa có giới hạn.
-- **Tìm code theo tên:** `tokopt outline`, `symbol`, `refs`, `map` chạy được với Python (chính xác, qua
+- **Tìm code theo tên:** `toknix outline`, `symbol`, `refs`, `map` chạy được với Python (chính xác, qua
   `ast`) và JS/TS, Go, Java, Rust, PHP, Ruby, Dart, Kotlin, C# (bằng regex, có che chuỗi và comment).
 - **Rules block:** nhắc agent dùng các lệnh trên, trả lời bằng diff thay vì tóm tắt, sửa file bằng Edit thay
   vì viết lại cả file, và giữ đầy đủ suy luận khi debug, khi làm bảo mật hay migration. Block dài 282 token.
@@ -132,31 +132,31 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 
 | Lệnh | Làm gì |
 |---|---|
-| `tokopt run -- "<lệnh>"` | chạy lệnh, in output đã lọc, giữ bản gốc để lấy lại; giữ nguyên exit code |
-| `tokopt recall <id> [--grep RE] [--lines A:B]` | in lại output đầy đủ của một lần chạy đã lọc |
-| `tokopt gain [--days N] [--json]` | số token tiết kiệm nhờ bộ lọc và read guard |
-| `tokopt outline <file>` | các symbol của một file kèm khoảng dòng (`L12-40  def foo(a, b)`) |
-| `tokopt symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
-| `tokopt refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
-| `tokopt map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
-| `tokopt report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU, cache hit, tỉ trọng output, các session tốn nhất |
-| `tokopt waste [--days 7] [--json]` | 7 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ…), kèm cách sửa |
-| `tokopt context [--days 30] [--path DIR] [--json]` | file chỉ dẫn được nạp mỗi session, MCP server và skill, kèm số lần chúng được dùng |
-| `tokopt snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
-| `tokopt bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
-| `tokopt compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
-| `tokopt statusline` | status line của Claude Code: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%` |
-| `tokopt install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
-| `tokopt init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
+| `toknix run -- "<lệnh>"` | chạy lệnh, in output đã lọc, giữ bản gốc để lấy lại; giữ nguyên exit code |
+| `toknix recall <id> [--grep RE] [--lines A:B]` | in lại output đầy đủ của một lần chạy đã lọc |
+| `toknix gain [--days N] [--json]` | số token tiết kiệm nhờ bộ lọc và read guard |
+| `toknix outline <file>` | các symbol của một file kèm khoảng dòng (`L12-40  def foo(a, b)`) |
+| `toknix symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
+| `toknix refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
+| `toknix map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
+| `toknix report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU, cache hit, tỉ trọng output, các session tốn nhất |
+| `toknix waste [--days 7] [--json]` | 7 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ…), kèm cách sửa |
+| `toknix context [--days 30] [--path DIR] [--json]` | file chỉ dẫn được nạp mỗi session, MCP server và skill, kèm số lần chúng được dùng |
+| `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
+| `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
+| `toknix compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
+| `toknix statusline` | status line của Claude Code: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%` |
+| `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
+| `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
 
 **ETU** là đơn vị để so sánh chi phí: `input + 1,25 × cache_write + 0,1 × cache_read + 5 × output`, theo tỉ
 lệ giá niêm yết của Anthropic. Codex và Gemini có giá khác, nên với hai agent này hãy đặt `weights` trong
 config.
 
-## Đọc `tokopt gain`
+## Đọc `toknix gain`
 
 ```
-tokopt gain (all time)
+toknix gain (all time)
 
 Saved directly: 15.1k tokens (filters 15.1k, read guard 0)
 With re-reads (estimate): 49.1k ETU = direct × 3.25 (w_cw 1.25 + w_cr 0.1 × R̄ 20)
@@ -174,16 +174,16 @@ By filter kind
   - R̄ là trung vị số request còn lại sau một kết quả Bash, đo từ transcript của bạn.
   - Khi chưa có transcript, R̄ là 20, và dòng output ghi rõ đó là giá trị mặc định.
 - **cuts / recalled / rate:** mỗi bộ lọc đã cắt output bao nhiêu lần, và sau đó bạn hay agent cần đến
-  `tokopt recall` bao nhiêu lần.
+  `toknix recall` bao nhiêu lần.
   - Nếu tỉ lệ này trên 20% với từ 10 lần cắt trở lên, `gain` cảnh báo bộ lọc có thể cắt quá tay. Khi đó hãy
     báo lại lệnh đã gặp.
-- **Bash calls wrapped** là tỉ lệ lệnh Bash đã đi qua `tokopt run`.
+- **Bash calls wrapped** là tỉ lệ lệnh Bash đã đi qua `toknix run`.
 - Một lần chạy mà riêng các dòng lỗi đã vượt ngân sách token được đếm là `error_overflow`. Các dòng lỗi đó
   vẫn được giữ đủ.
 
-## Đọc `tokopt compare`
+## Đọc `toknix compare`
 
-`tokopt bench` chạy mỗi task trong `tasks.json` nhiều lần. Mỗi lần dùng một `git worktree` mới, và worktree
+`toknix bench` chạy mỗi task trong `tasks.json` nhiều lần. Mỗi lần dùng một `git worktree` mới, và worktree
 đó luôn bị xoá sau khi chạy xong, kể cả khi bị timeout:
 
 ```json
@@ -192,10 +192,10 @@ By filter kind
  "tasks": [{"id": "fix-cart", "prompt": "Sửa các test giỏ hàng đang fail.", "check": "npm test"}]}
 ```
 
-Chạy một lần khi chưa có tokopt và một lần khi đã có, rồi so sánh:
+Chạy một lần khi chưa có toknix và một lần khi đã có, rồi so sánh:
 
 ```
-tokopt compare baseline → v01 (12 vs 12 runs, 3 common tasks)
+toknix compare baseline → v01 (12 vs 12 runs, 3 common tasks)
 
   pass rate             100% → 100%
   median ETU            37,151 → 24,606  -33.8% (95% CI -36.3% … -31.2%)
@@ -219,8 +219,8 @@ agent thật thì tốn tiền thật, vì vậy việc đó do bạn tự chạ
 
 ## Cấu hình
 
-Thiết lập nằm trong `~/.tokopt/config.json`. Chỉ những key bạn đặt mới ghi đè giá trị mặc định (xem trong
-`src/tokopt/config.py`). Các key bạn hay cần đổi nhất:
+Thiết lập nằm trong `~/.toknix/config.json`. Chỉ những key bạn đặt mới ghi đè giá trị mặc định (xem trong
+`src/toknix/config.py`). Các key bạn hay cần đổi nhất:
 
 | Key | Mặc định | Ý nghĩa |
 |---|---|---|
@@ -234,9 +234,9 @@ Thiết lập nằm trong `~/.tokopt/config.json`. Chỉ những key bạn đặ
 
 | Biến môi trường | Tác dụng |
 |---|---|
-| `TOKOPT_RAW=1` | `tokopt run` in output gốc, không lọc |
-| `TOKOPT_DEBUG=1` | hook in lỗi ra stderr. Mặc định hook không bao giờ chặn agent và im lặng khi lỗi |
-| `TOKOPT_HOME` | nơi tokopt giữ dữ liệu (mặc định `~/.tokopt`) |
+| `TOKNIX_RAW=1` | `toknix run` in output gốc, không lọc |
+| `TOKNIX_DEBUG=1` | hook in lỗi ra stderr. Mặc định hook không bao giờ chặn agent và im lặng khi lỗi |
+| `TOKNIX_HOME` | nơi toknix giữ dữ liệu (mặc định `~/.toknix`) |
 
 ### ⚠ `hook_permission`
 
@@ -249,30 +249,30 @@ khi bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
 ## Giới hạn đã biết
 
 - **Permission rule có thể không khớp với lệnh đã bị viết lại.** Một rule như `Bash(npm test:*)` có thể
-  không khớp với `tokopt run -- 'npm test'`, nên Claude Code có thể hỏi quyền ở chỗ trước đây không hỏi.
+  không khớp với `toknix run -- 'npm test'`, nên Claude Code có thể hỏi quyền ở chỗ trước đây không hỏi.
   Điều này chưa được kiểm trên Claude Code; nó là check B trong [docs/VERIFY.md](docs/VERIFY.md).
 - **Số token là ước lượng.**
-  - tokopt đếm số ký tự theo từng lớp: khoảng 4 ký tự/token với văn bản thường, 2 với hex/base64, 1,5 với
+  - toknix đếm số ký tự theo từng lớp: khoảng 4 ký tự/token với văn bản thường, 2 với hex/base64, 1,5 với
     ký tự ngoài ASCII.
-  - tokopt có thể hiệu chỉnh các tỉ lệ này từ transcript của bạn. Trên những transcript đã thử, phép fit
+  - toknix có thể hiệu chỉnh các tỉ lệ này từ transcript của bạn. Trên những transcript đã thử, phép fit
     chưa đạt ngưỡng chất lượng (sai số trung vị 21–25%, trong khi ngưỡng là 15%), nên tỉ lệ mặc định vẫn
     được dùng.
   - Vì vậy `gain` hiện số ước tính. Còn `report` và `waste` dùng số `usage` chính xác lấy từ transcript.
-- **Codex và Gemini CLI chưa có hook.** Hai agent này chỉ nhận rules block, để agent tự gọi `tokopt run` và
-  `tokopt outline`. Transcript của Gemini không được đọc.
+- **Codex và Gemini CLI chưa có hook.** Hai agent này chỉ nhận rules block, để agent tự gọi `toknix run` và
+  `toknix outline`. Transcript của Gemini không được đọc.
 - **Một số hành vi của Claude Code chưa được xác nhận trên session thật** ([docs/VERIFY.md](docs/VERIFY.md)):
   - `updatedInput` có được áp dụng khi hook không gửi permission decision không;
   - Claude Code có tự bỏ qua các lần Read lặp lại không;
   - khi Grep bị `head_limit` cắt bớt, agent có được báo không;
   - các rule deny do `init-project` thêm có khớp không.
 - **Windows** được hỗ trợ qua Git Bash, giống cách Claude Code chạy trên Windows. CI chạy bộ test và script
-  cài trên Windows, nhưng chưa ai dùng tokopt với Claude Code trên Windows.
+  cài trên Windows, nhưng chưa ai dùng toknix với Claude Code trên Windows.
 - **Outline:**
   - Với các ngôn ngữ ngoài Python, outline dựa trên regex. Code đã minify có thể làm nó nhầm.
   - Swift, C và C++ chưa được hỗ trợ; với các file đó, `outline` in 200 dòng đầu.
   - `map` tính cả tên xuất hiện trong chuỗi và comment là một lần dùng.
-- **Tỉ lệ "Bash calls wrapped" trong `gain` là ước lượng.** Nó đếm các lệnh có chứa `tokopt run`, hoặc có
-  footer của tokopt trong output.
+- **Tỉ lệ "Bash calls wrapped" trong `gain` là ước lượng.** Nó đếm các lệnh có chứa `toknix run`, hoặc có
+  footer của toknix trong output.
 
 ## Phát triển
 

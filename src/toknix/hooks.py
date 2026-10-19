@@ -1,9 +1,9 @@
 """Claude Code hooks. Each reads the hook JSON on stdin and prints a hook JSON reply (or nothing).
 
-  tokopt hook bash           PreToolUse(Bash)            wrap noisy commands in `tokopt run --`
-  tokopt hook read           PreToolUse(Read|Grep|Glob)  block junk paths, whole-file reads of huge
+  toknix hook bash           PreToolUse(Bash)            wrap noisy commands in `toknix run --`
+  toknix hook read           PreToolUse(Read|Grep|Glob)  block junk paths, whole-file reads of huge
                                                          files, and repeated reads of unchanged files
-  tokopt hook session-start  SessionStart(compact|clear) forget the read ledger (context was reset)
+  toknix hook session-start  SessionStart(compact|clear) forget the read ledger (context was reset)
 
 A hook must never break the agent: any internal error results in "no opinion" (exit 0, no output).
 """
@@ -16,9 +16,9 @@ import shlex
 import sys
 from pathlib import Path
 
-from tokopt import filters, store
-from tokopt.config import is_junk, load
-from tokopt.textutil import est_tokens
+from toknix import filters, store
+from toknix.config import is_junk, load
+from toknix.textutil import est_tokens
 
 # A command that changes the agent's own shell (cwd/env), at the start of any statement: after ; & | or a newline,
 # with or without arguments (`npm test; popd`).
@@ -37,7 +37,7 @@ def _deny(reason: str) -> dict:
 
 def should_wrap(cmd: str, tool_input: dict, cfg: dict) -> bool:
     c = cmd.strip()
-    if not c or c.startswith(("tokopt ", "TOKOPT_RAW=")) or "tokopt run" in c:
+    if not c or c.startswith(("toknix ", "tokopt ", "TOKNIX_RAW=", "TOKOPT_RAW=")) or re.search(r"tok(?:nix|opt) run", c):
         return False
     if tool_input.get("run_in_background") or c.endswith("&") or "<<" in c:
         return False
@@ -55,7 +55,7 @@ def hook_bash(data: dict) -> dict | None:
     cmd = ti.get("command", "")
     if not isinstance(cmd, str) or not should_wrap(cmd, ti, cfg):
         return None
-    new = dict(ti, command=f"tokopt run -- {shlex.quote(cmd)}")
+    new = dict(ti, command=f"toknix run -- {shlex.quote(cmd)}")
     out = {"hookEventName": "PreToolUse", "updatedInput": new}
     if cfg.get("hook_permission") in ("allow", "ask"):
         out["permissionDecision"] = cfg["hook_permission"]
@@ -84,8 +84,8 @@ def hook_read(data: dict) -> dict | None:
     if tool in ("Grep", "Glob"):
         if path and cfg["guard_junk"] and (pat := is_junk(path.rstrip("/") + "/", cfg["junk_patterns"])):
             store.record_guard(session, "junk", path, 0)
-            return _deny(f"tokopt: '{path}' is a generated/vendor path ({pat}). Search source directories instead, "
-                         f"or set TOKOPT guard_junk=false in ~/.tokopt/config.json if you really need it.")
+            return _deny(f"toknix: '{path}' is a generated/vendor path ({pat}). Search source directories instead, "
+                         f"or set TOKNIX guard_junk=false in ~/.toknix/config.json if you really need it.")
         limit = cfg["grep_head_limit"]
         if tool == "Grep" and ti.get("output_mode") == "content" and "head_limit" not in ti and limit:
             return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
@@ -100,7 +100,7 @@ def hook_read(data: dict) -> dict | None:
     if cfg["guard_junk"] and not has_span and (pat := is_junk(path, cfg["junk_patterns"])):  # a slice is allowed (A4 R1)
         size = p.stat().st_size if p.exists() else 0
         store.record_guard(session, "junk", path, size // 4)
-        return _deny(f"tokopt: '{path}' matches '{pat}' (generated, vendored or lockfile; ~{size // 4:,} tokens). "
+        return _deny(f"toknix: '{path}' matches '{pat}' (generated, vendored or lockfile; ~{size // 4:,} tokens). "
                      f"Read the source or manifest instead. If it is truly needed, read a slice with offset/limit.")
     if not p.is_file():
         return None
@@ -113,8 +113,8 @@ def hook_read(data: dict) -> dict | None:
         n = _count_lines(p)
         if n > big:
             store.record_guard(session, "bigfile", path, st.st_size // 4)
-            return _deny(f"tokopt: {path} has {n:,} lines (~{st.st_size // 4:,} tokens). "
-                         f"Run `tokopt outline {shlex.quote(path)}` to get its symbols with line ranges, "
+            return _deny(f"toknix: {path} has {n:,} lines (~{st.st_size // 4:,} tokens). "
+                         f"Run `toknix outline {shlex.quote(path)}` to get its symbols with line ranges, "
                          f"then Read only the range you need with offset/limit.")
     limit = cfg["guard_repeat_reads"]
     if limit and session:
@@ -123,7 +123,7 @@ def hook_read(data: dict) -> dict | None:
         if n > limit:
             est = st.st_size // 4 if not has_span else est_tokens("x" * 40 * int(ti.get("limit") or 200))
             store.record_guard(session, "reread", path, est)
-            return _deny(f"tokopt: you already read this exact range of {path} {n - 1} times this session and the file "
+            return _deny(f"toknix: you already read this exact range of {path} {n - 1} times this session and the file "
                          f"has not changed since, so its content is still in your context. Use it, or read a different range.")
     return None
 
@@ -147,7 +147,7 @@ def main(name: str) -> int:
     try:
         data = json.loads(_read_stdin())
         _emit(HOOKS[name](data))
-    except Exception as e:  # never block the agent because of tokopt
-        if os.environ.get("TOKOPT_DEBUG"):
-            print(f"tokopt hook {name}: {e!r}", file=sys.stderr)
+    except Exception as e:  # never block the agent because of toknix
+        if os.environ.get("TOKNIX_DEBUG"):
+            print(f"toknix hook {name}: {e!r}", file=sys.stderr)
     return 0

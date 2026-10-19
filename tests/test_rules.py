@@ -13,12 +13,12 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import cli, installer
-from tokopt.textutil import est_tokens
+from toknix import cli, installer
+from toknix.textutil import est_tokens
 
 TEMPLATES = Path(installer.__file__).resolve().parent / "templates"
-EXE = "/opt/tokopt/bin/tokopt"
-BLOCK_RE = re.compile(r"<!-- tokopt:begin v(\d+) -->\n(.*?)<!-- tokopt:end -->\n?", re.S)
+EXE = "/opt/toknix/bin/toknix"
+BLOCK_RE = re.compile(r"<!-- toknix:begin v(\d+) -->\n(.*?)<!-- toknix:end -->\n?", re.S)
 
 
 class TestTemplates(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestTemplates(unittest.TestCase):
 
     def test_v1_says_what_the_plan_asks(self):
         text = (TEMPLATES / "rules.md").read_text(encoding="utf-8")
-        for needle in ("tokopt outline", "tokopt symbol", "tokopt refs", "tokopt recall",  # tools first
+        for needle in ("toknix outline", "toknix symbol", "toknix refs", "toknix recall",  # tools first
                        "diff", "Do not summarize", "do not paste code that is already in the diff",  # write less
                        "Edit, not by rewriting them with Write", "Answer briefly",
                        "debugging", "security", "migrations",  # keep full reasoning
@@ -51,7 +51,7 @@ class Home(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+               if not k.startswith("TOKNIX_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
         patcher = mock.patch.dict(os.environ, dict(env, HOME=str(self.home), USERPROFILE=str(self.home)), clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -72,7 +72,7 @@ class TestInstallRules(Home):
     def test_new_claude_md(self):
         installer.install(exe=EXE)
         self.assertEqual(self.claude_md.read_text(encoding="utf-8"),
-                         f"<!-- tokopt:begin v1 -->\n{self.v1}<!-- tokopt:end -->\n")
+                         f"<!-- toknix:begin v1 -->\n{self.v1}<!-- toknix:end -->\n")
 
     def test_keeps_the_rest_of_the_file(self):
         mine = "# My rules\n\n- be nice\n"
@@ -90,12 +90,12 @@ class TestInstallRules(Home):
         self.assertEqual(self.claude_md.read_bytes(), once)
 
     def test_old_block_is_replaced_in_place(self):
-        self.put(self.claude_md, b"# top\n\n<!-- tokopt:begin v0 -->\nold rules\n<!-- tokopt:end -->\n\n# bottom\n")
+        self.put(self.claude_md, b"# top\n\n<!-- toknix:begin v0 -->\nold rules\n<!-- toknix:end -->\n\n# bottom\n")
         installer.install(exe=EXE)
         text = self.claude_md.read_text(encoding="utf-8")
         self.assertEqual(self.blocks(self.claude_md), [("1", self.v1)])
-        self.assertTrue(text.startswith("# top\n\n<!-- tokopt:begin v1 -->\n"))
-        self.assertTrue(text.endswith("<!-- tokopt:end -->\n\n# bottom\n"))
+        self.assertTrue(text.startswith("# top\n\n<!-- toknix:begin v1 -->\n"))
+        self.assertTrue(text.endswith("<!-- toknix:end -->\n\n# bottom\n"))
 
     def test_codex_and_gemini_only_when_installed(self):
         installer.install(exe=EXE)
@@ -151,7 +151,7 @@ class TestUninstallRules(Home):
     def test_without_the_install_record(self):
         self.put(self.claude_md, b"# mine\n")
         installer.install(exe=EXE)
-        (self.home / ".tokopt" / "install.json").unlink()
+        (self.home / ".toknix" / "install.json").unlink()
         installer.uninstall()
         self.assertEqual(self.claude_md.read_bytes(), b"# mine\n")
 

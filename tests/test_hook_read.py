@@ -1,4 +1,4 @@
-"""P2-T2: `tokopt hook read` and `tokopt hook session-start` (A4, N1.4)."""
+"""P2-T2: `toknix hook read` and `toknix hook session-start` (A4, N1.4)."""
 from __future__ import annotations
 
 import json
@@ -14,7 +14,7 @@ from unittest import mock
 
 import support
 
-from tokopt import config, hooks
+from toknix import config, hooks
 
 
 class GuardCase(unittest.TestCase):
@@ -22,10 +22,10 @@ class GuardCase(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
-        self.home = self.tmp / ".tokopt"
+        self.home = self.tmp / ".toknix"
         self.proj = self.tmp / "proj"
-        env = {k: v for k, v in os.environ.items() if not k.startswith("TOKOPT_")}
-        patcher = mock.patch.dict(os.environ, dict(env, TOKOPT_HOME=str(self.home)), clear=True)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("TOKNIX_")}
+        patcher = mock.patch.dict(os.environ, dict(env, TOKNIX_HOME=str(self.home)), clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -54,9 +54,9 @@ class GuardCase(unittest.TestCase):
             self.assertIn(text, out["permissionDecisionReason"])
 
     def guard_rows(self) -> list[tuple]:
-        if not (self.home / "tokopt.db").exists():
+        if not (self.home / "toknix.db").exists():
             return []
-        con = sqlite3.connect(str(self.home / "tokopt.db"))
+        con = sqlite3.connect(str(self.home / "toknix.db"))
         try:
             return con.execute("SELECT session, rule, path, est_tokens FROM guard ORDER BY ts").fetchall()
         finally:
@@ -114,7 +114,7 @@ class TestBigFile(GuardCase):
     def test_whole_read_of_a_big_file_is_denied_with_outline_hint(self):
         big = self.file("src/big_module.py", lines=2000)
         self.assertDenied(self.read(big), "2,000 lines", f"~{big.stat().st_size // 4:,} tokens",
-                          f"tokopt outline {shlex.quote(str(big))}", "offset/limit")  # quoted on Windows
+                          f"toknix outline {shlex.quote(str(big))}", "offset/limit")  # quoted on Windows
         self.assertEqual(self.guard_rows(), [("s1", "bigfile", str(big), big.stat().st_size // 4)])
 
     def test_a_range_of_the_same_file_is_allowed(self):
@@ -136,7 +136,7 @@ class TestBigFile(GuardCase):
 
     def test_quotes_paths_with_spaces(self):
         big = self.file("src/my module.py", lines=2000)
-        self.assertDenied(self.read(big), f"tokopt outline '{big}'")
+        self.assertDenied(self.read(big), f"toknix outline '{big}'")
 
 
 class TestRepeatReads(GuardCase):
@@ -261,7 +261,7 @@ class TestReadHookProcess(GuardCase):
         env = {k: v for k, v in os.environ.items()}
         env.update(PYTHONPATH=str(support.SRC), PYTHONDONTWRITEBYTECODE="1")
         stdin = payload if isinstance(payload, str) else json.dumps(payload)
-        return subprocess.run([sys.executable, "-m", "tokopt", "hook", name], input=stdin.encode("utf-8"),
+        return subprocess.run([sys.executable, "-m", "toknix", "hook", name], input=stdin.encode("utf-8"),
                               capture_output=True, env=env, timeout=30)
 
     def test_deny_reply_and_session_start(self):
@@ -285,7 +285,7 @@ class TestReadHookProcess(GuardCase):
     def test_unwritable_home_never_blocks_a_read(self):
         broken = self.tmp / "file-not-dir"
         broken.write_text("x")
-        with mock.patch.dict(os.environ, {"TOKOPT_HOME": str(broken)}):
+        with mock.patch.dict(os.environ, {"TOKNIX_HOME": str(broken)}):
             p = self.hook("read", {"session_id": "s", "tool_name": "Read",
                                    "tool_input": {"file_path": str(self.file("src/app.ts"))}})
         self.assertEqual((p.returncode, p.stdout, p.stderr), (0, b"", b""))

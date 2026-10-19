@@ -1,4 +1,4 @@
-"""`tokopt init-project` (A8): project deny rules for junk directories and a .geminiignore."""
+"""`toknix init-project` (A8): project deny rules for junk directories and a .geminiignore."""
 from __future__ import annotations
 
 import io
@@ -12,7 +12,7 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import cli, config, installer
+from toknix import cli, config, installer
 
 
 class Project(unittest.TestCase):
@@ -20,7 +20,7 @@ class Project(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
-        patcher = mock.patch.dict(os.environ, {"TOKOPT_HOME": str(self.root / ".tokopt-home"),
+        patcher = mock.patch.dict(os.environ, {"TOKNIX_HOME": str(self.root / ".toknix-home"),
                                                "HOME": str(self.root / "home")})
         patcher.start()
         self.addCleanup(patcher.stop)

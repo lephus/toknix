@@ -1,4 +1,4 @@
-//! Sample for `tokopt outline` (P3-T2): Rust.
+//! Sample for `toknix outline` (P3-T2): Rust.
 use std::collections::HashMap;
 use std::fmt;
 

@@ -7,8 +7,8 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import config
-from tokopt.textutil import char_classes, est_tokens, normalize, resolve_cr, strip_ansi
+from toknix import config
+from toknix.textutil import char_classes, est_tokens, normalize, resolve_cr, strip_ansi
 
 
 class TestNormalize(unittest.TestCase):
@@ -91,7 +91,7 @@ class TestEstTokens(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "config.json"), "w", encoding="utf-8") as f:
                 json.dump({"token_ratios": {"default": 2.0, "hex": 2.0, "non_ascii": 1.5}}, f)
-            with mock.patch.dict(os.environ, {"TOKOPT_HOME": d}):
+            with mock.patch.dict(os.environ, {"TOKNIX_HOME": d}):
                 cfg = config.load()
         self.assertEqual(est_tokens("abcdefgh", cfg["token_ratios"]), 4)
 

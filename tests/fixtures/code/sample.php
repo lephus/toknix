@@ -1,5 +1,5 @@
 <?php
-// Sample for `tokopt outline` (P3-T2): PHP.
+// Sample for `toknix outline` (P3-T2): PHP.
 declare(strict_types=1);
 
 namespace App\Shop;

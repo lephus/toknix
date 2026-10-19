@@ -1,4 +1,4 @@
-"""P3-T4: `tokopt map` (A5.2)."""
+"""P3-T4: `toknix map` (A5.2)."""
 from __future__ import annotations
 
 import datetime
@@ -13,8 +13,8 @@ from unittest import mock
 
 import support
 
-from tokopt import cli, codesearch
-from tokopt.textutil import est_tokens
+from toknix import cli, codesearch
+from toknix.textutil import est_tokens
 
 MAP_REPO = support.FIXTURES / "map_repo"
 # Hand-computed from tests/fixtures/map_repo (ref_count = other files holding the name as a word):
@@ -30,7 +30,7 @@ class MapCase(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
-        patcher = mock.patch.dict(os.environ, {"TOKOPT_HOME": str(self.tmp / ".tokopt")})
+        patcher = mock.patch.dict(os.environ, {"TOKNIX_HOME": str(self.tmp / ".toknix")})
         patcher.start()
         self.addCleanup(patcher.stop)
         cwd = os.getcwd()
@@ -131,8 +131,8 @@ class TestLargeRepo(MapCase):
         commit("2020-01-01T00:00:00")
         (root / "new.py").write_text("def fresh():\n    pass\n")
         commit(datetime.datetime.now().replace(microsecond=0).isoformat())
-        (self.tmp / ".tokopt").mkdir()
-        (self.tmp / ".tokopt" / "config.json").write_text('{"map_max_files": 5}')
+        (self.tmp / ".toknix").mkdir()
+        (self.tmp / ".toknix" / "config.json").write_text('{"map_max_files": 5}')
         os.chdir(root)
         out = self.map()[1]
         self.assertIn("new.py", out)

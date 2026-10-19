@@ -1,31 +1,31 @@
 #!/bin/sh
-# Install tokopt, then its Claude Code hooks and rules block (A8).
+# Install toknix, then its Claude Code hooks and rules block (A8).
 #
 #   curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
 #   curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh -s -- --dry-run
 #
 # Options:
 #   --dry-run       print what would be done, change nothing
-#   --uninstall     remove the hooks, the rules block and tokopt itself
+#   --uninstall     remove the hooks, the rules block and toknix itself
 #   --from SOURCE   install from SOURCE (a local directory or a pip/uv URL) instead of GitHub
-#   --no-hooks      install the tokopt command only; skip `tokopt install`
-# Environment: TOKOPT_REPO (owner/name, default lephus/toknix), TOKOPT_REF (default main).
+#   --no-hooks      install the toknix command only; skip `toknix install`
+# Environment: TOKNIX_REPO (owner/name, default lephus/toknix), TOKNIX_REF (default main).
 #
-# Uses `uv tool install` when uv is on PATH; otherwise a private venv in ~/.tokopt/venv (so PEP 668
-# "externally managed" Pythons, e.g. Ubuntu 24.04, are never touched) linked from ~/.local/bin/tokopt.
+# Uses `uv tool install` when uv is on PATH; otherwise a private venv in ~/.toknix/venv (so PEP 668
+# "externally managed" Pythons, e.g. Ubuntu 24.04, are never touched) linked from ~/.local/bin/toknix.
 set -eu
 
-REPO="${TOKOPT_REPO:-lephus/toknix}"
-REF="${TOKOPT_REF:-main}"
+REPO="${TOKNIX_REPO:-lephus/toknix}"
+REF="${TOKNIX_REF:-main}"
 SOURCE="git+https://github.com/${REPO}@${REF}"
 DRY_RUN=0
 UNINSTALL=0
 HOOKS=1
-VENV="${HOME}/.tokopt/venv"
+VENV="${HOME}/.toknix/venv"
 BIN_DIR="${HOME}/.local/bin"
 
-say() { printf 'tokopt: %s\n' "$*"; }
-die() { printf 'tokopt: error: %s\n' "$*" >&2; exit 1; }
+say() { printf 'toknix: %s\n' "$*"; }
+die() { printf 'toknix: error: %s\n' "$*" >&2; exit 1; }
 
 # Run a command, or only show it with --dry-run.
 run() {
@@ -66,31 +66,31 @@ find_python() {
     return 1
 }
 
-tokopt_bin() {
-    if command -v tokopt >/dev/null 2>&1; then
-        command -v tokopt
-    elif [ -x "${BIN_DIR}/tokopt" ]; then
-        printf '%s\n' "${BIN_DIR}/tokopt"
+toknix_bin() {
+    if command -v toknix >/dev/null 2>&1; then
+        command -v toknix
+    elif [ -x "${BIN_DIR}/toknix" ]; then
+        printf '%s\n' "${BIN_DIR}/toknix"
     fi
 }
 
 uninstall() {
-    tok="$(tokopt_bin || true)"
+    tok="$(toknix_bin || true)"
     if [ -n "$tok" ]; then
         run "$tok" uninstall
     else
-        say "tokopt command not found; skipping hook removal"
+        say "toknix command not found; skipping hook removal"
     fi
-    if command -v uv >/dev/null 2>&1 && uv tool list 2>/dev/null | grep -q '^tokopt '; then
-        run uv tool uninstall tokopt
+    if command -v uv >/dev/null 2>&1 && uv tool list 2>/dev/null | grep -q '^toknix '; then
+        run uv tool uninstall toknix
     fi
     if [ -d "$VENV" ]; then
         run rm -rf "$VENV"
     fi
-    if [ -L "${BIN_DIR}/tokopt" ]; then
-        run rm -f "${BIN_DIR}/tokopt"
+    if [ -L "${BIN_DIR}/toknix" ]; then
+        run rm -f "${BIN_DIR}/toknix"
     fi
-    say "removed. Your data in ~/.tokopt (stats, saved outputs) is kept; delete it by hand if you like."
+    say "removed. Your data in ~/.toknix (stats, saved outputs) is kept; delete it by hand if you like."
 }
 
 install_with_uv() {
@@ -109,7 +109,7 @@ install_with_venv() {
     run "${VENV}/bin/python" -m pip install --quiet --upgrade pip
     run "${VENV}/bin/python" -m pip install --quiet --upgrade --force-reinstall --no-deps "$SOURCE"  # same reason
     run mkdir -p "$BIN_DIR"
-    run ln -sf "${VENV}/bin/tokopt" "${BIN_DIR}/tokopt"
+    run ln -sf "${VENV}/bin/toknix" "${BIN_DIR}/toknix"
 }
 
 main() {
@@ -123,11 +123,11 @@ main() {
     else
         install_with_venv "$py"
     fi
-    tok="$(tokopt_bin || true)"
+    tok="$(toknix_bin || true)"
     if [ "$DRY_RUN" -eq 1 ]; then
-        tok="${tok:-tokopt}"
+        tok="${tok:-toknix}"
     fi
-    [ -n "$tok" ] || die "tokopt was installed but is not on PATH; add ${BIN_DIR} to PATH and run 'tokopt install'"
+    [ -n "$tok" ] || die "toknix was installed but is not on PATH; add ${BIN_DIR} to PATH and run 'toknix install'"
     case ":${PATH}:" in
         *":${BIN_DIR}:"*) ;;
         *) say "note: ${BIN_DIR} is not on PATH; add it to your shell profile" ;;

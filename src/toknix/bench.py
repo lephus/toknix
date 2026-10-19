@@ -1,8 +1,8 @@
-"""`tokopt bench` and `tokopt compare` (A6.3): A/B runs of a real agent on real tasks, and the verdict.
+"""`toknix bench` and `toknix compare` (A6.3): A/B runs of a real agent on real tasks, and the verdict.
 
 tasks.json: {repo, ref, agent, repeat, timeout, setup[], agent_args?, agent_cmd?, tasks:[{id, prompt, check, agent_args?}]}
 Each task × repeat runs in a fresh `git worktree` (always removed, even after a timeout), and its result is
-one JSON line in ~/.tokopt/results/bench-<label>.jsonl.
+one JSON line in ~/.toknix/results/bench-<label>.jsonl.
 """
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ import tempfile
 import time
 from pathlib import Path
 
-from tokopt import installer
-from tokopt.config import claude_dir, load, tokopt_home
-from tokopt.runner import shell_argv, write_out
+from toknix import installer
+from toknix.config import claude_dir, load, toknix_home
+from toknix.runner import shell_argv, write_out
 
 LABEL = re.compile(r"^[A-Za-z0-9][\w.-]{0,63}$")
 AGENT_CMD = {"claude": ["claude"], "codex": ["codex"], "gemini": ["gemini"]}
@@ -32,7 +32,7 @@ class BenchError(Exception):
 
 
 def results_path(label: str) -> Path:
-    return tokopt_home() / "results" / f"bench-{label}.jsonl"
+    return toknix_home() / "results" / f"bench-{label}.jsonl"
 
 
 # --------------------------------------------------------------------------- tasks
@@ -154,7 +154,7 @@ def insert_rules(worktree: Path, rules: str, agent: str):
     name = {"claude": "CLAUDE.md", "codex": "AGENTS.md", "gemini": "GEMINI.md"}[agent]
     f = worktree / name
     text = f.read_text(encoding="utf-8") if f.exists() else ""
-    block = f"<!-- tokopt:begin bench -->\n{rules.rstrip()}\n<!-- tokopt:end -->\n"
+    block = f"<!-- toknix:begin bench -->\n{rules.rstrip()}\n<!-- toknix:end -->\n"
     m = installer.RULES_BLOCK_RE.search(text)
     text = text[:m.start()] + block + text[m.end():] if m else (text + ("\n" if text else "") + block)
     f.write_text(text, encoding="utf-8")
@@ -171,7 +171,7 @@ def run_bench(tasks_file: str, label: str, rules_file: str | None = None, repeat
     rules = Path(rules_file).read_text(encoding="utf-8") if rules_file else None
     global_rules = global_rules_present()
     if rules is not None and global_rules:
-        print("tokopt bench: warning: your global CLAUDE.md already has a tokopt rules block; it applies to both "
+        print("toknix bench: warning: your global CLAUDE.md already has a toknix rules block; it applies to both "
               "arms, so the comparison measures the worktree block on top of it", file=sys.stderr)
     out_path = results_path(label)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -193,15 +193,15 @@ def run_bench(tasks_file: str, label: str, rules_file: str | None = None, repeat
 
 
 def _one(spec, task, rep, repo, agent, rules, rules_file, global_rules, timeout, w, label) -> dict:
-    parent = Path(tempfile.mkdtemp(prefix="tokopt-bench-"))
+    parent = Path(tempfile.mkdtemp(prefix="toknix-bench-"))
     wt = parent / "wt"
     started = time.time()
     try:
         r = _git(repo, "worktree", "add", "--detach", str(wt), spec.get("ref", "HEAD"))
         if r.returncode != 0:
             raise BenchError(f"git worktree add failed: {r.stderr.strip()}")
-        env = dict(os.environ, TOKOPT_BENCH_LABEL=label, TOKOPT_BENCH_TASK=str(task["id"]),
-                   TOKOPT_BENCH_REPEAT=str(rep))
+        env = dict(os.environ, TOKNIX_BENCH_LABEL=label, TOKNIX_BENCH_TASK=str(task["id"]),
+                   TOKNIX_BENCH_REPEAT=str(rep))
         for step in spec.get("setup", []):
             _run(_argv(step), wt, timeout, env)
         if rules is not None:
@@ -314,7 +314,7 @@ def format_compare(d: dict) -> str:
     def pct(x):
         return f"{x:+.1%}"
 
-    out = [f"tokopt compare {d['a']} → {d['b']} ({d['runs']['a']} vs {d['runs']['b']} runs, "
+    out = [f"toknix compare {d['a']} → {d['b']} ({d['runs']['a']} vs {d['runs']['b']} runs, "
            f"{len(d['tasks'])} common tasks)", "",
            f"  {'pass rate':<22}{d['pass_rate']['a']:.0%} → {d['pass_rate']['b']:.0%}",
            f"  {'median ETU':<22}{d['median_etu']['a']:,.0f} → {d['median_etu']['b']:,.0f}  {pct(d['change'])} "
@@ -340,12 +340,12 @@ def format_compare(d: dict) -> str:
 # --------------------------------------------------------------------------- CLI glue
 def bench_cmd(tasks_file: str, label: str, rules: str | None, repeat: int | None) -> int:
     if not LABEL.match(label):
-        print("tokopt bench: --label must be letters, digits, '.', '_' or '-'", file=sys.stderr)
+        print("toknix bench: --label must be letters, digits, '.', '_' or '-'", file=sys.stderr)
         return 2
     try:
         path = run_bench(tasks_file, label, rules, repeat)
     except BenchError as e:
-        print(f"tokopt bench: {e}", file=sys.stderr)
+        print(f"toknix bench: {e}", file=sys.stderr)
         return 2
     write_out(f"results: {path}\n")
     return 0
@@ -355,7 +355,7 @@ def compare_cmd(a: str, b: str, as_json: bool) -> int:
     try:
         d = compare_data(a, b)
     except BenchError as e:
-        print(f"tokopt compare: {e}", file=sys.stderr)
+        print(f"toknix compare: {e}", file=sys.stderr)
         return 1
     write_out((json.dumps(d, indent=2) if as_json else format_compare(d)) + "\n")
     return 0

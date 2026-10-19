@@ -1,4 +1,4 @@
-# tokopt — Kế hoạch thực thi
+# toknix — Kế hoạch thực thi
 
 Đọc `docs/ALGORITHMS.md` trước. Kế hoạch này chỉ nói **làm theo thứ tự nào** và **khi nào thì coi là xong**.
 
@@ -16,7 +16,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 **Trong phạm vi**
 
-- `tokopt run`, `recall`, `gain`
+- `toknix run`, `recall`, `gain`
 - Hook Claude Code: bash, read, session-start
 - `outline`, `symbol`, `refs`, `map`
 - `report`, `waste`, `context`, `snapshot`, `bench`, `compare`
@@ -40,9 +40,9 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 | File | Trạng thái |
 |---|---|
-| `src/tokopt/config.py`, `textutil.py`, `store.py` | Bản nháp, cần review và viết test |
-| `src/tokopt/filters.py`, `runner.py` | Bản nháp theo A2, chưa có test |
-| `src/tokopt/hooks.py` | Bản nháp theo A3 và A4, chưa có test |
+| `src/toknix/config.py`, `textutil.py`, `store.py` | Bản nháp, cần review và viết test |
+| `src/toknix/filters.py`, `runner.py` | Bản nháp theo A2, chưa có test |
+| `src/toknix/hooks.py` | Bản nháp theo A3 và A4, chưa có test |
 | `tests/fixtures/*.txt` | Output thật đã chụp: pytest, npm, pip, tsc, git |
 | Các file khác | Chưa có |
 
@@ -58,9 +58,9 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 ## P1 — Lõi lọc output
 
 **P1-T1 `[x]` Hoàn thiện cấu trúc package**
-- Có `pyproject.toml` (build backend: setuptools, khai báo `[project.scripts] tokopt = "tokopt.cli:main"`, `requires-python >= 3.9`).
-- Có `src/tokopt/cli.py` dùng argparse, subcommand rỗng cho mọi lệnh ở phạm vi v0.1.
-- `pip install -e .` thành công và `tokopt --version` in `0.1.0`.
+- Có `pyproject.toml` (build backend: setuptools, khai báo `[project.scripts] toknix = "toknix.cli:main"`, `requires-python >= 3.9`).
+- Có `src/toknix/cli.py` dùng argparse, subcommand rỗng cho mọi lệnh ở phạm vi v0.1.
+- `pip install -e .` thành công và `toknix --version` in `0.1.0`.
 
 **P1-T2 `[x]` Test cho `textutil` và `classify` (A2.2, A2.3)**
 - Có ≥ 25 test case cho `program_of` và `classify`, bao phủ: `VAR=x cmd`, `npx jest`, `uv run pytest`, `python -m pytest`, `sudo docker build`, `npm run test:unit`, `yarn` không tham số, `git -C dir status` (đã chốt 2026-10-18: hỗ trợ, bỏ global option của git theo A2.3).
@@ -73,7 +73,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Bổ sung fixture tự sinh cho jest, go test, cargo test, eslint (viết tay theo format thật, ghi rõ nguồn trong `tests/fixtures/README.md`).
 - Sửa 2 lỗi đã phát hiện trong bản nháp khi chạy thử trên fixture:
   - BUG-1: `f_install` không bỏ được dòng progress `━━━… 46.4/46.4 kB`. Regex dùng `\b` sau `━`, mà `━` không phải ký tự word nên `\b` không khớp.
-  - BUG-2: `f_gitlog` trên `git_log.txt` (125 commit) trả về 30 dòng nhưng thiếu dòng `[tokopt] 95 older commits omitted`.
+  - BUG-2: `f_gitlog` trên `git_log.txt` (125 commit) trả về 30 dòng nhưng thiếu dòng `[toknix] 95 older commits omitted`.
     - Kết quả (2026-10-19): không tái hiện. `f_gitlog` trả 31 dòng có dòng omitted; 30 dòng là do `collapse_similar` gộp 4 commit liền nhau thành 3 dòng. Đã thêm test hồi quy.
 - Sửa cho khớp bất biến ERROR_RE tuyệt đối (A2.4): `budget_cut` giữ mọi dòng lỗi bất kể ngân sách; `f_lint` chỉ giới hạn 15 dòng không khớp ERROR_RE mỗi file. Property test kiểm tra dòng lỗi có mặt **nguyên văn**.
 
@@ -83,15 +83,15 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Bảng `runs` thêm cột `error_overflow`.
 - Mọi dòng mới trong bảng "Kiểm chứng A2" pass; fixture viết tay `build_longlines.txt`, `build_timestamps.txt` ghi nguồn trong `tests/fixtures/README.md`.
 
-**P1-T4 `[x]` `tokopt run` và `recall` end-to-end**
-- `tokopt run -- "exit 3"` trả exit code 3.
-- `tokopt run -- "python -m pytest tests/fixtures_py"` (một suite có 2 test fail) in footer `tokopt recall <id>`; lệnh `tokopt recall <id>` in lại nguyên output gốc.
-- `TOKOPT_RAW=1` cho ra output nguyên văn.
+**P1-T4 `[x]` `toknix run` và `recall` end-to-end**
+- `toknix run -- "exit 3"` trả exit code 3.
+- `toknix run -- "python -m pytest tests/fixtures_py"` (một suite có 2 test fail) in footer `toknix recall <id>`; lệnh `toknix recall <id>` in lại nguyên output gốc.
+- `TOKNIX_RAW=1` cho ra output nguyên văn.
 - **(N2.1)** `recall` ghi 1 dòng vào bảng `recalls(ts, tee_id)`; tee được lưu cả khi có biến đổi mất thông tin dù kích thước giảm < 10% (A2.1).
 - Chạy được trên Windows qua Git Bash (CI xanh trên `windows-latest`).
   - Kết quả (2026-10-19): code đã xử lý Windows (tìm Git Bash, không lấy bash của WSL, output UTF-8 dạng byte, tee nhị phân), có unit test cho việc chọn shell. Chưa có CI nên tiêu chí `windows-latest` được kiểm ở P5-T2.
 
-**P1-T5 `[x]` `tokopt gain`**
+**P1-T5 `[x]` `toknix gain`**
 - Đọc bảng `runs` và `guard`, in tổng token tiết kiệm ước lượng theo kind và theo rule, cùng top 10 lệnh.
 - Có `--json`.
 - DB chưa tồn tại thì in "no data yet", không crash.
@@ -102,37 +102,37 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 **P2-T1 `[x]` Test `hook bash` (A3)**
 - Test bảng: ≥ 20 lệnh, mỗi lệnh có kỳ vọng wrap hoặc không.
-  - Bắt buộc có: `cd x && npm test` → không wrap; `npm test` → wrap; `git status` → wrap; `echo hi` → không wrap; lệnh đã có `tokopt run` → không wrap; `run_in_background` → không wrap; heredoc → không wrap.
+  - Bắt buộc có: `cd x && npm test` → không wrap; `npm test` → wrap; `git status` → wrap; `echo hi` → không wrap; lệnh đã có `toknix run` → không wrap; `run_in_background` → không wrap; heredoc → không wrap.
 - Lệnh được wrap phải chạy ra kết quả giống lệnh gốc: test thật với lệnh có dấu nháy đơn, nháy kép, `$VAR`, pipe, `&&`.
 - JSON đầu vào lỗi → exit 0, không in gì.
 
 **P2-T2 `[x]` Test `hook read` (A4)**
 - R1: `node_modules/x/index.js` và `package-lock.json` bị deny; `src/app.ts` được cho qua.
-- R2: file 2.000 dòng không có offset/limit bị deny, thông báo có lệnh `tokopt outline`; cùng file đó có `limit=100` thì được cho qua.
+- R2: file 2.000 dòng không có offset/limit bị deny, thông báo có lệnh `toknix outline`; cùng file đó có `limit=100` thì được cho qua.
 - R3: đọc lần 3 cùng range thì deny; sau khi `touch` file thì cho qua; sau `session-start` với `source=compact` thì cho qua.
 - Mỗi lần deny ghi đúng 1 dòng vào bảng `guard`.
 - **(N1.4)** Grep `output_mode="content"` không có `head_limit` → `updatedInput` thêm `head_limit=200`; có `head_limit` sẵn hoặc mode khác → không đụng; `grep_head_limit=0` → tắt.
 
-**P2-T3 `[x]` `tokopt install` / `uninstall` / `doctor` cho Claude Code (A8)**
+**P2-T3 `[x]` `toknix install` / `uninstall` / `doctor` cho Claude Code (A8)**
 - Cài vào `settings.json` có sẵn nội dung của người dùng: giữ nguyên mọi key cũ, thêm đúng 3 hook và statusLine (chỉ khi chưa có).
 - Chạy install 2 lần không tạo entry trùng.
 - `uninstall` trả `settings.json` về đúng như trước khi cài (so sánh JSON).
-- `doctor` liệt kê: hook nào đã cài, đường dẫn tokopt, phiên bản Python, số bản ghi trong `runs` và `guard` 7 ngày qua.
+- `doctor` liệt kê: hook nào đã cài, đường dẫn toknix, phiên bản Python, số bản ghi trong `runs` và `guard` 7 ngày qua.
 - Test dùng `HOME` tạm, không đụng `~` thật.
 
 **P2-T4 `[ ]` Kiểm chứng trên Claude Code thật (thủ công, người dùng chạy)**
-- Hướng dẫn trong `docs/VERIFY.md`: cài tokopt, mở một repo có test, yêu cầu agent "chạy test và sửa test fail".
+- Hướng dẫn trong `docs/VERIFY.md`: cài toknix, mở một repo có test, yêu cầu agent "chạy test và sửa test fail".
 - Đạt khi:
-  - `tokopt gain` có ≥ 1 bản ghi kind ≠ passthrough.
-  - Transcript cho thấy lệnh đã bị viết lại thành `tokopt run -- …`.
+  - `toknix gain` có ≥ 1 bản ghi kind ≠ passthrough.
+  - Transcript cho thấy lệnh đã bị viết lại thành `toknix run -- …`.
   - Agent vẫn sửa được test.
 - Ghi kết quả vào `docs/VERIFY.md` và chốt hai `[ASSUMPTION]` của A3 và A4 (updatedInput khi không có permissionDecision; Claude Code có tự dedupe Read không).
 - **(N1.4)** Chốt thêm: `updatedInput` cho Grep có được áp dụng không, và khi `head_limit` cắt bớt thì agent có được báo không. Không được báo → đổi mặc định `grep_head_limit` thành 0.
-- Chốt thêm (từ P2-T3): matcher `compact|clear` của SessionStart có kích hoạt hook không (sau `/compact`, đọc lại file đã đọc 2 lần phải được cho qua); và hook chạy được khi Claude Code khởi động từ môi trường không có `PYTHONPATH` (`tokopt doctor` không báo `does not run`).
+- Chốt thêm (từ P2-T3): matcher `compact|clear` của SessionStart có kích hoạt hook không (sau `/compact`, đọc lại file đã đọc 2 lần phải được cho qua); và hook chạy được khi Claude Code khởi động từ môi trường không có `PYTHONPATH` (`toknix doctor` không báo `does not run`).
 
 ## P3 — Truy xuất code
 
-**P3-T1 `[x]` `extract` cho Python + `tokopt outline` (A5.1, A5.2)**
+**P3-T1 `[x]` `extract` cho Python + `toknix outline` (A5.1, A5.2)**
 - Bao gồm class lồng, async def, decorator.
 - Khớp 100% với `expected_outline.json`.
 
@@ -140,26 +140,26 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Mỗi ngôn ngữ có một file mẫu ≥ 80 dòng (có class, method, hàm lồng, chuỗi chứa `{`).
 - Recall symbol ≥ 90%, sai `end` tối đa 1 dòng.
 
-**P3-T3 `[x]` `tokopt symbol` và `tokopt refs`**
-- Trên chính repo tokopt: `tokopt symbol budget_cut` in đúng thân hàm kèm số dòng.
-- `tokopt refs classify` liệt kê đủ chỗ gọi, không lẫn dòng định nghĩa.
+**P3-T3 `[x]` `toknix symbol` và `toknix refs`**
+- Trên chính repo toknix: `toknix symbol budget_cut` in đúng thân hàm kèm số dòng.
+- `toknix refs classify` liệt kê đủ chỗ gọi, không lẫn dòng định nghĩa.
 - Repo 2.000 file: chạy < 2 giây (benchmark bằng script trong `scripts/`).
 
-**P3-T4 `[x]` `tokopt map`**
+**P3-T4 `[x]` `toknix map`**
 - Output không vượt `--budget` quá 5%.
 - File có nhiều symbol được tham chiếu nhiều đứng đầu (test với một repo fixture nhỏ có thứ hạng biết trước).
 
 **P3-T5 `[x]` Rules block v1**
 - Viết `templates/rules.md` (≤ 350 token theo A1), nội dung:
-  - dùng `tokopt outline`, `symbol`, `refs` trước khi Read cả file;
-  - khi output bị cắt thì dùng `tokopt recall`;
+  - dùng `toknix outline`, `symbol`, `refs` trước khi Read cả file;
+  - khi output bị cắt thì dùng `toknix recall`;
   - chỉ trả về diff, không tóm tắt lại;
   - giữ đầy đủ suy luận khi debug, bảo mật, migration;
   - một task một session.
   - **(N1.5b)** viết ít: không tóm tắt lại thay đổi vừa làm, không dán lại code đã có trong diff, sửa file có sẵn bằng Edit thay vì Write, trả lời ngắn khi không được hỏi giải thích.
 - Thêm ít nhất 1 biến thể ngắn gọn hơn trong `templates/variants/`, mỗi bản ≤ 350 token. Mặc định cài v1.
 - `install` chèn block vào CLAUDE.md, AGENTS.md, GEMINI.md đúng theo marker.
-  - Kết quả (2026-10-19): template nằm trong package ở `src/tokopt/templates/` (khai báo `package-data`), vì `templates/` ở gốc repo không có trong gói khi cài bằng pip/uv. v1: 282 token; `variants/terse.md`: 107 token.
+  - Kết quả (2026-10-19): template nằm trong package ở `src/toknix/templates/` (khai báo `package-data`), vì `templates/` ở gốc repo không có trong gói khi cài bằng pip/uv. v1: 282 token; `variants/terse.md`: 107 token.
 
 ## P4 — Đo lường
 
@@ -182,9 +182,9 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
   - REJECT khi pass rate giảm;
   - INCONCLUSIVE khi chênh lệch nằm trong nhiễu.
 - Worktree luôn được xoá kể cả khi agent bị timeout.
-- **(N1.5c)** `bench --rules <file>` chèn block vào CLAUDE.md của worktree; cảnh báo khi CLAUDE.md global đã có block tokopt. `compare` có cột median output tokens và verdict output theo A6.3 (agent giả: biến thể giảm output 30%, pass như nhau → thắng; giảm 5% → không thắng).
+- **(N1.5c)** `bench --rules <file>` chèn block vào CLAUDE.md của worktree; cảnh báo khi CLAUDE.md global đã có block toknix. `compare` có cột median output tokens và verdict output theo A6.3 (agent giả: biến thể giảm output 30%, pass như nhau → thắng; giảm 5% → không thắng).
 
-**P4-T4 `[x]` `tokopt statusline` (A7)**
+**P4-T4 `[x]` `toknix statusline` (A7)**
 - Transcript 20 MB: lần chạy đầu < 1 giây, các lần sau < 150 ms (đọc tăng dần).
 - Ngưỡng màu đúng ở 60% và 80%.
 
@@ -220,15 +220,15 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 **P6-T1 `[ ]` Baseline và A/B**
 1. Chọn 5–10 task thật có lệnh check.
-2. `tokopt bench --label baseline` khi chưa cài hook.
-3. Cài hook, `tokopt bench --label v01`.
-4. `tokopt compare baseline v01`.
+2. `toknix bench --label baseline` khi chưa cài hook.
+3. Cài hook, `toknix bench --label v01`.
+4. `toknix compare baseline v01`.
 5. **(N1.5c)** Chạy bench với từng biến thể rules so với v1; nếu có biến thể thắng thì đổi mặc định cài sang biến thể đó.
 
 Đạt khi:
 - Verdict là ACCEPT.
 - Pass rate không giảm.
-- `tokopt waste` sau 1 tuần cho thấy nhóm (2) "output ≥ 5k token" giảm ≥ 50% so với snapshot `before`. `[ASSUMPTION]`: ngưỡng 50% là mục tiêu, chưa có dữ liệu nền.
+- `toknix waste` sau 1 tuần cho thấy nhóm (2) "output ≥ 5k token" giảm ≥ 50% so với snapshot `before`. `[ASSUMPTION]`: ngưỡng 50% là mục tiêu, chưa có dữ liệu nền.
 
 ---
 
@@ -236,8 +236,8 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 | ID | Rủi ro | Xử lý |
 |---|---|---|
-| RK-1 | Claude Code bỏ qua `updatedInput` khi không có `permissionDecision` | P2-T4 kiểm chứng; phương án dự phòng là rules để agent tự gõ `tokopt run --` |
-| RK-2 | Lọc mất dòng quan trọng nên agent đoán sai | Bất biến ERROR_RE (có property test), footer `recall`, `TOKOPT_RAW=1`, verdict của bench |
+| RK-1 | Claude Code bỏ qua `updatedInput` khi không có `permissionDecision` | P2-T4 kiểm chứng; phương án dự phòng là rules để agent tự gõ `toknix run --` |
+| RK-2 | Lọc mất dòng quan trọng nên agent đoán sai | Bất biến ERROR_RE (có property test), footer `recall`, `TOKNIX_RAW=1`, verdict của bench |
 | RK-3 | Read guard làm agent kẹt vòng lặp | Mọi lần deny đều nêu cách đọc thay thế; R3 cho phép 2 lần; reset khi compaction; mọi rule tắt được trong config |
-| RK-4 | Hook làm chậm mỗi lượt gọi | Đo thời gian khởi động `tokopt hook` (mục tiêu < 80 ms); import lười, không import module đo lường trong hook |
+| RK-4 | Hook làm chậm mỗi lượt gọi | Đo thời gian khởi động `toknix hook` (mục tiêu < 80 ms); import lười, không import module đo lường trong hook |
 | RK-5 | Schema transcript thay đổi | Parser phòng thủ; test với fixture; `doctor` cảnh báo khi đọc được 0 usage |

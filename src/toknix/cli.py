@@ -5,7 +5,7 @@ import argparse
 import shlex
 import sys
 
-from tokopt import __version__
+from toknix import __version__
 
 COMMANDS = [
     ("run", "run a command and print filtered output (A2)"),
@@ -38,8 +38,8 @@ def positive_int(text: str) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="tokopt", description="Cut the tokens AI coding agents waste, and prove it.")
-    parser.add_argument("--version", action="version", version=f"tokopt {__version__}")
+    parser = argparse.ArgumentParser(prog="toknix", description="Cut the tokens AI coding agents waste, and prove it.")
+    parser.add_argument("--version", action="version", version=f"toknix {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="<command>")
     for name, help_text in COMMANDS:
         p = sub.add_parser(name, help=help_text)
@@ -90,8 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _setup(command: str) -> int:
-    from tokopt import installer
-    from tokopt.runner import write_out
+    from toknix import installer
+    from toknix.runner import write_out
     if command == "doctor":
         lines, ok = installer.doctor()
         write_out("\n".join(lines) + "\n")
@@ -99,10 +99,10 @@ def _setup(command: str) -> int:
     try:
         msgs = installer.install() if command == "install" else installer.uninstall()
     except (installer.InstallError, OSError) as e:
-        print(f"tokopt {command}: {e}", file=sys.stderr)
+        print(f"toknix {command}: {e}", file=sys.stderr)
         return 1
     if command == "install":
-        msgs.append("restart Claude Code to load the hooks; check with `tokopt doctor`")
+        msgs.append("restart Claude Code to load the hooks; check with `toknix doctor`")
     write_out("".join(m + "\n" for m in msgs))
     return 0
 
@@ -115,62 +115,62 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if ns.command == "hook":
         try:
-            from tokopt import hooks
+            from toknix import hooks
             return hooks.main(ns.args[0] if ns.args else "")
         except Exception:  # a hook must never break the agent, not even a broken install
             return 0
     if ns.command == "run":
         words = ns.cmd[1:] if ns.cmd[:1] == ["--"] else ns.cmd
         if not words:
-            print('usage: tokopt run -- "<command>"', file=sys.stderr)
+            print('usage: toknix run -- "<command>"', file=sys.stderr)
             return 2
-        from tokopt import runner
+        from toknix import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
     if ns.command in ("bench", "compare"):
-        from tokopt import bench
+        from toknix import bench
         if ns.command == "bench":
             return bench.bench_cmd(ns.tasks, ns.label, ns.rules, ns.repeat)
         return bench.compare_cmd(ns.a, ns.b, ns.json)
     if ns.command in ("report", "waste", "context", "snapshot"):
-        from tokopt import reports
+        from toknix import reports
         return reports.run(ns.command, ns.days, getattr(ns, "json", False), getattr(ns, "path", None),
                            getattr(ns, "label", None))
     if ns.command == "map":
-        from tokopt import codesearch
+        from toknix import codesearch
         return codesearch.repo_map(ns.dir, ns.budget)
     if ns.command in ("symbol", "refs"):
-        from tokopt import codesearch
+        from toknix import codesearch
         if ns.command == "symbol":
             return codesearch.symbol(ns.name, ns.path, ns.kind)
         return codesearch.refs(ns.name, ns.path)
     if ns.command == "outline":
-        from tokopt import outline
+        from toknix import outline
         return outline.run(ns.file)
     if ns.command == "gain":
-        from tokopt import measure
+        from toknix import measure
         return measure.gain(ns.days, ns.json)
     if ns.command == "statusline":
         try:
             if sys.stdin.isatty():  # typed by hand: there is no session JSON to wait for
-                print("tokopt statusline: Claude Code runs this with the session JSON on stdin", file=sys.stderr)
+                print("toknix statusline: Claude Code runs this with the session JSON on stdin", file=sys.stderr)
                 return 0
-            from tokopt import statusline
+            from toknix import statusline
         except Exception:
             return 0
         return statusline.main()
     if ns.command in ("install", "uninstall", "doctor"):
         return _setup(ns.command)
     if ns.command == "init-project":
-        from tokopt import installer
-        from tokopt.runner import write_out
+        from toknix import installer
+        from toknix.runner import write_out
         try:
             write_out("".join(m + "\n" for m in installer.init_project(ns.path or ".")))
         except (installer.InstallError, OSError) as e:
-            print(f"tokopt init-project: {e}", file=sys.stderr)
+            print(f"toknix init-project: {e}", file=sys.stderr)
             return 1
         return 0
     if ns.command == "recall":
-        from tokopt import runner
+        from toknix import runner
         return runner.recall(ns.id, ns.grep, ns.lines)
-    print(f"tokopt {ns.command}: not implemented yet", file=sys.stderr)
+    print(f"toknix {ns.command}: not implemented yet", file=sys.stderr)
     return 2

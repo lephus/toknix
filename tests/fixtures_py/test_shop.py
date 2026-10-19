@@ -1,6 +1,6 @@
 """Sample suite for the P1-T4 end-to-end test: 40 tests pass, 2 fail on purpose.
 
-Not part of tokopt's own suite (no __init__.py, so `unittest discover -s tests` skips this folder).
+Not part of toknix's own suite (no __init__.py, so `unittest discover -s tests` skips this folder).
 Run it with `python -m pytest tests/fixtures_py` or `python -m unittest discover -s tests/fixtures_py`.
 """
 import unittest

@@ -3,7 +3,7 @@ import unittest
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt.filters import classify, program_of
+from toknix.filters import classify, program_of
 
 # (cmd, expected program, expected args)
 PROGRAM_CASES = [

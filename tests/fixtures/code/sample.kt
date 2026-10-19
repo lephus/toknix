@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): Kotlin.
+// Sample for `toknix outline` (P3-T2): Kotlin.
 package com.example.shop
 
 import kotlin.math.max

@@ -1,4 +1,4 @@
-"""`tokopt run -- <command>`: run a command, print filtered output, keep the raw output recallable."""
+"""`toknix run -- <command>`: run a command, print filtered output, keep the raw output recallable."""
 from __future__ import annotations
 
 import math
@@ -12,9 +12,9 @@ import time
 import traceback
 from pathlib import Path, PureWindowsPath
 
-from tokopt import filters, store
-from tokopt.config import load, tokopt_home
-from tokopt.textutil import char_classes, normalize
+from toknix import filters, store
+from toknix.config import load, toknix_home
+from toknix.textutil import char_classes, normalize
 
 QUIET_ENV = {"NO_COLOR": "1", "FORCE_COLOR": "0", "TERM": "dumb", "PAGER": "cat", "GIT_PAGER": "cat",
              "PIP_PROGRESS_BAR": "off", "npm_config_progress": "false", "npm_config_fund": "false"}
@@ -23,7 +23,7 @@ WSL_BASH_RE = re.compile(r"(?i)\\windows\\system32\\|\\windowsapps\\")
 
 
 def tee_dir() -> Path:
-    d = tokopt_home() / "tee"
+    d = toknix_home() / "tee"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -43,8 +43,8 @@ def find_bash(windows: bool | None = None, env=None, which=shutil.which, exists=
     like Claude Code (A2.1): never WSL's System32\\bash.exe, which runs the command in another OS."""
     windows = os.name == "nt" if windows is None else windows
     env = os.environ if env is None else env
-    if env.get("TOKOPT_SHELL"):
-        return env["TOKOPT_SHELL"]
+    if env.get("TOKNIX_SHELL"):
+        return env["TOKNIX_SHELL"]
     if not windows:
         return which("bash") or "/bin/sh"
     candidates = [env.get("CLAUDE_CODE_GIT_BASH_PATH", "")]
@@ -91,16 +91,16 @@ def run(cmd: str, raw: bool = False) -> int:
     try:
         p = subprocess.run(shell_argv(cmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
     except OSError as e:
-        print(f"tokopt: cannot start shell: {e}", file=sys.stderr)
+        print(f"toknix: cannot start shell: {e}", file=sys.stderr)
         return 127
     code = exit_status(p.returncode)
-    if raw or os.environ.get("TOKOPT_RAW") == "1":
+    if raw or os.environ.get("TOKNIX_RAW") == "1":
         write_out(p.stdout)
         return code
     try:
         body = filter_output(cmd, p.stdout, code)
-    except Exception:  # a bug in tokopt must never cost the agent its output
-        if os.environ.get("TOKOPT_DEBUG") == "1":
+    except Exception:  # a bug in toknix must never cost the agent its output
+        if os.environ.get("TOKNIX_DEBUG") == "1":
             traceback.print_exc(file=sys.stderr)
         write_out(p.stdout)
         return code
@@ -123,7 +123,7 @@ def filter_output(cmd: str, raw: bytes, code: int) -> str:
     if not small and (lossy or len(body) < len(text) * 0.9):  # a lossy rewrite is recallable even if small
         tee_id = save_tee(raw, cfg["tee_keep_days"])
         if tee_id:
-            body += (f"\n[tokopt: {len(lines)} → {len(out)} lines; full output: tokopt recall {tee_id};"
+            body += (f"\n[toknix: {len(lines)} → {len(out)} lines; full output: toknix recall {tee_id};"
                      f" exit {code}]")
     raw_cc, out_cc = char_classes(text), char_classes(body)
     store.record_run(kind, cmd, code, len(text), len(body), len(lines), len(out), tee_id, overflow,
@@ -162,16 +162,16 @@ def recall(tee_id: str, grep: str | None = None, lines: str | None = None) -> in
         rx = re.compile(grep) if grep else None
         span = parse_span(lines) if lines else None
     except re.error as e:
-        print(f"tokopt recall: --grep: {e}", file=sys.stderr)
+        print(f"toknix recall: --grep: {e}", file=sys.stderr)
         return 2
     except ValueError as e:
-        print(f"tokopt recall: {e}", file=sys.stderr)
+        print(f"toknix recall: {e}", file=sys.stderr)
         return 2
-    f = tokopt_home() / "tee" / f"{tee_id}.log"
+    f = toknix_home() / "tee" / f"{tee_id}.log"
     if TEE_ID_RE.match(tee_id):
         store.record_recall(tee_id)  # N2.1: how often a cut was not enough
     if not TEE_ID_RE.match(tee_id) or not f.is_file():
-        print(f"tokopt: no saved output '{tee_id}' (kept {load()['tee_keep_days']} days)", file=sys.stderr)
+        print(f"toknix: no saved output '{tee_id}' (kept {load()['tee_keep_days']} days)", file=sys.stderr)
         return 1
     data = f.read_bytes()
     if rx is None and span is None:

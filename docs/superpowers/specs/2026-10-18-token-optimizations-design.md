@@ -1,4 +1,4 @@
-# Thiết kế: mở rộng tối ưu token cho tokopt v0.1
+# Thiết kế: mở rộng tối ưu token cho toknix v0.1
 
 - Ngày: 2026-10-18
 - Trạng thái: đã duyệt 2026-10-18; đã gộp vào `docs/ALGORITHMS.md` và `docs/PLAN.md`
@@ -78,7 +78,7 @@ Bảy hạng mục, chia hai nhóm. Tất cả nằm trong v0.1.
 
 ## 5. Ràng buộc (giữ nguyên từ plan)
 
-Python ≥ 3.9, chỉ stdlib kể cả test; không gọi mạng; hook lỗi → exit 0 im lặng; `tokopt run` giữ nguyên exit code; không ghi ra ngoài `~/.tokopt/` (trừ `install`, `init-project`); đa nền tảng. Mọi biến đổi mà agent nhìn thấy đều có cờ tắt trong config; `recall` luôn trả output nguyên văn.
+Python ≥ 3.9, chỉ stdlib kể cả test; không gọi mạng; hook lỗi → exit 0 im lặng; `toknix run` giữ nguyên exit code; không ghi ra ngoài `~/.toknix/` (trừ `install`, `init-project`); đa nền tảng. Mọi biến đổi mà agent nhìn thấy đều có cờ tắt trong config; `recall` luôn trả output nguyên văn.
 
 ---
 
@@ -91,7 +91,7 @@ Python ≥ 3.9, chỉ stdlib kể cả test; không gọi mạng; hook lỗi →
 - `gain`: hiển thị hai số.
   - **Trực tiếp:** Σ(raw_chars − out_chars) quy ra token (như hiện tại, nhưng dùng `est_tokens` mới của N1.2a).
   - **Tính cả đọc lại (ước tính):** trực tiếp × (w_cw + w_cr·R̄). `R̄` = trung vị số request còn lại sau mỗi tool_result Bash trong transcript N ngày gần nhất. Chưa đọc được transcript thì `R̄ = 20` `[ASSUMPTION]` và ghi rõ "dùng giá trị mặc định".
-- Không truyền session_id từ hook vào lệnh `tokopt run` để tính R chính xác từng lần; dùng `R̄` **(quyết định của người viết: giữ lệnh viết lại đơn giản, tránh thêm khác biệt với permission rule)**.
+- Không truyền session_id từ hook vào lệnh `toknix run` để tính R chính xác từng lần; dùng `R̄` **(quyết định của người viết: giữ lệnh viết lại đơn giản, tránh thêm khác biệt với permission rule)**.
 - `statusline` giữ số "saved" trực tiếp (thận trọng, vì R tương lai chưa biết) **(quyết định của người viết)**.
 
 ### N1.2 Bộ lọc nhận biết chi phí token
@@ -107,7 +107,7 @@ est = Σ chars_lớp / ratio_lớp
 
 - Tỉ lệ nằm trong config `token_ratios`, giá trị ban đầu `default 4.0, hex 2.0, non_ascii 1.5` `[ASSUMPTION]`, sẽ được thay bằng số hiệu chỉnh ở N2.2.
 - Một lượt regex duy nhất; hook read vẫn dùng `size // 4` để giữ tốc độ.
-- **Bộ lọc (`tokopt run`) luôn dùng tỉ lệ trong config, không bao giờ đọc kết quả hiệu chỉnh của N2.2.** Kết quả hiệu chỉnh chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`). Như vậy lượng output agent nhận được không tự thay đổi sau lưng người dùng, đúng nguyên tắc của Nhóm 2, và tỉ lệ dùng khi Codex chạy `tokopt run` cũng giống Claude Code **(quyết định của người viết)**.
+- **Bộ lọc (`toknix run`) luôn dùng tỉ lệ trong config, không bao giờ đọc kết quả hiệu chỉnh của N2.2.** Kết quả hiệu chỉnh chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`). Như vậy lượng output agent nhận được không tự thay đổi sau lưng người dùng, đúng nguyên tắc của Nhóm 2, và tỉ lệ dùng khi Codex chạy `toknix run` cũng giống Claude Code **(quyết định của người viết)**.
 
 **b. Ngân sách cắt theo token.** Thêm `max_tokens` (mặc định 3.000 `[ASSUMPTION]`, gấp đôi khi lệnh fail). `max_lines` vẫn giữ làm trần phụ. `budget_cut` dừng khi chạm trần nào trước. Mọi dòng khớp `ERROR_RE` luôn được giữ nguyên văn, bất kể ngân sách (xem mục 9). Phần còn lại của đầu ra không vượt `max_tokens` quá 5%; tức là đầu ra = toàn bộ dòng lỗi + phần không phải lỗi trong ngân sách.
 - `gitdiff` vẫn không qua `budget_cut` và vẫn không bao giờ cắt giữa hunk, nhưng ngân sách khối file tính theo cả hai trần: 400 dòng **và** `max_tokens`, chạm trần nào trước thì dừng. Một khối file mà riêng nó đã vượt ngân sách (ví dụ file minified hoặc file sinh tự động) được liệt kê `path (+a -d)` kèm gợi ý `git diff -- <file>` như các file còn lại **(quyết định của người viết)**.
@@ -161,7 +161,7 @@ est = Σ chars_lớp / ratio_lớp
 
 - `report`: tỉ trọng output = Σ(output·w_out) / Σ ETU, theo phiên và tổng.
 - `waste` thêm nhóm (7): phiên có tỉ trọng output > 35% `[ASSUMPTION]`, kèm phân rã output theo loại nội dung trong transcript: thinking, văn bản trả lời, input của tool ghi file (Write, Edit, MultiEdit, NotebookEdit), input tool khác. `usage` chỉ có tổng, nên phân rã theo tỉ lệ ký tự; nếu thinking bị ẩn trong transcript thì phần thinking = output_tokens − ước lượng phần nhìn thấy.
-- Gợi ý theo nhóm lớn nhất: Write chiếm nhiều → "sửa file có sẵn bằng Edit"; văn bản trả lời → rules viết ngắn; thinking → chỉ gợi ý giảm effort cho việc đơn giản (tokopt không tự đổi).
+- Gợi ý theo nhóm lớn nhất: Write chiếm nhiều → "sửa file có sẵn bằng Edit"; văn bản trả lời → rules viết ngắn; thinking → chỉ gợi ý giảm effort cho việc đơn giản (toknix không tự đổi).
 
 **b. Rules.** `templates/rules.md` v1 (P3-T5) có thêm phần "viết ít":
 
@@ -175,14 +175,14 @@ Thêm ít nhất một biến thể ngắn gọn hơn trong `templates/variants/
 
 **c. Chọn bằng bench.**
 
-- `tokopt bench` thêm `--rules <file>`: chèn rules block vào CLAUDE.md / AGENTS.md của **worktree** (giữa marker như A8) trước khi chạy agent.
-- Nếu CLAUDE.md global của người dùng đã có block tokopt thì bench cảnh báo, vì block đó ảnh hưởng cả hai nhánh A và B.
+- `toknix bench` thêm `--rules <file>`: chèn rules block vào CLAUDE.md / AGENTS.md của **worktree** (giữa marker như A8) trước khi chạy agent.
+- Nếu CLAUDE.md global của người dùng đã có block toknix thì bench cảnh báo, vì block đó ảnh hưởng cả hai nhánh A và B.
 - `compare` thêm cột median output tokens và một verdict riêng cho output.
 - Cách chọn biến thể **(quyết định của người viết)**:
   - Nhánh A luôn là rules v1; mỗi biến thể là một nhánh B, so riêng từng cặp với v1 (không đấu loại vòng tròn).
   - Biến thể thắng khi: pass rate không giảm, median output tokens giảm ≥ 10% và cận trên CI 95% bootstrap (như A6.3) của mức thay đổi output < 0. Không đòi tổng ETU giảm 10%, vì rules chỉ tác động lên phần output.
   - Nhiều biến thể cùng thắng thì chọn biến thể giảm output nhiều nhất.
-- Bench không được ghi ra ngoài `~/.tokopt/` và worktree, nên không tự cô lập CLAUDE.md global hay hook của người dùng; chỉ cảnh báo như trên và ghi trạng thái đó vào kết quả bench.
+- Bench không được ghi ra ngoài `~/.toknix/` và worktree, nên không tự cô lập CLAUDE.md global hay hook của người dùng; chỉ cảnh báo như trên và ghi trạng thái đó vào kết quả bench.
 - Chạy bench tốn tiền thật nên do người dùng chạy (P6). Khi chưa có số liệu, mặc định cài v1.
 
 ### N2.1 Ghi nhận recall
@@ -196,7 +196,7 @@ Thêm ít nhất một biến thể ngắn gọn hơn trong `templates/variants/
 
 - Với hai request liên tiếp `k`, `k+1` trong cùng phiên, không có compaction hay cache vỡ ở giữa: `context = input + cache_read + cache_write`, `y = context_{k+1} − context_k − output_k`, `x` = số ký tự theo từng lớp (N1.2a) của các tool_result nằm giữa hai request.
 - Hồi quy bình phương tối thiểu không hệ số chặn (giải hệ phương trình chuẩn 3×3 bằng stdlib) trên ≥ 200 mẫu, bỏ mẫu `y ≤ 0` và mẫu ngoại lai.
-- Kết quả lưu ở `~/.tokopt/calibration.json`, theo từng agent (v0.1 chỉ Claude Code), và chỉ dùng cho báo cáo (xem N1.2a). `est_tokens` chỉ dùng kết quả hiệu chỉnh khi sai số trung vị trên tập kiểm tra < 15% `[ASSUMPTION]`; nếu không đạt thì giữ mặc định.
+- Kết quả lưu ở `~/.toknix/calibration.json`, theo từng agent (v0.1 chỉ Claude Code), và chỉ dùng cho báo cáo (xem N1.2a). `est_tokens` chỉ dùng kết quả hiệu chỉnh khi sai số trung vị trên tập kiểm tra < 15% `[ASSUMPTION]`; nếu không đạt thì giữ mặc định.
 - Rủi ro đã biết: output_k có chứa thinking, mà thinking có thể không được giữ lại trong context ở request sau. Vì vậy phải lọc mẫu và đặt ngưỡng chất lượng như trên.
 
 ---
@@ -239,6 +239,6 @@ Plan cũ có mâu thuẫn: `CLAUDE.md` và A2.4 cấm bỏ dòng khớp `ERROR_R
 - Luôn lưu output gốc để `recall` khi có bất kỳ biến đổi làm mất thông tin nào (cắt dòng dài, chuẩn hoá), kể cả khi tổng kích thước giảm chưa tới 10%.
 - Lọc request của subagent khỏi các phép tính theo phiên; nhận biết TTL 1 giờ từ các trường usage nếu transcript có.
 - Schema bảng chi tiết và cách migrate DB đang có.
-- Tên lệnh cho phần hiệu chỉnh (lệnh riêng `tokopt calibrate` hay chạy trong `report`).
+- Tên lệnh cho phần hiệu chỉnh (lệnh riêng `toknix calibrate` hay chạy trong `report`).
 - Có tách task mới hay gộp vào task cũ khi một task quá lớn.
 - Định dạng chính xác các dòng gợi ý trong `waste` và `context`.

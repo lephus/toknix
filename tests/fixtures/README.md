@@ -28,7 +28,7 @@ Không phải output chụp; viết tay theo đúng format của công cụ ở 
 
 ## Suite mẫu `fixtures_py/` (P1-T4)
 
-`test_shop.py`: 40 test pass, 2 test fail (1 assert, 1 exception), viết bằng `unittest.TestCase` để chạy được bằng cả `python -m pytest tests/fixtures_py` và `python -m unittest discover -s tests/fixtures_py`. Không có `__init__.py` nên suite của tokopt không chạy nó. `pytest.ini` bật `-v` và tắt cacheprovider để không ghi `.pytest_cache` vào repo. Test end-to-end với pytest tự bỏ qua khi máy không có pytest (tokopt không phụ thuộc pytest).
+`test_shop.py`: 40 test pass, 2 test fail (1 assert, 1 exception), viết bằng `unittest.TestCase` để chạy được bằng cả `python -m pytest tests/fixtures_py` và `python -m unittest discover -s tests/fixtures_py`. Không có `__init__.py` nên suite của toknix không chạy nó. `pytest.ini` bật `-v` và tắt cacheprovider để không ghi `.pytest_cache` vào repo. Test end-to-end với pytest tự bỏ qua khi máy không có pytest (toknix không phụ thuộc pytest).
 
 ## Code mẫu `code/` (P3-T1, A5)
 
@@ -50,7 +50,7 @@ Kỳ vọng của các file này nằm trong cùng `expected_outline.json`, ch�
 
 ## Repo nhỏ `map_repo/` (P3-T4)
 
-Viết tay để `tokopt map` có thứ hạng biết trước:
+Viết tay để `toknix map` có thứ hạng biết trước:
 - `app/core.py` định nghĩa `Config` và `parse`, được 4 file dùng (`cli`, `jobs`, `report`, `web/server.ts`). Riêng `server.ts` chỉ nhắc hai tên này trong code, như một client của API.
 - `app/util.py` định nghĩa `slugify`, được 2 file dùng.
 - Các file còn lại định nghĩa tên không ai dùng.

@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): Java.
+// Sample for `toknix outline` (P3-T2): Java.
 package com.example.shop;
 
 import java.util.*;

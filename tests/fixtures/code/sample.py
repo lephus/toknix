@@ -1,4 +1,4 @@
-"""Sample module for `tokopt outline` (P3-T1).
+"""Sample module for `toknix outline` (P3-T1).
 
 The text below is not code:
     def not_a_function():

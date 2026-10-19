@@ -11,7 +11,7 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import config, filters, measure, transcripts
+from toknix import config, filters, measure, transcripts
 from transcript_factory import ClaudeTranscript, CodexRollout, text, thinking, tool_use
 
 
@@ -21,7 +21,7 @@ class Home(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+               if not k.startswith("TOKNIX_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
         patcher = mock.patch.dict(os.environ, dict(env, HOME=str(self.home), USERPROFILE=str(self.home)), clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -160,7 +160,7 @@ def synthetic_calibration(n: int, ratios=(3.5, 1.7, 1.2), noise: float = 0.02, s
         d, h, v = rng.randint(200, 4000), rng.randint(0, 60), rng.randint(0, 400)
         body = ("word " * (d // 5))[:d] + "\n" + "".join(f"{rng.getrandbits(128):032x}" for _ in range(h)) + \
                "\n" + "ệ" * v
-        from tokopt.textutil import char_classes
+        from toknix.textutil import char_classes
         cc = char_classes(body)
         y = cc["default"] / ratios[0] + cc["hex"] / ratios[1] + cc["non_ascii"] / ratios[2]
         y = rng.uniform(50, 5000) if scramble else y * (1 + rng.uniform(-noise, noise))
@@ -184,28 +184,28 @@ class TestCalibration(Home):
     def test_written_only_when_good(self):
         good = transcripts.parse_claude(self.claude_file(synthetic_calibration(400)))
         self.assertTrue(measure.update_calibration([good]))
-        saved = json.loads((self.home / ".tokopt" / "calibration.json").read_text())["claude"]
+        saved = json.loads((self.home / ".toknix" / "calibration.json").read_text())["claude"]
         self.assertLess(abs(saved["ratios"]["default"] - 3.5) / 3.5, 0.05)
 
     def test_too_few_samples(self):
         s = transcripts.parse_claude(self.claude_file(synthetic_calibration(150)))
         self.assertFalse(measure.update_calibration([s]))
-        self.assertFalse((self.home / ".tokopt" / "calibration.json").exists())
+        self.assertFalse((self.home / ".toknix" / "calibration.json").exists())
 
     def test_bad_fit(self):
         s = transcripts.parse_claude(self.claude_file(synthetic_calibration(400, scramble=True)))
         self.assertFalse(measure.update_calibration([s]))
-        self.assertFalse((self.home / ".tokopt" / "calibration.json").exists())
+        self.assertFalse((self.home / ".toknix" / "calibration.json").exists())
 
     def test_reports_use_it_filters_never_do(self):
-        (self.home / ".tokopt").mkdir()
-        (self.home / ".tokopt" / "calibration.json").write_text(json.dumps(
+        (self.home / ".toknix").mkdir()
+        (self.home / ".toknix" / "calibration.json").write_text(json.dumps(
             {"claude": {"ratios": {"default": 1.0, "hex": 1.0, "non_ascii": 1.0}, "samples": 300,
                         "median_error": 0.01}}))
         self.assertEqual(measure.report_ratios(config.load())["default"], 1.0)
         lines = [f"line {i} " + "x" * 80 for i in range(300)]
         with_cal = filters.apply("make", lines, 0, config.load()).lines
-        (self.home / ".tokopt" / "calibration.json").unlink()
+        (self.home / ".toknix" / "calibration.json").unlink()
         self.assertEqual(with_cal, filters.apply("make", lines, 0, config.load()).lines)
         self.assertEqual(measure.report_ratios(config.load())["default"], 4.0)
 

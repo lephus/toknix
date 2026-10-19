@@ -1,9 +1,9 @@
-"""`tokopt statusline` (A7): one line for Claude Code's status bar, e.g.
+"""`toknix statusline` (A7): one line for Claude Code's status bar, e.g.
 
     ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%
 
 Claude Code runs it after every turn with the session JSON on stdin, so it must be fast on a large
-transcript: the file is read incrementally from the offset kept in ~/.tokopt/sl-<session>.json, and only
+transcript: the file is read incrementally from the offset kept in ~/.toknix/sl-<session>.json, and only
 lines holding a usage are parsed. Like a hook, it never fails loudly: any error prints nothing, exit 0.
 """
 from __future__ import annotations
@@ -15,14 +15,14 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from tokopt.config import load, tokopt_home
-from tokopt.textutil import fmt_num
+from toknix.config import load, toknix_home
+from toknix.textutil import fmt_num
 
 RECENT_KEYS = 64  # requests whose lines may still arrive in a later read
 
 
 def _cache_file(session: str) -> Path:
-    return tokopt_home() / f"sl-{re.sub(r'[^A-Za-z0-9_-]', '_', session)[:80]}.json"
+    return toknix_home() / f"sl-{re.sub(r'[^A-Za-z0-9_-]', '_', session)[:80]}.json"
 
 
 def _fresh(path: str) -> dict:
@@ -73,16 +73,16 @@ def scan(path: Path, state: dict, weights: list[float]) -> dict:
 
 
 def _ts(value) -> float | None:
-    from tokopt.transcripts import parse_ts
+    from toknix.transcripts import parse_ts
     return parse_ts(value)
 
 
 def saved_tokens(session: str, since: float | None) -> int:
     """Direct savings of this session: filter runs since it started + its read-guard denials (no re-read factor)."""
-    db = tokopt_home() / "tokopt.db"
+    db = toknix_home() / "toknix.db"
     if not db.exists():
         return 0
-    from tokopt.measure import _saved_tokens, report_ratios
+    from toknix.measure import _saved_tokens, report_ratios
     ratios = report_ratios(load())
     con = sqlite3.connect(str(db), timeout=1)
     try:
@@ -156,7 +156,7 @@ def main() -> int:
         else:
             sys.stdout.write(line)
     except Exception:  # the status bar never shows a traceback
-        if os.environ.get("TOKOPT_DEBUG") == "1":
+        if os.environ.get("TOKNIX_DEBUG") == "1":
             import traceback
             traceback.print_exc(file=sys.stderr)
     return 0

@@ -1,4 +1,4 @@
-"""P3-T3: `tokopt symbol` and `tokopt refs` (A5.2)."""
+"""P3-T3: `toknix symbol` and `toknix refs` (A5.2)."""
 from __future__ import annotations
 
 import ast
@@ -16,7 +16,7 @@ from unittest import mock
 
 import support
 
-from tokopt import cli, codesearch
+from toknix import cli, codesearch
 
 REF_LINE = re.compile(r"^\s+(\d+): ")
 
@@ -34,7 +34,7 @@ class Repo(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name).resolve()
-        patcher = mock.patch.dict(os.environ, {"TOKOPT_HOME": str(self.root / ".tokopt-home")})
+        patcher = mock.patch.dict(os.environ, {"TOKNIX_HOME": str(self.root / ".toknix-home")})
         patcher.start()
         self.addCleanup(patcher.stop)
         cwd = os.getcwd()
@@ -55,7 +55,7 @@ class Repo(unittest.TestCase):
         git(self.root, "add", "-A")
         git(self.root, "commit", "-qm", "x")
 
-    def tokopt(self, *argv: str) -> tuple[int, str, str]:
+    def toknix(self, *argv: str) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
         with redirect_stdout(out), redirect_stderr(err):
             code = cli.main(list(argv))
@@ -91,16 +91,16 @@ class TestSourceFiles(Repo):
 
 
 class TestSymbol(Repo):
-    def test_budget_cut_in_the_tokopt_repo(self):  # plan criterion
+    def test_budget_cut_in_the_toknix_repo(self):  # plan criterion
         os.chdir(support.ROOT)
-        code, out, err = self.tokopt("symbol", "budget_cut")
+        code, out, err = self.toknix("symbol", "budget_cut")
         self.assertEqual((code, err), (0, ""))
-        src = (support.ROOT / "src/tokopt/filters.py").read_text(encoding="utf-8")
+        src = (support.ROOT / "src/toknix/filters.py").read_text(encoding="utf-8")
         node = next(n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.FunctionDef) and n.name == "budget_cut")
         lines = src.split("\n")
         expected = [f"{i:>5}  {lines[i - 1]}".rstrip() for i in range(node.lineno, node.end_lineno + 1)]
         out_lines = out.splitlines()
-        self.assertEqual(out_lines[0], f"src/tokopt/filters.py:{node.lineno}-{node.end_lineno}  function budget_cut")
+        self.assertEqual(out_lines[0], f"src/toknix/filters.py:{node.lineno}-{node.end_lineno}  function budget_cut")
         self.assertEqual(out_lines[1:1 + len(expected)], expected)
         self.assertEqual(out_lines[-1], "[1 match]")
 
@@ -108,23 +108,23 @@ class TestSymbol(Repo):
         self.write("shop.py", "class Cart:\n    def add(self, x):\n        return x\n\n\ndef add(a, b):\n    return a + b\n")
         self.write("web/cart.ts", "export class Cart {\n  add(x: number) {\n    return x;\n  }\n}\n")
         self.init_git()
-        code, out, _ = self.tokopt("symbol", "Cart.add")
+        code, out, _ = self.toknix("symbol", "Cart.add")
         self.assertEqual(code, 0)
         self.assertIn("shop.py:2-3  method Cart.add", out)
         self.assertIn("web/cart.ts:2-4  method Cart.add", out)
         self.assertNotIn("function add", out)
         self.assertIn("[2 matches]", out)
-        code, out, _ = self.tokopt("symbol", "add", "--kind", "function")
+        code, out, _ = self.toknix("symbol", "add", "--kind", "function")
         self.assertIn("shop.py:6-7  function add", out)
         self.assertIn("[1 match]", out)
-        code, out, _ = self.tokopt("symbol", "Cart", "--kind", "class")
+        code, out, _ = self.toknix("symbol", "Cart", "--kind", "class")
         self.assertIn("[2 matches]", out)
 
     def test_more_than_three_matches(self):
         for i in range(5):
             self.write(f"m{i}.py", f"def run():\n    return {i}\n")
         self.init_git()
-        code, out, _ = self.tokopt("symbol", "run")
+        code, out, _ = self.toknix("symbol", "run")
         self.assertEqual(out.count("    2      return"), 3)
         self.assertIn("also: m3.py:1-2  function run", out)
         self.assertIn("also: m4.py:1-2  function run", out)
@@ -133,7 +133,7 @@ class TestSymbol(Repo):
     def test_long_symbol_is_capped_at_300_lines(self):
         self.write("long.py", "def huge():\n" + "".join(f"    x{i} = {i}\n" for i in range(400)))
         self.init_git()
-        out = self.tokopt("symbol", "huge")[1].splitlines()
+        out = self.toknix("symbol", "huge")[1].splitlines()
         self.assertEqual(out[0], "long.py:1-401  function huge")
         self.assertEqual(out[300], "  300      x298 = 298")
         self.assertEqual(out[301], "  … 101 more lines; Read long.py with offset=301 limit=101")
@@ -142,22 +142,22 @@ class TestSymbol(Repo):
         self.write("a/x.py", "def f(): pass\n")
         self.write("b/x.py", "def f(): pass\n")
         self.init_git()
-        code, out, _ = self.tokopt("symbol", "f", "--path", "b")
+        code, out, _ = self.toknix("symbol", "f", "--path", "b")
         self.assertIn("b/x.py:1-1  function f", out)
         self.assertNotIn("a/x.py", out)
 
     def test_not_found(self):
         self.write("x.py", "def g(): pass\n")
         self.init_git()
-        code, out, err = self.tokopt("symbol", "nope")
+        code, out, err = self.toknix("symbol", "nope")
         self.assertEqual((code, out), (1, ""))
         self.assertIn("no symbol named 'nope' in 1 source files", err)
 
 
 class TestRefs(Repo):
-    def test_classify_in_the_tokopt_repo(self):  # plan criterion: every use, no definition line
+    def test_classify_in_the_toknix_repo(self):  # plan criterion: every use, no definition line
         os.chdir(support.ROOT)
-        code, out, err = self.tokopt("refs", "classify")
+        code, out, err = self.toknix("refs", "classify")
         self.assertEqual((code, err), (0, ""))
         got, current = set(), None
         for line in out.splitlines():
@@ -180,14 +180,14 @@ class TestRefs(Repo):
         self.assertTrue(expected)
         self.assertEqual(got, expected)
         self.assertRegex(out.splitlines()[-1], r"^\[\d+ references in \d+ files; definition not listed: "
-                                               r"src/tokopt/filters\.py:\d+\]$")
+                                               r"src/toknix/filters\.py:\d+\]$")
 
     def test_strings_comments_and_word_boundaries(self):
         self.write("a.py", 'def total(x):\n    return x\n\n# total in a comment\ns = "total in a string"\n'
                            "total_all = 1\nprint(total(3))\nf = f'{total(4)}'\n")
         self.write("b.ts", "// total\nconst t = `total ${total(1)}`;\nexport const subtotal = 1;\n")
         self.init_git()
-        code, out, _ = self.tokopt("refs", "total")
+        code, out, _ = self.toknix("refs", "total")
         self.assertEqual(code, 0)
         lines = out.splitlines()
         self.assertEqual(lines[:2], ["a.py", "     7: print(total(3))"])
@@ -202,7 +202,7 @@ class TestRefs(Repo):
         self.write("use1.py", "".join("ping()\n" for _ in range(40)))
         self.write("use2.py", "".join("ping()\n" for _ in range(30)))
         self.init_git()
-        out = self.tokopt("refs", "ping")[1].splitlines()
+        out = self.toknix("refs", "ping")[1].splitlines()
         shown = [l for l in out if REF_LINE.match(l)]
         self.assertEqual(len(shown), 50)
         self.assertIn("use2.py: 20 more at lines 11-30", out)
@@ -211,13 +211,13 @@ class TestRefs(Repo):
     def test_class_dot_name_searches_the_last_part(self):
         self.write("a.py", "class Cart:\n    def add(self):\n        pass\n\nCart().add()\n")
         self.init_git()
-        out = self.tokopt("refs", "Cart.add")[1]
+        out = self.toknix("refs", "Cart.add")[1]
         self.assertIn("     5: Cart().add()", out)
 
     def test_none(self):
         self.write("a.py", "x = 1\n")
         self.init_git()
-        code, out, err = self.tokopt("refs", "missing")
+        code, out, err = self.toknix("refs", "missing")
         self.assertEqual((code, out), (1, ""))
         self.assertIn("no references to 'missing'", err)
 

@@ -13,7 +13,7 @@ from unittest import mock
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from tokopt import cli, reports, store
+from toknix import cli, reports, store
 from transcript_factory import ClaudeTranscript, text, thinking, tool_use
 
 NOW = 1_800_000_000.0
@@ -30,11 +30,11 @@ class Home(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+               if not k.startswith("TOKNIX_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
         patcher = mock.patch.dict(os.environ, dict(env, HOME=str(self.home), USERPROFILE=str(self.home)), clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
-        for target in ("tokopt.transcripts.time.time", "tokopt.reports.time.time"):
+        for target in ("toknix.transcripts.time.time", "toknix.reports.time.time"):
             p = mock.patch(target, return_value=NOW + 3600)
             p.start()
             self.addCleanup(p.stop)
@@ -266,7 +266,7 @@ class TestSnapshot(Home):
         self.save(t)
         code, out = self.run_cli("snapshot", "--label", "before")
         self.assertEqual(code, 0)
-        path = self.home / ".tokopt" / "results" / "snapshot-before.json"
+        path = self.home / ".toknix" / "results" / "snapshot-before.json"
         d = json.loads(path.read_text())
         self.assertEqual(d["label"], "before")
         self.assertEqual(d["waste"]["big_outputs"], 1)
@@ -281,7 +281,7 @@ class TestGainFromTranscripts(Home):
     def test_r_bar_and_wrapped_share(self):
         t = ClaudeTranscript(session="g", t0=NOW)
         for i in range(4):
-            cmd = f"tokopt run -- 'npm test {i}'" if i < 3 else "npm test"
+            cmd = f"toknix run -- 'npm test {i}'" if i < 3 else "npm test"
             t.assistant([tool_use(f"b{i}", "Bash", command=cmd)])
             t.user(tool_results=[(f"b{i}", "ok")])
         t.assistant([text("end")])

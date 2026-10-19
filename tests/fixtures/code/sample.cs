@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): C#.
+// Sample for `toknix outline` (P3-T2): C#.
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

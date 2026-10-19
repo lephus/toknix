@@ -1,4 +1,4 @@
-"""Benchmark `tokopt symbol` and `tokopt refs` on a generated git repo (P3-T3: 2,000 files in < 2 s).
+"""Benchmark `toknix symbol` and `toknix refs` on a generated git repo (P3-T3: 2,000 files in < 2 s).
 
     python scripts/bench_codesearch.py [N_FILES]
 
@@ -68,18 +68,18 @@ def make_repo(root: Path, n_files: int) -> None:
 
 def run(n_files: int = 2000) -> dict[str, float]:
     """Seconds per command on a fresh repo of n_files files."""
-    root = Path(tempfile.mkdtemp(prefix="tokopt-bench-codesearch-"))
+    root = Path(tempfile.mkdtemp(prefix="toknix-bench-codesearch-"))
     try:
         make_repo(root, n_files)
-        env = dict(os.environ, PYTHONPATH=str(ROOT / "src"), TOKOPT_HOME=str(root / ".tokopt-home"))
+        env = dict(os.environ, PYTHONPATH=str(ROOT / "src"), TOKNIX_HOME=str(root / ".toknix-home"))
         timings = {}
         for command in ("symbol", "refs"):
             start = time.perf_counter()
-            p = subprocess.run([sys.executable, "-m", "tokopt", command, TARGET], cwd=root, env=env,
+            p = subprocess.run([sys.executable, "-m", "toknix", command, TARGET], cwd=root, env=env,
                                capture_output=True, timeout=120)
             timings[command] = time.perf_counter() - start
             if p.returncode != 0:
-                raise RuntimeError(f"tokopt {command} failed: {p.stderr.decode(errors='replace')}")
+                raise RuntimeError(f"toknix {command} failed: {p.stderr.decode(errors='replace')}")
         return timings
     finally:
         _remove(root)
@@ -104,7 +104,7 @@ def main() -> int:
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
     timings = run(n)
     for command, seconds in timings.items():
-        print(f"tokopt {command:<6} on {n} files: {seconds:.2f} s")
+        print(f"toknix {command:<6} on {n} files: {seconds:.2f} s")
     return 0 if all(s < LIMIT for s in timings.values()) else 1
 
 

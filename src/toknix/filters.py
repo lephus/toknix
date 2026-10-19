@@ -5,7 +5,7 @@ Rules shared by all filters:
   * error / failure / warning lines are never dropped by a specific filter;
   * the final summary line of a tool is always kept;
   * when in doubt, keep the line (the budget step in runner.py trims later, and the full
-    output stays recallable with `tokopt recall <id>`).
+    output stays recallable with `toknix recall <id>`).
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import re
 import shlex
 from typing import NamedTuple
 
-from tokopt.textutil import est_tokens
+from toknix.textutil import est_tokens
 
 ERROR_RE = re.compile(
     r"(?i)\b(error|errors|failed|failure|fail|fatal|exception|traceback|panic|assert(ion)?|"
@@ -202,7 +202,7 @@ def f_install(lines: list[str], failed: bool) -> list[str]:
     keep = [l for l in lines if not noise.match(l) and not re.search(r"(?i)warn deprecated", l)]
     if deprec:
         names = [re.sub(r"(?i).*deprecated\s+([^:]+):.*", r"\1", d).strip() for d in deprec]
-        keep.insert(0, f"[tokopt] {len(deprec)} deprecation warnings: {', '.join(names[:8])}{' …' if len(names) > 8 else ''}")
+        keep.insert(0, f"[toknix] {len(deprec)} deprecation warnings: {', '.join(names[:8])}{' …' if len(names) > 8 else ''}")
     return keep
 
 
@@ -222,7 +222,7 @@ def f_lint(lines: list[str], failed: bool, per_file: int = 15) -> list[str]:
                     continue
         out.append(l)
     if counts:
-        out.append(f"[tokopt] {sum(counts.values())} diagnostics in {len(counts)} files")
+        out.append(f"[toknix] {sum(counts.values())} diagnostics in {len(counts)} files")
     return out
 
 
@@ -256,7 +256,7 @@ def f_gitlog(lines: list[str], failed: bool, max_commits: int = 30) -> list[str]
             cur["s"] = l.strip()
     flush()
     if total > max_commits:
-        out.append(f"[tokopt] {total - max_commits} older commits omitted (git log -n / --oneline to page)")
+        out.append(f"[toknix] {total - max_commits} older commits omitted (git log -n / --oneline to page)")
     return out
 
 
@@ -291,7 +291,7 @@ def f_gitdiff(lines: list[str], failed: bool, budget: int = 400, max_tokens: int
             dels = sum(1 for x in b if x.startswith("-") and not x.startswith("---"))
             files_left.append(f"{m.group(1) if m else b[0]} (+{adds} -{dels})")
     if files_left:
-        out.append(f"[tokopt] {len(files_left)} more files changed; view one with `git diff -- <file>`:")
+        out.append(f"[toknix] {len(files_left)} more files changed; view one with `git diff -- <file>`:")
         out += [f"  {f}" for f in files_left]
     return out
 
@@ -305,7 +305,7 @@ def f_gitnet(lines: list[str], failed: bool) -> list[str]:
 def f_listing(lines: list[str], failed: bool, cap: int = 80) -> list[str]:
     if len(lines) <= cap:
         return lines
-    return lines[:cap] + [f"[tokopt] {len(lines) - cap} more entries; narrow the path or add filters"]
+    return lines[:cap] + [f"[toknix] {len(lines) - cap} more entries; narrow the path or add filters"]
 
 
 def f_build(lines: list[str], failed: bool) -> list[str]:

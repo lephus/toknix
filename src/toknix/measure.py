@@ -1,5 +1,5 @@
-"""Reports (A6): `gain` from tokopt's own SQLite store, the char/token calibration (A6.4), and the
-transcript reports built on src/tokopt/transcripts.py."""
+"""Reports (A6): `gain` from toknix's own SQLite store, the char/token calibration (A6.4), and the
+transcript reports built on src/toknix/transcripts.py."""
 from __future__ import annotations
 
 import json
@@ -9,10 +9,10 @@ import sys
 import time
 from dataclasses import dataclass
 
-from tokopt import store
-from tokopt.config import load, tokopt_home
-from tokopt.runner import write_out
-from tokopt.textutil import DEFAULT_RATIOS, char_classes, fmt_num
+from toknix import store
+from toknix.config import load, toknix_home
+from toknix.runner import write_out
+from toknix.textutil import DEFAULT_RATIOS, char_classes, fmt_num
 
 CLASSES = ("default", "hex", "non_ascii")
 
@@ -31,7 +31,7 @@ def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
     ratios = report_ratios(cfg)
     since = time.time() - days * 86400 if days else 0.0
     runs, guard, recalled = [], [], set()
-    if (tokopt_home() / "tokopt.db").exists():  # never create the db just to report on it
+    if (toknix_home() / "toknix.db").exists():  # never create the db just to report on it
         with store.db() as c:
             runs = c.execute("SELECT kind, cmd, tee_id, error_overflow, raw_chars, out_chars, saved_default, "
                              "saved_hex, saved_non_ascii FROM runs WHERE ts >= ?", (since,)).fetchall()
@@ -67,7 +67,7 @@ def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
     guard_tokens = sum(g[2] for g in guard)
     direct = filter_tokens + guard_tokens
     w_cw, w_cr = cfg["weights"][1], cfg["weights"][2]
-    from tokopt import reports  # transcripts are only read here, never by the hooks
+    from toknix import reports  # transcripts are only read here, never by the hooks
     bash = reports.bash_stats(cfg["gain_transcript_days"])
     r_bar, source = (statistics.median(bash["r_values"]), "transcripts") if bash["r_values"] else \
         (cfg["reread_default"], "default")
@@ -97,7 +97,7 @@ def format_gain(d: dict, cfg: dict) -> str:
         return "no data yet"
     r = d["reread"]
     w_cw, w_cr = cfg["weights"][1], cfg["weights"][2]
-    out = [f"tokopt gain ({'last %d days' % d['days'] if d['days'] else 'all time'})", "",
+    out = [f"toknix gain ({'last %d days' % d['days'] if d['days'] else 'all time'})", "",
            f"Saved directly: {fmt_num(d['direct_tokens'])} tokens (filters {fmt_num(d['filter_tokens'])}, "
            f"read guard {fmt_num(d['guard_tokens'])})",
            f"With re-reads (estimate): {fmt_num(r['etu'])} ETU = direct × {r['multiplier']:g} "
@@ -109,7 +109,7 @@ def format_gain(d: dict, cfg: dict) -> str:
                    f"(transcripts of the last {cfg['gain_transcript_days']} days)")
     wr = d["wrapped"]
     if wr["bash_calls"]:
-        out.append(f"Bash calls wrapped by tokopt: {wr['wrapped']} of {wr['bash_calls']} ({wr['share']:.0%}, "
+        out.append(f"Bash calls wrapped by toknix: {wr['wrapped']} of {wr['bash_calls']} ({wr['share']:.0%}, "
                    f"transcripts of the last {cfg['gain_transcript_days']} days)")
 
     if d["kinds"]:
@@ -121,7 +121,7 @@ def format_gain(d: dict, cfg: dict) -> str:
         for k in d["kinds"]:
             if k["warn"]:
                 out.append(f"  ⚠ filter '{k['kind']}' may cut too much: {k['recalled']} of {k['cuts']} cut outputs "
-                           f"were recalled ({k['recall_rate']:.0%}); tell the tokopt authors which command")
+                           f"were recalled ({k['recall_rate']:.0%}); tell the toknix authors which command")
     if d["error_overflow"]:
         out.append(f"  {d['error_overflow']} runs had more error lines than the token budget (all kept)")
 
@@ -140,7 +140,7 @@ def gain(days: int | None = None, as_json: bool = False) -> int:
     try:
         d = gain_data(days, cfg)
     except sqlite3.DatabaseError as e:
-        print(f"tokopt gain: cannot read {tokopt_home() / 'tokopt.db'}: {e}", file=sys.stderr)
+        print(f"toknix gain: cannot read {toknix_home() / 'toknix.db'}: {e}", file=sys.stderr)
         return 1
     write_out((json.dumps(d, indent=2) if as_json else format_gain(d, cfg)) + "\n")
     return 0
@@ -155,7 +155,7 @@ class Calibration:
 
 
 def calibration_path():
-    return tokopt_home() / "calibration.json"
+    return toknix_home() / "calibration.json"
 
 
 def report_ratios(cfg: dict) -> dict:

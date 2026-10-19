@@ -71,12 +71,12 @@ jobs:
         run: |
           export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
           env PATH=/usr/bin:/bin:/usr/local/bin HOME="$HOME" sh install.sh --from "$GITHUB_WORKSPACE"
-          "$HOME/.local/bin/tokopt" --version
-          "$HOME/.local/bin/tokopt" doctor
+          "$HOME/.local/bin/toknix" --version
+          "$HOME/.local/bin/toknix" doctor
           test -f "$HOME/.claude/settings.json"
           env PATH="$HOME/.local/bin:/usr/bin:/bin:/usr/local/bin" HOME="$HOME" sh install.sh --uninstall
           test ! -e "$HOME/.claude/settings.json"
-          test ! -e "$HOME/.local/bin/tokopt"
+          test ! -e "$HOME/.local/bin/toknix"
       - name: install.ps1 (venv path)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -85,7 +85,7 @@ jobs:
           $env:HOME = $env:USERPROFILE
           New-Item -ItemType Directory -Force $env:HOME | Out-Null
           ./install.ps1 -From $env:GITHUB_WORKSPACE
-          & (Join-Path $env:HOME ".tokopt\venv\Scripts\tokopt.exe") --version
+          & (Join-Path $env:HOME ".toknix\venv\Scripts\toknix.exe") --version
           if (-not (Test-Path (Join-Path $env:HOME ".claude\settings.json"))) { throw "settings.json missing" }
           ./install.ps1 -Uninstall
           if (Test-Path (Join-Path $env:HOME ".claude\settings.json")) { throw "settings.json left behind" }

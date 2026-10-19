@@ -1,4 +1,4 @@
-"""P4-T4: `tokopt statusline` (A7)."""
+"""P4-T4: `toknix statusline` (A7)."""
 from __future__ import annotations
 
 import io
@@ -16,7 +16,7 @@ from unittest import mock
 
 import support
 
-from tokopt import statusline, store
+from toknix import statusline, store
 from transcript_factory import ClaudeTranscript, text, tool_use
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -29,7 +29,7 @@ class Home(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "NO_COLOR")}
+               if not k.startswith("TOKNIX_") and k not in ("CLAUDE_CONFIG_DIR", "NO_COLOR")}
         patcher = mock.patch.dict(os.environ, dict(env, HOME=str(self.home), USERPROFILE=str(self.home)), clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -75,7 +75,7 @@ class TestLine(Home):
                 t = ClaudeTranscript()
                 t.assistant([text("a")], input=0, cache_read=pct * 2000, cache_write=0, output=1)
                 t.write(self.path)
-                for f in (self.home / ".tokopt").glob("sl-*.json"):
+                for f in (self.home / ".toknix").glob("sl-*.json"):
                     f.unlink()
                 raw = self.line(plain=False)
                 codes = re.findall(r"\x1b\[(\d+)m", raw)
@@ -89,8 +89,8 @@ class TestLine(Home):
             self.assertNotIn("\x1b[", self.line(plain=False))
 
     def test_context_window_from_config(self):
-        (self.home / ".tokopt").mkdir()
-        (self.home / ".tokopt" / "config.json").write_text('{"context_window": 1000000}')
+        (self.home / ".toknix").mkdir()
+        (self.home / ".toknix" / "config.json").write_text('{"context_window": 1000000}')
         t = ClaudeTranscript()
         t.assistant([text("a")], cache_read=100000, output=1)
         t.write(self.path)
@@ -125,9 +125,9 @@ class TestIncremental(Home):
         t.assistant([text("b")], cache_read=3000, output=20)
         t.write(self.path)
         second = self.line()
-        cache = json.loads(next((self.home / ".tokopt").glob("sl-*.json")).read_text())
+        cache = json.loads(next((self.home / ".toknix").glob("sl-*.json")).read_text())
         self.assertEqual(cache["offset"], self.path.stat().st_size)
-        for f in (self.home / ".tokopt").glob("sl-*.json"):
+        for f in (self.home / ".toknix").glob("sl-*.json"):
             f.unlink()
         self.assertEqual(self.line(), second)
         self.assertNotEqual(first, second)
@@ -148,7 +148,7 @@ class TestIncremental(Home):
         with open(self.path, "a", encoding="utf-8") as f:
             f.write('{"type": "assistant", "requestId": "req_9", "message": {"id": "m9", "usage": {"output_tok')
         before = self.line()
-        cache = json.loads(next((self.home / ".tokopt").glob("sl-*.json")).read_text())
+        cache = json.loads(next((self.home / ".toknix").glob("sl-*.json")).read_text())
         self.assertLess(cache["offset"], self.path.stat().st_size)  # not consumed yet
         self.assertIn("ctx", before)
 
@@ -180,7 +180,7 @@ class TestSpeed(Home):
 
         def timed() -> float:
             start = time.perf_counter()
-            p = subprocess.run([sys.executable, "-m", "tokopt", "statusline"], input=self.payload().encode(),
+            p = subprocess.run([sys.executable, "-m", "toknix", "statusline"], input=self.payload().encode(),
                                capture_output=True, env=env, timeout=60)
             self.assertIn(b"ctx", p.stdout, p.stderr)
             return time.perf_counter() - start

@@ -1,4 +1,4 @@
-# Sample for `tokopt outline` (P3-T2): Ruby.
+# Sample for `toknix outline` (P3-T2): Ruby.
 # A comment with "def fake" and "end" in it.
 require "json"
 

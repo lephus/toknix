@@ -1,4 +1,4 @@
-// Sample for `tokopt outline` (P3-T2): Go.
+// Sample for `toknix outline` (P3-T2): Go.
 package shop
 
 import (

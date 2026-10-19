@@ -17,7 +17,7 @@ import time
 
 args = sys.argv[1:]
 prompt = args[args.index("-p") + 1] if "-p" in args else ""
-rep = int(os.environ.get("TOKOPT_BENCH_REPEAT", "0"))
+rep = int(os.environ.get("TOKNIX_BENCH_REPEAT", "0"))
 seed = int(hashlib.sha256(f"{prompt}|{rep}".encode()).hexdigest()[:8], 16) / 0xFFFFFFFF  # 0..1
 noise = 1 + float(os.environ.get("FAKE_NOISE", "0")) * (2 * seed - 1)
 scale = float(os.environ.get("FAKE_SCALE", "1")) * noise

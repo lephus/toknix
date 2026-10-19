@@ -14,7 +14,7 @@ from unittest import mock
 
 import support
 
-from tokopt import cli
+from toknix import cli
 
 FAKE = str(Path(support.ROOT) / "tests" / "fake_agents" / "fake_claude.py")
 CHECK = [sys.executable, "-c", "import os, sys; sys.exit(0 if os.path.exists('done.txt') else 1)"]
@@ -26,7 +26,7 @@ class BenchCase(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name).resolve()
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith(("TOKOPT_", "FAKE_")) and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+               if not k.startswith(("TOKNIX_", "FAKE_")) and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
         patcher = mock.patch.dict(os.environ, dict(env, HOME=str(self.tmp / "home"),
                                                    USERPROFILE=str(self.tmp / "home")), clear=True)
         patcher.start()
@@ -61,7 +61,7 @@ class BenchCase(unittest.TestCase):
         return json.loads(out.getvalue())
 
     def results(self, label: str) -> list[dict]:
-        path = self.tmp / "home" / ".tokopt" / "results" / f"bench-{label}.jsonl"
+        path = self.tmp / "home" / ".toknix" / "results" / f"bench-{label}.jsonl"
         return [json.loads(l) for l in path.read_text().splitlines()]
 
     def worktrees(self) -> list[str]:
@@ -104,13 +104,13 @@ class TestBench(BenchCase):
         rules.write_text("Be brief.\n")
         claude_md = self.tmp / "home" / ".claude" / "CLAUDE.md"
         claude_md.parent.mkdir(parents=True)
-        claude_md.write_text("<!-- tokopt:begin v1 -->\nglobal\n<!-- tokopt:end -->\n")
+        claude_md.write_text("<!-- toknix:begin v1 -->\nglobal\n<!-- toknix:end -->\n")
         seen = self.tmp / "seen"
         code, _, err = self.bench("r", "--rules", str(rules), seen=seen)
         self.assertEqual(code, 0)
-        self.assertIn("<!-- tokopt:begin", seen.read_text())
+        self.assertIn("<!-- toknix:begin", seen.read_text())
         self.assertIn("Be brief.", seen.read_text())
-        self.assertIn("global CLAUDE.md already has a tokopt rules block", err)
+        self.assertIn("global CLAUDE.md already has a toknix rules block", err)
         r = self.results("r")[0]
         self.assertEqual((r["rules"], r["global_rules"]), (str(rules), True))
 
@@ -134,7 +134,7 @@ class TestBench(BenchCase):
         err = io.StringIO()
         with redirect_stderr(err), redirect_stdout(io.StringIO()):
             self.assertEqual(cli.main(["bench", str(bad), "--label", "x"]), 2)
-        self.assertIn("tokopt bench:", err.getvalue())
+        self.assertIn("toknix bench:", err.getvalue())
 
 
 class TestCompare(BenchCase):
