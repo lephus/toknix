@@ -1,0 +1,24 @@
+{
+  "sample.py": [
+    {"name": "typed_only", "kind": "function", "start": 13, "end": 13, "parent": null, "signature": "def typed_only(x: int) -> str"},
+    {"name": "dumps", "kind": "function", "start": 18, "end": 19, "parent": null, "signature": "def dumps(obj, *, indent=None)"},
+    {"name": "retry", "kind": "function", "start": 22, "end": 33, "parent": null, "signature": "def retry(times: int = 3)"},
+    {"name": "decorator", "kind": "function", "start": 23, "end": 32, "parent": "retry", "signature": "def decorator(fn)"},
+    {"name": "wrapper", "kind": "function", "start": 24, "end": 31, "parent": "retry.decorator", "signature": "def wrapper(*args, **kwargs)"},
+    {"name": "one_liner", "kind": "function", "start": 36, "end": 36, "parent": null, "signature": "def one_liner(a, b)"},
+    {"name": "fetch", "kind": "function", "start": 39, "end": 50, "parent": null, "signature": "async def fetch(url: str, timeout: float = 2.5, *, headers: dict[str, str] | None = None, sep: str = \"a:b\") -> bytes"},
+    {"name": "Base", "kind": "class", "start": 53, "end": 54, "parent": null, "signature": "class Base"},
+    {"name": "Shop", "kind": "class", "start": 57, "end": 90, "parent": null, "signature": "class Shop(Base, metaclass=type)"},
+    {"name": "__init__", "kind": "method", "start": 63, "end": 64, "parent": "Shop", "signature": "def __init__(self, name: str) -> None"},
+    {"name": "title", "kind": "method", "start": 66, "end": 68, "parent": "Shop", "signature": "def title(self) -> str"},
+    {"name": "tax_for", "kind": "method", "start": 70, "end": 73, "parent": "Shop", "signature": "def tax_for(amount: float) -> float"},
+    {"name": "checkout", "kind": "method", "start": 75, "end": 79, "parent": "Shop", "signature": "async def checkout(self, cart: list[int]) -> int"},
+    {"name": "subtotal", "kind": "function", "start": 76, "end": 77, "parent": "Shop.checkout", "signature": "def subtotal() -> int"},
+    {"name": "Item", "kind": "class", "start": 81, "end": 88, "parent": "Shop", "signature": "class Item"},
+    {"name": "__init__", "kind": "method", "start": 82, "end": 83, "parent": "Shop.Item", "signature": "def __init__(self, sku: str)"},
+    {"name": "Meta", "kind": "class", "start": 85, "end": 88, "parent": "Shop.Item", "signature": "class Meta"},
+    {"name": "label", "kind": "method", "start": 88, "end": 88, "parent": "Shop.Item.Meta", "signature": "def label(self)"},
+    {"name": "__repr__", "kind": "method", "start": 90, "end": 90, "parent": "Shop", "signature": "def __repr__(self)"},
+    {"name": "EmptyError", "kind": "class", "start": 93, "end": 93, "parent": null, "signature": "class EmptyError(Exception)"}
+  ]
+}

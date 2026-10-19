@@ -46,6 +46,8 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "run":
             p.add_argument("cmd", nargs=argparse.REMAINDER, metavar="-- <command>",
                            help='one quoted string (as hook bash writes it), or the words of the command')
+        elif name == "outline":
+            p.add_argument("file")
         elif name == "gain":
             p.add_argument("--json", action="store_true", help="machine-readable output")
             p.add_argument("--days", type=positive_int, metavar="N", help="only the last N days (default: all)")
@@ -95,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from tokopt import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command == "outline":
+        from tokopt import outline
+        return outline.run(ns.file)
     if ns.command == "gain":
         from tokopt import measure
         return measure.gain(ns.days, ns.json)

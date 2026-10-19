@@ -132,7 +132,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 ## P3 — Truy xuất code
 
-**P3-T1 `[ ]` `extract` cho Python + `tokopt outline` (A5.1, A5.2)**
+**P3-T1 `[x]` `extract` cho Python + `tokopt outline` (A5.1, A5.2)**
 - Bao gồm class lồng, async def, decorator.
 - Khớp 100% với `expected_outline.json`.
 

@@ -277,8 +277,14 @@ file không tồn tại hoặc là thư mục → không ý kiến (Claude Code 
 
 ```
 extract(path) → [Symbol(name, kind, start, end, signature, parent)]
-Python: ast.parse → FunctionDef/AsyncFunctionDef/ClassDef (kể cả lồng),
+Python (.py .pyi .pyw): ast.parse → FunctionDef/AsyncFunctionDef/ClassDef (kể cả lồng, kể cả nằm trong if/try/with),
         start = lineno (tính cả decorator), end = end_lineno, signature = dòng def gốc (đã cắt "…:")
+        kind = class | function | method (def nằm ngay trong class, kể cả trong if của class)
+        parent = tên đầy đủ có dấu chấm của class/def bao ngoài ("Shop.Item"), top-level → null
+        signature = header lấy từ source bằng tokenize, gộp thành 1 dòng: bỏ comment, gộp khoảng trắng,
+                    bỏ khoảng trắng sát ngoặc, bỏ dấu phẩy cuối khi ngoặc đóng nằm ở dòng riêng; chuỗi giữ nguyên văn
+        đọc file theo coding cookie và BOM (tokenize.detect_encoding); \r\n và \r → \n (cùng cách đánh số với ast)
+        cú pháp lỗi → không có outline, in 200 dòng đầu kèm lý do
 Ngôn ngữ dùng ngoặc nhọn (js, ts, jsx, tsx, go, java, kt, cs, php, rust, dart, swift, c, cpp):
         regex khởi đầu theo ngôn ngữ (bảng dưới) → start
         end = brace_match(lines, start): đếm { } bỏ qua chuỗi '…' "…" `…` và comment // /* */;
@@ -297,7 +303,7 @@ Ngôn ngữ khác: không hỗ trợ → outline trả 200 dòng đầu kèm th�
 
 ### A5.2 Lệnh
 
-- `tokopt outline <file>`: in mỗi symbol một dòng, thụt lề theo parent: `L12-40  def foo(a, b)`. Dòng cuối: `[N lines, ~T tokens; Read with offset=12 limit=29]`.
+- `tokopt outline <file>`: in mỗi symbol một dòng, thụt lề 2 dấu cách mỗi cấp parent: `L12-40  def foo(a, b)`. Dòng cuối: `[N lines, ~T tokens; Read with offset=12 limit=29]`, với ví dụ offset/limit là symbol top-level dài nhất (bằng nhau thì lấy cái đầu); T tính bằng `est_tokens` với `token_ratios` trong config. Không có symbol → `no functions or classes` + `[N lines, ~T tokens]`. Ngôn ngữ chưa hỗ trợ hoặc file không parse được → `[tokopt: <lý do>; first 200 of N lines]` rồi 200 dòng đầu, exit 0. File không tồn tại, thư mục, file nhị phân (có byte NUL trong 8 KB đầu) → exit 1.
 - `tokopt symbol <name> [--path DIR] [--kind K]`:
   1. Liệt kê file nguồn bằng `git ls-files` nếu là git repo, nếu không thì duyệt thư mục (bỏ junk_patterns, file > 1 MB, file nhị phân).
   2. Tiền lọc nhanh: chỉ giữ file chứa chuỗi `name`.

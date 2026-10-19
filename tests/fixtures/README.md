@@ -29,3 +29,7 @@ Không phải output chụp; viết tay theo đúng format của công cụ ở 
 ## Suite mẫu `fixtures_py/` (P1-T4)
 
 `test_shop.py`: 40 test pass, 2 test fail (1 assert, 1 exception), viết bằng `unittest.TestCase` để chạy được bằng cả `python -m pytest tests/fixtures_py` và `python -m unittest discover -s tests/fixtures_py`. Không có `__init__.py` nên suite của tokopt không chạy nó. `pytest.ini` bật `-v` và tắt cacheprovider để không ghi `.pytest_cache` vào repo. Test end-to-end với pytest tự bỏ qua khi máy không có pytest (tokopt không phụ thuộc pytest).
+
+## Code mẫu `code/` (P3-T1, A5)
+
+`sample.py` viết tay để có đủ ca khó cho `extract`: class lồng 3 cấp, `async def`, decorator nhiều dòng và decorator chồng nhau, signature nhiều dòng có comment và có `:` trong chuỗi, `def` một dòng, `def` trong `if TYPE_CHECKING` / `except`, hàm lồng trong hàm, docstring có chữ `def`, lambda (không phải symbol). Parse được trên Python 3.9. `expected_outline.json` viết tay từ số dòng của file, **không** sinh bằng code; sửa `sample.py` thì phải sửa tay file này.
