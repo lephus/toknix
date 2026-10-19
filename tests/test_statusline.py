@@ -56,18 +56,63 @@ class TestLine(Home):
         expected_etu = sum(W[0] * i + W[1] * cw + W[2] * cr + W[3] * o
                            for i, cr, cw, o in ((10, 50000, 10000, 200), (20, 60000, 31980, 300)))
         self.assertEqual(self.line(),
-                         f"ctx 46% ▮▮▮▮▯▯▯▯▯▯ · {statusline.fmt_num(expected_etu)} ETU · saved ~0 · /clear at 60%\n")  # A7
+                         f"ctx 46% ▮▮▮▮▯▯▯▯▯▯ · {statusline.fmt_num(expected_etu)} ETU · saved ~0 ETU (0.0%) · /clear at 60%\n")  # A7
 
-    def test_saved_counts_this_session_only(self):
-        t = ClaudeTranscript(t0=time.time() - 100)
+    def saved_at(self, ts: float, chars: int = 0, guard: int = 0):
+        with mock.patch.object(store.time, "time", return_value=ts):
+            if chars:
+                store.record_run("pytest", "pytest", 1, 1, 1, 1, 1, "", 0, {"default": chars, "hex": 0, "non_ascii": 0})
+            if guard:
+                store.record_guard("s1", "junk", "x", guard)
+
+    def test_saved_is_etu_of_the_requests_that_reread_it(self):  # P7-T1
+        t0 = time.time() - 100
+        t = ClaudeTranscript(t0=t0)
+        t.assistant([text("a")], cache_read=1000, output=10)  # t0+1
+        for _ in range(3):  # t0+2 … t0+4: the first one writes the saving to the cache, two more read it
+            t.assistant([text("b")], cache_read=1000, output=10)
+        t.write(self.path)
+        self.saved_at(t0 - 10_000, chars=40000)  # before the session
+        self.saved_at(t0 + 1.5, chars=336000, guard=2000)  # 84,000 + 2,000 tokens
+        with mock.patch.object(store.time, "time", return_value=t0 + 1.5):
+            store.record_guard("other", "junk", "y", 99999)
+        saved = 86000 * (1.25 + 0.1 * 2)
+        etu = 4 * (10 + 100 + 50)
+        self.assertIn(f"saved ~{statusline.fmt_num(saved)} ETU ({saved / (etu + saved):.1%})", self.line())
+
+    def test_saving_after_the_last_request_is_zero_so_far(self):
+        t0 = time.time() - 100
+        t = ClaudeTranscript(t0=t0)
         t.assistant([text("a")], cache_read=1000, output=10)
         t.write(self.path)
-        with mock.patch.object(store.time, "time", return_value=time.time() - 10_000):  # before the session
-            store.record_run("pytest", "pytest", 1, 1, 1, 1, 1, "", 0, {"default": 40000, "hex": 0, "non_ascii": 0})
-        store.record_run("pytest", "pytest", 1, 1, 1, 1, 1, "", 0, {"default": 336000, "hex": 0, "non_ascii": 0})
-        store.record_guard("s1", "junk", "x", 2000)
-        store.record_guard("other", "junk", "y", 99999)
-        self.assertIn("saved ~86.0k", self.line())  # 84,000 from the run + 2,000 from this session's guard
+        self.saved_at(t0 + 5, chars=336000)
+        self.assertIn("saved ~0 ETU", self.line())
+
+    def test_compaction_stops_the_rereads(self):
+        t0 = time.time() - 100
+        t = ClaudeTranscript(t0=t0)
+        t.assistant([text("a")], cache_read=1000, output=10)  # t0+1
+        t.assistant([text("b")], cache_read=1000, output=10)  # t0+2 carries the saving
+        t.compact()                                            # t0+3
+        t.assistant([text("c")], cache_read=1000, output=10)
+        t.assistant([text("d")], cache_read=1000, output=10)
+        t.write(self.path)
+        self.saved_at(t0 + 1.5, chars=4000)  # 1,000 tokens
+        self.assertIn(f"saved ~{statusline.fmt_num(1000 * 1.25)} ETU", self.line())
+
+    def test_old_cache_without_request_times_is_rebuilt(self):
+        t0 = time.time() - 100
+        t = ClaudeTranscript(t0=t0)
+        t.assistant([text("a")], cache_read=1000, output=10)
+        t.assistant([text("b")], cache_read=1000, output=10)
+        t.write(self.path)
+        self.saved_at(t0 + 1.5, chars=4000)
+        (self.home / ".toknix" / "sl-s1.json").write_text(json.dumps(
+            {"path": str(self.path), "offset": self.path.stat().st_size, "etu": 999.0, "ctx": 2000,
+             "start_ts": t0 + 1, "keys": []}))
+        line = self.line()
+        self.assertIn(f"saved ~{statusline.fmt_num(1000 * 1.25)} ETU", line)
+        self.assertIn(f"· {statusline.fmt_num(2 * 160)} ETU ·", line)
 
     def test_colours(self):
         for pct, colour in ((59, None), (60, "33"), (79, "33"), (80, "31"), (97, "31")):

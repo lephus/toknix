@@ -239,6 +239,29 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Pass rate không giảm.
 - `toknix waste` sau 1 tuần cho thấy nhóm (2) "output ≥ 5k token" giảm ≥ 50% so với snapshot `before`. `[ASSUMPTION]`: ngưỡng 50% là mục tiêu, chưa có dữ liệu nền.
 
+## P7 — Nhắm vào chỗ tốn nhất (dữ liệu thật 2026-10-19)
+
+Phân tích transcript 7 ngày (59 phiên, 404M ETU) của người dùng:
+- Kết quả tool chỉ chiếm 13% ETU. Bộ lọc hiện tại chạm được 1% và giả lập chỉ cắt được 0,14%.
+- Phần context vượt 200k chiếm 38% ETU (context trung vị 280k, p90 722k: cửa sổ 1M không bao giờ compact).
+- `sed`/`cat`/`grep` qua Bash tốn 19M ETU, không được bọc. Lệnh `cd X && …` bị bỏ qua hoàn toàn.
+
+Người dùng chọn thứ tự T1 → T2 → T3.
+
+**P7-T1 `[x]` Statusline: saved theo ETU (A7)**
+- saved tính bằng ETU đã thực sự tránh được (mỗi lần tiết kiệm × số request đã đọc lại nó), cùng đơn vị với ETU của phiên, kèm tỉ lệ %.
+- Lần tiết kiệm sau compaction không nhân với request ở phía sau compaction; trước request đầu tiên thì bằng 0.
+- Cache cũ (không có `req_ts`) được đọc lại từ đầu, không crash.
+  - Kết quả (2026-10-19): 4 test mới trong `tests/test_statusline.py`. Transcript thật 69 MB: lần đầu 170 ms, các lần sau 30 ms.
+
+**P7-T2 `[ ]` Ngân sách context tuyệt đối thay cho % cửa sổ (A7)**
+- Ngưỡng `/clear` tính theo số token (`context_budget`), không theo % của cửa sổ 1M.
+- Nhắc người dùng `/clear` hoặc `/compact` khi vượt ngân sách.
+
+**P7-T3 `[ ]` Bash: đọc file bằng `cat`/`sed`/`grep`, và lệnh sau `cd X &&` (A3, A4)**
+- `cd X && <lệnh bọc được>` → chỉ bọc phần sau, `cd` vẫn chạy trong shell của agent.
+- `cat`/`head`/`grep` đọc cả file junk hoặc file lớn thì xử lý như Read guard.
+
 ---
 
 ## Rủi ro đã biết

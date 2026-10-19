@@ -1,6 +1,6 @@
 """`toknix statusline` (A7): one line for Claude Code's status bar, e.g.
 
-    ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%
+    ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%
 
 Claude Code runs it after every turn with the session JSON on stdin, so it must be fast on a large
 transcript: the file is read incrementally from the offset kept in ~/.toknix/sl-<session>.json, and only
@@ -8,6 +8,7 @@ lines holding a usage are parsed. Like a hook, it never fails loudly: any error 
 """
 from __future__ import annotations
 
+import bisect
 import json
 import os
 import re
@@ -26,13 +27,14 @@ def _cache_file(session: str) -> Path:
 
 
 def _fresh(path: str) -> dict:
-    return {"path": path, "offset": 0, "etu": 0.0, "ctx": 0, "start_ts": None, "keys": []}
+    return {"path": path, "offset": 0, "etu": 0.0, "ctx": 0, "start_ts": None, "keys": [],
+            "req_ts": [], "compact_ts": []}  # main-chain request times and compactions: saved ETU (P7-T1)
 
 
 def scan(path: Path, state: dict, weights: list[float]) -> dict:
     """Add the requests in the complete lines after state["offset"]; reset when the file was rewritten."""
     size = path.stat().st_size
-    if state.get("path") != str(path) or size < state.get("offset", 0):
+    if state.get("path") != str(path) or size < state.get("offset", 0) or "req_ts" not in state:
         state = _fresh(str(path))
     with open(path, "rb") as fh:
         fh.seek(state["offset"])
@@ -42,6 +44,15 @@ def scan(path: Path, state: dict, weights: list[float]) -> dict:
     seen = set(keys)
     for raw in data[:end].split(b"\n"):
         if b'"usage"' not in raw:
+            if b'"compact_boundary"' in raw:
+                try:
+                    obj = json.loads(raw)
+                except ValueError:
+                    obj = None
+                ts = _ts(obj.get("timestamp")) if isinstance(obj, dict) and obj.get("subtype") == "compact_boundary" \
+                    else None
+                if ts is not None:
+                    state["compact_ts"].append(ts)
             if state["start_ts"] is None and b'"timestamp"' in raw:
                 m = re.search(rb'"timestamp":\s*"([^"]+)"', raw)
                 if m:
@@ -67,6 +78,9 @@ def scan(path: Path, state: dict, weights: list[float]) -> dict:
         state["etu"] += sum(w * x for w, x in zip(weights, u))
         if obj.get("isSidechain") is not True:
             state["ctx"] = u[0] + u[1] + u[2]
+            ts = _ts(obj.get("timestamp"))
+            if ts is not None:
+                state["req_ts"].append(ts)
     state["offset"] += end
     state["keys"] = keys[-RECENT_KEYS:]
     return state
@@ -77,28 +91,41 @@ def _ts(value) -> float | None:
     return parse_ts(value)
 
 
-def saved_tokens(session: str, since: float | None) -> int:
-    """Direct savings of this session: filter runs since it started + its read-guard denials (no re-read factor)."""
+def saved_events(session: str, since: float | None) -> list[tuple[float, float]]:
+    """(ts, tokens saved directly) of this session: filter runs since it started + its read-guard denials."""
     db = toknix_home() / "toknix.db"
     if not db.exists():
-        return 0
+        return []
     from toknix.measure import _saved_tokens, report_ratios
     ratios = report_ratios(load())
     con = sqlite3.connect(str(db), timeout=1)
     try:
         cols = {r[1] for r in con.execute("PRAGMA table_info(runs)")}
-        total = 0.0
+        events = []
         if {"saved_default", "saved_hex", "saved_non_ascii"} <= cols:
-            for row in con.execute("SELECT raw_chars, out_chars, saved_default, saved_hex, saved_non_ascii FROM runs "
-                                   "WHERE ts >= ?", (since or 0,)):
-                total += _saved_tokens(row, ratios)
-        total += con.execute("SELECT COALESCE(SUM(est_tokens), 0) FROM guard WHERE session = ?",
-                             (session,)).fetchone()[0]
-        return int(total)
+            for row in con.execute("SELECT ts, raw_chars, out_chars, saved_default, saved_hex, saved_non_ascii "
+                                   "FROM runs WHERE ts >= ?", (since or 0,)):
+                events.append((row[0], _saved_tokens(row[1:], ratios)))
+        events += con.execute("SELECT ts, est_tokens FROM guard WHERE session = ?", (session,)).fetchall()
+        return events
     except sqlite3.Error:
-        return 0
+        return []
     finally:
         con.close()
+
+
+def saved_etu(events: list, req_ts: list[float], compact_ts: list[float], weights: list[float]) -> float:
+    """ETU each saving has avoided so far (A7): the first main request after it would have written it to the
+    cache, each later one read it again, up to the next compaction."""
+    reqs, compacts = sorted(req_ts), sorted(compact_ts)
+    total = 0.0
+    for ts, tokens in events:
+        c = bisect.bisect_right(compacts, ts)
+        stop = compacts[c] if c < len(compacts) else float("inf")
+        n = bisect.bisect_left(reqs, stop) - bisect.bisect_right(reqs, ts)
+        if n > 0:
+            total += tokens * (weights[1] + weights[2] * (n - 1))
+    return total
 
 
 WINDOWS = (200_000, 1_000_000)
@@ -125,8 +152,10 @@ def render(state: dict, session: str, cfg: dict, model: dict | None = None) -> s
             head = f"\x1b[31m{head}\x1b[0m"
         elif pct >= cfg["statusline_warn"]:
             head = f"\x1b[33m{head}\x1b[0m"
-    saved = saved_tokens(session, state.get("start_ts"))
-    return (f"{head} · {fmt_num(state['etu'])} ETU · saved ~{fmt_num(saved)} · "
+    saved = saved_etu(saved_events(session, state.get("start_ts")), state.get("req_ts", []),
+                      state.get("compact_ts", []), [float(x) for x in cfg["weights"]])
+    share = saved / (state["etu"] + saved) if saved else 0.0
+    return (f"{head} · {fmt_num(state['etu'])} ETU · saved ~{fmt_num(saved)} ETU ({share:.1%}) · "
             f"/clear at {cfg['statusline_warn']:.0%}")
 
 

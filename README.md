@@ -149,7 +149,7 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix snapshot --label L [--days 7]` | save a report summary to compare later |
 | `toknix bench tasks.json --label L [--rules FILE]` | A/B runs of a real agent in throwaway git worktrees |
 | `toknix compare A B [--json]` | compare two bench labels and give a verdict |
-| `toknix statusline` | Claude Code status line: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%` |
+| `toknix statusline` | Claude Code status line: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%` |
 | `toknix install` / `uninstall` / `doctor` | set up, remove, and check the hooks and rules |
 | `toknix init-project [--path DIR]` | deny Read of junk directories in the project's `.claude/settings.json`; write `.geminiignore` |
 

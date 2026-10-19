@@ -146,7 +146,7 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
 | `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
 | `toknix compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
-| `toknix statusline` | status line của Claude Code: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%` |
+| `toknix statusline` | status line của Claude Code: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%` |
 | `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
 | `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
 

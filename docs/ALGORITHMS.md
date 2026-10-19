@@ -597,8 +597,11 @@ stdin: JSON Claude Code gửi cho statusLine (có transcript_path, model.display
 ctx = usage của lượt assistant cuối: input + cache_read + cache_write
 pct = ctx / context_window (mặc định 200k, đổi trong config)
 session_etu = ETU cộng dồn cả transcript (đọc tăng dần, cache offset trong ~/.toknix/sl-<session>.json)
-saved = gain trực tiếp của session này (bảng runs và guard, lọc theo ts ≥ thời điểm bắt đầu session; không nhân hệ số đọc lại)
-in:  "ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%"   (màu vàng ≥ 60%, đỏ ≥ 80%)
+saved_etu = Σ_e T_e·(w_cw + w_cr·(n_e − 1)) với n_e ≥ 1, ngược lại 0   # (P7-T1) cùng đơn vị với session_etu
+  e: mỗi run (ts ≥ bắt đầu session) và mỗi guard của session; T_e = token tiết kiệm trực tiếp
+  n_e: số request chuỗi chính có ts > ts_e, trước compaction đầu tiên sau ts_e (request đầu ghi cache, các request sau đọc lại)
+share = saved_etu / (session_etu + saved_etu)     # phần chi phí của phiên đã tránh được
+in:  "ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%"   (màu vàng ≥ 60%, đỏ ≥ 80%)
 yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tăng dần từ offset đã lưu
 ```
 
@@ -611,7 +614,10 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
   - **ETU:** cộng mọi request của transcript, kể cả subagent, vì đó là chi phí thật. **ctx:** lấy từ request cuối của chuỗi chính.
   - **Context window:** `context_window` trong config (200k). Model id có `[1m]` hoặc tên có `1M` → 1.000.000. ctx lớn hơn window đã cấu hình → window chuẩn nhỏ nhất (200k, 1M) chứa được ctx. Một phiên thật 69 MB từng hiện `ctx 467%` với 200k.
   - **Thanh:** 10 ô, làm tròn xuống. Vàng từ `statusline_warn` (0,6), đỏ từ `statusline_alert` (0,8); `NO_COLOR` tắt màu.
-  - **saved:** các run có `ts` ≥ thời điểm bắt đầu phiên, cộng guard của `session_id` này. Dùng tỉ lệ của báo cáo, không nhân hệ số đọc lại.
+  - **saved:** các run có `ts` ≥ thời điểm bắt đầu phiên, cộng guard của `session_id` này. Dùng tỉ lệ của báo cáo.
+    - (P7-T1) Trước đây in số token trực tiếp, cạnh ETU cộng dồn: hai đơn vị khác nhau, nên "saved 5k" bên cạnh "1M ETU" trông như không tiết kiệm gì. Dữ liệu thật 7 ngày (2026-10-19) có R̄ = 81, tức một token cắt được đáng ≈ 9,3 ETU.
+    - Nay mỗi lần tiết kiệm được nhân với số request **đã thực sự** đọc lại nó (không ước lượng tương lai), nên con số chỉ tăng dần theo phiên và so được trực tiếp với ETU.
+    - Cache giữ thêm `req_ts` (ts các request chuỗi chính) và `compact_ts` (ts các `compact_boundary`). Run không có cột session nên hai phiên chạy song song vẫn thấy run của nhau, như trước.
   - **Lỗi:** mọi lỗi → không in gì, exit 0 (`TOKNIX_DEBUG=1` in traceback). Gõ tay (stdin là terminal) → in một dòng hướng dẫn ra stderr.
   - **Đo 2026-10-19:** transcript thật 69 MB: lần đầu 134 ms, các lần sau 30 ms (tính cả khởi động Python).
 
