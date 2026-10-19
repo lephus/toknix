@@ -67,7 +67,10 @@ def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
     guard_tokens = sum(g[2] for g in guard)
     direct = filter_tokens + guard_tokens
     w_cw, w_cr = cfg["weights"][1], cfg["weights"][2]
-    r_bar = cfg["reread_default"]  # P4-T2: median from transcripts
+    from tokopt import reports  # transcripts are only read here, never by the hooks
+    bash = reports.bash_stats(cfg["gain_transcript_days"])
+    r_bar, source = (statistics.median(bash["r_values"]), "transcripts") if bash["r_values"] else \
+        (cfg["reread_default"], "default")
     multiplier = w_cw + w_cr * r_bar
     return {
         "days": days,
@@ -76,7 +79,10 @@ def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
         "filter_tokens": filter_tokens,
         "guard_tokens": guard_tokens,
         "reread": {"etu": round(direct * multiplier, 1), "multiplier": multiplier, "r_bar": r_bar,
-                   "r_bar_source": "default"},
+                   "r_bar_source": source},
+        "r_bar_samples": len(bash["r_values"]),
+        "wrapped": {"bash_calls": bash["bash_calls"], "wrapped": bash["wrapped"],
+                    "share": bash["wrapped"] / bash["bash_calls"] if bash["bash_calls"] else None},
         "kinds": sorted(kinds.values(), key=lambda k: (-k["saved_tokens"], -k["runs"], k["kind"])),
         "error_overflow": sum(k["error_overflow"] for k in kinds.values()),
         "rules": [{"rule": r, "denials": n, "saved_tokens": t}
@@ -98,6 +104,13 @@ def format_gain(d: dict, cfg: dict) -> str:
            f"(w_cw {w_cw:g} + w_cr {w_cr:g} × R̄ {r['r_bar']:g})"]
     if r["r_bar_source"] == "default":
         out.append(f"  R̄ = {r['r_bar']:g} is the default value, not measured from transcripts yet")
+    else:
+        out.append(f"  R̄ = {r['r_bar']:g}: median requests left after {d['r_bar_samples']} Bash results "
+                   f"(transcripts of the last {cfg['gain_transcript_days']} days)")
+    wr = d["wrapped"]
+    if wr["bash_calls"]:
+        out.append(f"Bash calls wrapped by tokopt: {wr['wrapped']} of {wr['bash_calls']} ({wr['share']:.0%}, "
+                   f"transcripts of the last {cfg['gain_transcript_days']} days)")
 
     if d["kinds"]:
         out += ["", "By filter kind", f"  {'kind':<12}{'runs':>6}{'cuts':>6}{'saved':>8}{'recalled':>10}{'rate':>6}"]

@@ -168,7 +168,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Dòng JSON hỏng bị bỏ qua, không crash.
 - **(N2.2)** Hiệu chỉnh tỉ lệ ký tự/token theo A6.4: fixture transcript tổng hợp với tỉ lệ biết trước → hồi quy tìm lại đúng tỉ lệ (sai ≤ 5%); < 200 mẫu hoặc sai số trung vị ≥ 15% → không ghi `calibration.json`. Bộ lọc không đọc file này.
 
-**P4-T2 `[ ]` `report`, `waste`, `context`, `snapshot` (A6.2)**
+**P4-T2 `[x]` `report`, `waste`, `context`, `snapshot` (A6.2)**
 - Mỗi lệnh có `--json`.
 - `waste` in đủ 7 nhóm, mỗi nhóm kèm dòng gợi ý sửa; nhóm (1), (2) xếp theo `reread_cost`.
 - **(N1.1)** R̄ tính từ transcript, thay giá trị mặc định 20 trong `gain`. `gain` thêm tỉ lệ lệnh bị bọc trên tổng lệnh Bash (A6.2; cần transcript nên không làm ở P1-T5).

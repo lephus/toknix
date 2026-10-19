@@ -61,6 +61,13 @@ DEFAULTS: dict = {
     "calibration_min_samples": 200,   # A6.4: fewer request pairs → no calibration
     "calibration_max_error": 0.15,    # A6.4: median relative error on held-out pairs must stay below
     "cache_break_min_write": 10000,   # A6.5: a cache break also writes at least this much
+    "cache_ttl_seconds": 300,         # A6.5: a gap longer than this is "idle" (3600 once 1-hour writes are seen)
+    "gain_transcript_days": 30,       # transcripts read by gain for R̄ and the wrapped share
+    "waste_big_output_tokens": 5000,  # A6.2 waste (2)
+    "waste_reads_per_session": 3,     # A6.2 waste (4)
+    "waste_max_requests": 80,         # A6.2 waste (5)
+    "waste_output_share": 0.35,       # A6.2 waste (7) [ASSUMPTION]
+    "context_warn_tokens": 1500,      # A6.2 context
     "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU
     "reread_default": 20,         # R̄ for `gain` until transcripts are read (N1.1)
     "recall_warn_rate": 0.2,      # gain warns when a filter kind is recalled more often than this…

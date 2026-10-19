@@ -446,6 +446,31 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
 | `snapshot --label L` | Lưu bản tóm tắt report vào `~/.tokopt/results/snapshot-L.json` |
 
 - Các phép tính theo phiên bỏ qua request của subagent.
+- Chi tiết đã chốt khi implement (P4-T2, `src/tokopt/reports.py`):
+  - **Mặc định và tuỳ chọn:** `--days` mặc định là 7 (`context`: 30); mọi lệnh có `--json`; `context --path DIR`. Không có transcript → `no transcripts in the last N days`.
+  - **Số liệu theo phiên:** chỉ tính chuỗi chính; "lượt gọi" là request.
+  - **Token tool output:** `est_tokens` (tỉ lệ của báo cáo) trên text của tool_result.
+  - **R của một tool_result:** số request của chuỗi chính sau request mang tool_result đó, dừng ở compaction gần nhất. `reread_cost = T·w_cw + T·w_cr·R` (A1).
+  - **`waste`:**
+    - Họ tool: `Bash:<prog>` (`program_of`; với Codex thì lấy lệnh cuối của `bash -lc …`), `Read:<path>`, các tool khác theo tên.
+    - (3): Read/Grep/Glob có path khớp `junk_patterns`, hoặc lệnh Bash có từ (chứa `/` hoặc `.`) khớp.
+    - Ngưỡng nằm trong config: `waste_big_output_tokens` 5.000, `waste_reads_per_session` 3, `waste_max_requests` 80, `waste_output_share` 0,35.
+    - Mỗi nhóm có dòng `fix:`. JSON giữ thứ tự 7 nhóm: `tool_families, big_outputs, junk, repeated_reads, long_sessions, cache_breaks, output_heavy`.
+  - **Cache vỡ (A6.5):** TTL là `cache_ttl_seconds` (300). Từ khi phiên đã có request ghi cache TTL 1 giờ (`cache_creation.ephemeral_1h_input_tokens > 0`), TTL là 3.600. Ngưỡng `cache_break_min_write` 10.000.
+  - **Phân rã output (A6.6):**
+    - Thinking bị ẩn (block `thinking` không có nội dung): text, input tool ghi file và input tool khác ước lượng theo ký tự / tỉ lệ `default`; thinking = output_tokens − phần đó. Nếu phần ước lượng vượt output_tokens thì thu nhỏ theo tỉ lệ.
+    - Thinking hiện đủ: output_tokens chia theo ký tự của cả bốn loại.
+  - **`context`:**
+    - File chỉ dẫn: `~/.claude/CLAUDE.md`, `~/.claude/rules/*.md`; ở thư mục hiện tại và mọi thư mục cha (trừ gốc) thì `CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/*.md`, `AGENTS.md`, `GEMINI.md`; thêm `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`.
+    - MCP: `mcpServers` của `~/.claude.json` (toàn cục và `projects[<thư mục này>]`), `.mcp.json`, `.claude/settings*.json`.
+    - Skill: `~/.claude/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `~/.claude/plugins/**/skills/*/SKILL.md`; tên lấy từ `name:` trong frontmatter.
+    - Số lần gọi: `tool_use` tên `mcp__<server>__…`; tool `Skill` với `skill` (`plugin:tên` khớp theo phần sau dấu `:`).
+    - `context_warn_tokens` 1.500. Không báo token schema MCP, vì không đọc được schema.
+  - **`snapshot --label L`:** nhãn chỉ gồm chữ, số, `.`, `_`, `-`. File lưu tóm tắt report và số mục của từng nhóm waste (P6 so nhóm (2) giữa hai snapshot).
+  - **`gain` từ transcript:**
+    - R̄ là trung vị R của các tool_result Bash trong `gain_transcript_days` (30) ngày.
+    - Lệnh bị bọc: command có `tokopt run`, hoặc kết quả có footer `[tokopt: `. P2-T4 sẽ cho biết transcript giữ lệnh gốc hay lệnh đã viết lại; footer chỉ có khi output bị cắt, nên số này có thể thấp hơn thật.
+  - **Đo trên transcript thật** (2026-10-19, 56 session/7 ngày): `report` 4,8 s, `waste` 4,0 s, `context` 3,0 s.
 - **Lưu số liệu cho `gain`:** mỗi bản ghi `runs` lưu số ký tự tiết kiệm theo lớp của A1 (`saved_default`, `saved_hex`, `saved_non_ascii` = ký tự của output gốc − ký tự của output agent nhận, kể cả footer). Token = Σ ký tự_lớp / tỉ lệ_lớp, tính lúc báo cáo, nên đổi tỉ lệ (config, hoặc hiệu chỉnh A6.4) thì áp được cho cả dữ liệu cũ. Bản ghi trước P1-T5 chỉ có tổng ký tự → (raw_chars − out_chars) / tỉ lệ `default`. Guard vẫn lưu `est_tokens = size // 4` (A1: giữ tốc độ hook).
 
 ### A6.4 Hiệu chỉnh tỉ lệ ký tự/token (chỉ Claude Code, chỉ cho báo cáo)

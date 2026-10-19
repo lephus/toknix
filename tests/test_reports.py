@@ -1,0 +1,299 @@
+"""P4-T2: report, waste, context, snapshot and the transcript parts of gain (A6.2, A6.5, A6.6, N1.1, N1.3, N1.5a)."""
+from __future__ import annotations
+
+import io
+import json
+import os
+import statistics
+import tempfile
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+from unittest import mock
+
+import support  # noqa: F401  (puts src/ on sys.path)
+
+from tokopt import cli, reports, store
+from transcript_factory import ClaudeTranscript, text, thinking, tool_use
+
+NOW = 1_800_000_000.0
+W = [1.0, 1.25, 0.1, 5.0]
+
+
+def etu(i, cw, cr, o):
+    return W[0] * i + W[1] * cw + W[2] * cr + W[3] * o
+
+
+class Home(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.home = Path(tmp.name)
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+        patcher = mock.patch.dict(os.environ, dict(env, HOME=str(self.home), USERPROFILE=str(self.home)), clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        for target in ("tokopt.transcripts.time.time", "tokopt.reports.time.time"):
+            p = mock.patch(target, return_value=NOW + 3600)
+            p.start()
+            self.addCleanup(p.stop)
+        cwd = os.getcwd()
+        self.addCleanup(os.chdir, cwd)
+        self.project = self.home / "work" / "repo"
+        self.project.mkdir(parents=True)
+        os.chdir(self.project)
+
+    def save(self, t: ClaudeTranscript, project: str = "-work-repo") -> Path:
+        path = t.write(self.home / ".claude" / "projects" / project / f"{t.session}.jsonl")
+        os.utime(path, (t.t, t.t))
+        return path
+
+    def run_cli(self, *argv: str) -> tuple[int, str]:
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            code = cli.main(list(argv))
+        return code, out.getvalue()
+
+    def json_of(self, *argv: str) -> dict:
+        code, out = self.run_cli(*argv, "--json")
+        self.assertEqual(code, 0, out)
+        return json.loads(out)
+
+
+class TestReport(Home):
+    def make(self):
+        a = ClaudeTranscript(session="a", t0=NOW)
+        a.assistant([text("x" * 400)], input=100, cache_read=1000, cache_write=200, output=100)
+        a.assistant([text("y")], input=50, cache_read=1300, cache_write=0, output=50)
+        a.assistant([text("sub")], input=999, cache_read=999, cache_write=999, output=999, sidechain=True)
+        self.save(a)
+        b = ClaudeTranscript(session="b", t0=NOW)
+        b.assistant([tool_use("t1", "Bash", command="ls")], input=10, cache_read=0, cache_write=1000, output=10)
+        b.user(tool_results=[("t1", "z" * 4000)])
+        b.assistant([text("ok")], input=10, cache_read=1000, cache_write=1000, output=10)
+        self.save(b, project="-work-other")
+
+    def test_totals_etu_cache_hit_output_share(self):
+        self.make()
+        d = self.json_of("report", "--days", "7")
+        self.assertEqual(d["sessions"], 2)
+        self.assertEqual(d["requests"], 4)  # the subagent request is left out
+        self.assertEqual(d["tokens"], {"input": 170, "cache_write": 2200, "cache_read": 3300, "output": 170})
+        total = etu(170, 2200, 3300, 170)
+        self.assertAlmostEqual(d["etu"], total)
+        self.assertAlmostEqual(d["etu_per_session"], total / 2)
+        self.assertAlmostEqual(d["etu_per_request"], total / 4)
+        self.assertAlmostEqual(d["cache_hit"], 3300 / (170 + 2200 + 3300))
+        self.assertAlmostEqual(d["output_share"], 170 * 5 / total)
+        self.assertEqual(d["tool_output_tokens"], 1000)  # 4000 chars / 4
+        self.assertEqual([s["id"] for s in d["top_sessions"]], sorted(("a", "b"), key=lambda i: -{
+            "a": etu(150, 200, 2300, 150), "b": etu(20, 2000, 1000, 20)}[i]))
+
+    def test_output_breakdown_with_hidden_thinking(self):  # A6.6
+        t = ClaudeTranscript(session="h", t0=NOW)
+        t.assistant([thinking(""), text("t" * 400), tool_use("w1", "Write", file_path="/a", content="c" * 780)],
+                    output=1000)
+        self.save(t)
+        b = self.json_of("report")["output_breakdown"]
+        write_chars = len(json.dumps({"file_path": "/a", "content": "c" * 780}))
+        self.assertEqual(b["text"], 100)
+        self.assertEqual(b["write_tools"], write_chars // 4)
+        self.assertEqual(b["thinking"], 1000 - 100 - write_chars // 4)  # hidden: the rest of output_tokens
+        self.assertEqual(b["other_tools"], 0)
+
+    def test_output_breakdown_with_visible_thinking(self):
+        t = ClaudeTranscript(session="v", t0=NOW)
+        t.assistant([thinking("k" * 1200), text("t" * 400)], output=400)
+        self.save(t)
+        b = self.json_of("report")["output_breakdown"]
+        self.assertEqual((b["thinking"], b["text"]), (300, 100))  # by chars, scaled to output_tokens
+
+    def test_text_report_and_no_data(self):
+        code, out = self.run_cli("report")
+        self.assertEqual(code, 0)
+        self.assertIn("no transcripts in the last 7 days", out)
+        self.make()
+        out = self.run_cli("report")[1]
+        self.assertIn("output share", out)
+        self.assertIn("cache hit", out)
+        self.assertIn("calibration:", out)
+
+
+class TestWaste(Home):
+    def session_with_tools(self) -> ClaudeTranscript:
+        t = ClaudeTranscript(session="w", t0=NOW)
+        t.assistant([tool_use("b1", "Bash", command="npm test")], cache_read=100)
+        t.user(tool_results=[("b1", "x" * 24000)])                         # 6,000 tokens, early: R = 4
+        t.assistant([tool_use("r1", "Read", file_path="/w/src/app.ts")], cache_read=200)
+        t.user(tool_results=[("r1", "y" * 800)])                           # 200 tokens, R = 3
+        t.assistant([tool_use("r2", "Read", file_path="/w/node_modules/x/index.js")], cache_read=300)
+        t.user(tool_results=[("r2", "z" * 400)])
+        t.assistant([tool_use("r3", "Read", file_path="/w/src/app.ts")], cache_read=400)
+        t.user(tool_results=[("r3", "y" * 800)])
+        t.assistant([tool_use("r4", "Read", file_path="/w/src/app.ts")], cache_read=500)
+        t.user(tool_results=[("r4", "y" * 800)])
+        t.assistant([text("done")], cache_read=600)
+        return t
+
+    def test_seven_groups_each_with_a_hint(self):
+        self.save(self.session_with_tools())
+        d = self.json_of("waste")
+        self.assertEqual(list(d["groups"]), ["tool_families", "big_outputs", "junk", "repeated_reads",
+                                             "long_sessions", "cache_breaks", "output_heavy"])
+        for name, g in d["groups"].items():
+            with self.subTest(group=name):
+                self.assertTrue(g["hint"])
+        out = self.run_cli("waste")[1]
+        for n in range(1, 8):
+            self.assertIn(f"({n})", out)
+
+    def test_tool_families_and_big_outputs_by_reread_cost(self):
+        self.save(self.session_with_tools())
+        g = self.json_of("waste")["groups"]
+        fam = g["tool_families"]["items"]
+        self.assertEqual(fam[0]["family"], "Bash:npm")
+        self.assertEqual(fam[0]["tokens"], 6000)
+        self.assertAlmostEqual(fam[0]["etu"], 6000 * 1.25 + 6000 * 0.1 * 4)  # R = requests left after it
+        self.assertEqual(fam[1]["family"], "Read:/w/src/app.ts")
+        self.assertEqual(fam[1]["tokens"], 600)
+        self.assertEqual([x["etu"] for x in fam], sorted((x["etu"] for x in fam), reverse=True))
+        big = g["big_outputs"]["items"]
+        self.assertEqual([(b["family"], b["tokens"], b["remaining_requests"]) for b in big], [("Bash:npm", 6000, 4)])
+
+    def test_compaction_resets_remaining_requests(self):
+        t = ClaudeTranscript(session="c", t0=NOW)
+        t.assistant([tool_use("b1", "Bash", command="pytest")])
+        t.user(tool_results=[("b1", "x" * 24000)])
+        t.assistant([text("a")])
+        t.compact()
+        t.assistant([text("b")])
+        t.assistant([text("c")])
+        self.save(t)
+        big = self.json_of("waste")["groups"]["big_outputs"]["items"]
+        self.assertEqual(big[0]["remaining_requests"], 0)  # the request carrying it, then a compaction
+
+    def test_junk_repeated_reads_long_sessions(self):
+        self.save(self.session_with_tools())
+        long = ClaudeTranscript(session="long", t0=NOW)
+        for _ in range(81):
+            long.assistant([text("x")])
+        self.save(long, project="-work-long")
+        g = self.json_of("waste")["groups"]
+        self.assertEqual([j["path"] for j in g["junk"]["items"]], ["/w/node_modules/x/index.js"])
+        self.assertEqual(g["repeated_reads"]["items"], [{"session": "w", "path": "/w/src/app.ts", "reads": 3}])
+        self.assertEqual([s["session"] for s in g["long_sessions"]["items"]], ["long"])
+
+    def test_cache_breaks_all_four_causes(self):  # A6.5
+        t = ClaudeTranscript(session="cb", t0=NOW)
+        t.assistant([text("1")], cache_read=50000, cache_write=1000)
+        t.compact()
+        t.assistant([text("2 compact")], cache_read=0, cache_write=30000)
+        t.assistant([text("3")], cache_read=30000, cache_write=500)
+        t.assistant([text("4 model")], cache_read=0, cache_write=40000, model="claude-haiku-5-5")
+        t.assistant([text("5")], cache_read=40000, cache_write=500, model="claude-haiku-5-5")
+        t.assistant([text("6 idle")], cache_read=0, cache_write=20000, model="claude-haiku-5-5", dt=600)
+        t.assistant([text("7")], cache_read=20000, cache_write=500, model="claude-haiku-5-5")
+        t.assistant([text("8 unknown")], cache_read=0, cache_write=15000, model="claude-haiku-5-5")
+        t.assistant([text("9 small")], cache_read=0, cache_write=9000, model="claude-haiku-5-5")
+        self.save(t)
+        g = self.json_of("waste")["groups"]["cache_breaks"]
+        self.assertEqual([b["cause"] for b in g["items"]], ["compact", "model", "idle", "unknown"])
+        lost = {b["cause"]: b["etu_lost"] for b in g["items"]}
+        self.assertEqual(lost["compact"], 0)  # normal after a compaction, not waste
+        self.assertAlmostEqual(lost["model"], 40000 * (1.25 - 0.1))
+        self.assertAlmostEqual(g["etu_lost"], (40000 + 20000 + 15000) * (1.25 - 0.1))
+
+    def test_one_hour_ttl_is_not_idle(self):
+        t = ClaudeTranscript(session="ttl", t0=NOW)
+        t.assistant([text("1")], cache_read=40000, cache_write=1000, cache_write_1h=1000)
+        t.assistant([text("2")], cache_read=0, cache_write=40000, dt=600)  # 10 min < 1 h TTL
+        self.save(t)
+        causes = [b["cause"] for b in self.json_of("waste")["groups"]["cache_breaks"]["items"]]
+        self.assertEqual(causes, ["unknown"])
+
+    def test_output_heavy_sessions(self):
+        heavy = ClaudeTranscript(session="heavy", t0=NOW)
+        heavy.assistant([text("w" * 4000)], input=100, cache_read=1000, output=1000)
+        self.save(heavy)
+        light = ClaudeTranscript(session="light", t0=NOW)
+        light.assistant([text("w")], input=100, cache_read=100000, output=10)
+        self.save(light, project="-work-light")
+        items = self.json_of("waste")["groups"]["output_heavy"]["items"]
+        self.assertEqual([i["session"] for i in items], ["heavy"])
+        self.assertIn("breakdown", items[0])
+
+
+class TestContext(Home):
+    def test_instruction_files_mcp_and_skills(self):
+        claude = self.home / ".claude"
+        (claude / "CLAUDE.md").parent.mkdir(parents=True, exist_ok=True)
+        (claude / "CLAUDE.md").write_text("g" * 4000)                                   # 1,000 tokens
+        (self.project / "CLAUDE.md").write_text("p" * 2400)                             # 600
+        (self.project / ".claude" / "rules").mkdir(parents=True)
+        (self.project / ".claude" / "rules" / "style.md").write_text("r" * 400)          # 100
+        (self.project / "AGENTS.md").write_text("w" * 40)  # not "a": hex runs count double (A1)
+        (self.home / ".claude.json").write_text(json.dumps({
+            "mcpServers": {"github": {"command": "gh-mcp"}, "unused": {"command": "x"}},
+            "projects": {str(self.project): {"mcpServers": {"local-db": {"command": "db"}}}}}))
+        (self.project / ".mcp.json").write_text(json.dumps({"mcpServers": {"figma": {"url": "https://x"}}}))
+        for root, name in ((claude / "skills" / "pdf", "pdf"), (self.project / ".claude" / "skills" / "deploy", "deploy"),
+                           (claude / "plugins" / "cache" / "m" / "p" / "1.0" / "skills" / "lint", "lint")):
+            root.mkdir(parents=True)
+            (root / "SKILL.md").write_text(f"---\nname: {name}\ndescription: x\n---\nbody\n")
+        t = ClaudeTranscript(session="ctx", t0=NOW)
+        t.assistant([tool_use("m1", "mcp__github__get_issue", number=1), tool_use("m2", "mcp__github__list", q="x"),
+                     tool_use("s1", "Skill", skill="pdf")])
+        self.save(t)
+        d = self.json_of("context")
+        files = {Path(f["path"]).name if Path(f["path"]).parent != claude else "global CLAUDE.md": f["tokens"]
+                 for f in d["instruction_files"]}
+        self.assertEqual(files, {"global CLAUDE.md": 1000, "CLAUDE.md": 600, "style.md": 100, "AGENTS.md": 10})
+        self.assertEqual(d["instruction_tokens"], 1710)
+        self.assertTrue(d["warn"])
+        servers = {m["name"]: m["calls"] for m in d["mcp_servers"]}
+        self.assertEqual(servers, {"github": 2, "unused": 0, "local-db": 0, "figma": 0})
+        skills = {s["name"]: s["calls"] for s in d["skills"]}
+        self.assertEqual(skills, {"pdf": 1, "deploy": 0, "lint": 0})
+        out = self.run_cli("context")[1]
+        self.assertIn("unused", out)
+        self.assertIn("not called in 30 days", out)
+
+
+class TestSnapshot(Home):
+    def test_writes_a_labelled_summary(self):
+        t = TestWaste.session_with_tools(self)
+        self.save(t)
+        code, out = self.run_cli("snapshot", "--label", "before")
+        self.assertEqual(code, 0)
+        path = self.home / ".tokopt" / "results" / "snapshot-before.json"
+        d = json.loads(path.read_text())
+        self.assertEqual(d["label"], "before")
+        self.assertEqual(d["waste"]["big_outputs"], 1)
+        self.assertIn("etu", d["report"])
+
+    def test_label_is_a_safe_file_name(self):
+        with redirect_stderr(io.StringIO()):
+            self.assertEqual(cli.main(["snapshot", "--label", "../x"]), 2)
+
+
+class TestGainFromTranscripts(Home):
+    def test_r_bar_and_wrapped_share(self):
+        t = ClaudeTranscript(session="g", t0=NOW)
+        for i in range(4):
+            cmd = f"tokopt run -- 'npm test {i}'" if i < 3 else "npm test"
+            t.assistant([tool_use(f"b{i}", "Bash", command=cmd)])
+            t.user(tool_results=[(f"b{i}", "ok")])
+        t.assistant([text("end")])
+        self.save(t)
+        store.record_run("pytest", "pytest", 1, 1000, 100, 50, 10, "a0", 0,
+                         {"default": 900, "hex": 0, "non_ascii": 0})
+        d = json.loads(self.run_cli("gain", "--json")[1])
+        # Bash results sent with requests 2..5 of 5: 3, 2, 1, 0 requests left → median 1.5
+        self.assertEqual(d["reread"]["r_bar"], statistics.median([3, 2, 1, 0]))
+        self.assertEqual(d["reread"]["r_bar_source"], "transcripts")
+        self.assertEqual(d["wrapped"], {"bash_calls": 4, "wrapped": 3, "share": 0.75})
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -27,8 +27,11 @@ class TempHome(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
-        env = {k: v for k, v in os.environ.items() if not k.startswith("TOKOPT_")}
-        patcher = mock.patch.dict(os.environ, dict(env, TOKOPT_HOME=tmp.name), clear=True)
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith("TOKOPT_") and k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME")}
+        # HOME too: gain reads transcripts (R̄), and the real ~/.claude must never leak into a test
+        patcher = mock.patch.dict(os.environ, dict(env, TOKOPT_HOME=tmp.name, HOME=tmp.name, USERPROFILE=tmp.name),
+                                  clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
 

@@ -29,7 +29,8 @@ CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini
 ```
 src/tokopt/      cli.py, config.py, textutil.py, store.py, filters.py, runner.py, hooks.py,
                  outline.py, langs.py (regex-language extract), codesearch.py (symbol, refs),
-                 transcripts.py, measure.py, bench.py, statusline.py, installer.py
+                 transcripts.py, measure.py (gain, calibration), reports.py (report, waste, context,
+                 snapshot), bench.py, statusline.py, installer.py
 tests/           test_*.py, fixtures/ (output thật, không sửa tay), fake_agents/
 scripts/         bench_codesearch.py (đo symbol/refs trên repo 2.000 file)
 src/tokopt/templates/  rules.md, variants/ (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md; nằm trong package để pip/uv mang theo)

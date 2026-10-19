@@ -48,6 +48,15 @@ def build_parser() -> argparse.ArgumentParser:
                            help='one quoted string (as hook bash writes it), or the words of the command')
         elif name == "outline":
             p.add_argument("file")
+        elif name in ("report", "waste", "context", "snapshot"):
+            p.add_argument("--days", type=positive_int, metavar="N",
+                           help="transcripts of the last N days (default: 30 for context, else 7)")
+            if name == "snapshot":
+                p.add_argument("--label", required=True, help="name of the snapshot (letters, digits, . _ -)")
+            else:
+                p.add_argument("--json", action="store_true", help="machine-readable output")
+            if name == "context":
+                p.add_argument("--path", metavar="DIR", help="project directory (default: the current directory)")
         elif name == "map":
             p.add_argument("dir", nargs="?", help="repo directory (default: the current directory)")
             p.add_argument("--budget", type=positive_int, default=1500, metavar="TOKENS",
@@ -106,6 +115,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from tokopt import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command in ("report", "waste", "context", "snapshot"):
+        from tokopt import reports
+        return reports.run(ns.command, ns.days, getattr(ns, "json", False), getattr(ns, "path", None),
+                           getattr(ns, "label", None))
     if ns.command == "map":
         from tokopt import codesearch
         return codesearch.repo_map(ns.dir, ns.budget)
