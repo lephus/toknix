@@ -67,13 +67,14 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - `normalize` xử lý đúng ANSI, `\r` (progress bar) và `\r\n`.
 - **(N1.2a)** `est_tokens` theo lớp ký tự (A1): test riêng cho chuỗi ASCII, hex/base64 ≥ 16 ký tự, tiếng Việt có dấu, và chuỗi trộn; tỉ lệ đọc từ `token_ratios` trong config.
 
-**P1-T3 `[ ]` Test bộ lọc trên fixture thật (A2.4 đến A2.6)**
+**P1-T3 `[x]` Test bộ lọc trên fixture thật (A2.4 đến A2.6)**
 - Mọi điều kiện trong bảng "Kiểm chứng A2" đều có test và pass.
 - Có property test: với mọi fixture, mọi dòng khớp `ERROR_RE` trong input đều xuất hiện trong output (hoặc nằm trong dòng gộp deprecated).
 - Bổ sung fixture tự sinh cho jest, go test, cargo test, eslint (viết tay theo format thật, ghi rõ nguồn trong `tests/fixtures/README.md`).
 - Sửa 2 lỗi đã phát hiện trong bản nháp khi chạy thử trên fixture:
   - BUG-1: `f_install` không bỏ được dòng progress `━━━… 46.4/46.4 kB`. Regex dùng `\b` sau `━`, mà `━` không phải ký tự word nên `\b` không khớp.
   - BUG-2: `f_gitlog` trên `git_log.txt` (125 commit) trả về 30 dòng nhưng thiếu dòng `[tokopt] 95 older commits omitted`.
+    - Kết quả (2026-10-19): không tái hiện. `f_gitlog` trả 31 dòng có dòng omitted; 30 dòng là do `collapse_similar` gộp 4 commit liền nhau thành 3 dòng. Đã thêm test hồi quy.
 - Sửa cho khớp bất biến ERROR_RE tuyệt đối (A2.4): `budget_cut` giữ mọi dòng lỗi bất kể ngân sách; `f_lint` chỉ giới hạn 15 dòng không khớp ERROR_RE mỗi file. Property test kiểm tra dòng lỗi có mặt **nguyên văn**.
 
 **P1-T3b `[ ]` Bộ lọc nhận biết chi phí token (N1.2b–d; A2.5b, A2.5c, A2.6)**

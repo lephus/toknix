@@ -191,7 +191,8 @@ def f_install(lines: list[str], failed: bool) -> list[str]:
     noise = re.compile(
         r"^\s*(Collecting|Downloading|Using cached|Obtaining|Requirement already satisfied|Building wheel|"
         r"Created wheel|Stored in directory|Preparing metadata|Installing build dependencies|Getting requirements|"
-        r"━|Resolved|Prepared|Audited|Fetching|Progress:|Packages:|\+{3,}|Downloaded|Compiling)\b"
+        r"Resolved|Prepared|Audited|Fetching|Progress:|Packages:|Downloaded|Compiling)\b"
+        r"|^\s*(━|\+{3,})"  # progress bars: `━` and `+` are not word chars, so no \b after them
     )
     deprec = [l for l in lines if re.search(r"(?i)npm warn deprecated|deprecated", l)]
     keep = [l for l in lines if not noise.match(l) and not re.search(r"(?i)warn deprecated", l)]
@@ -202,17 +203,19 @@ def f_install(lines: list[str], failed: bool) -> list[str]:
 
 
 def f_lint(lines: list[str], failed: bool, per_file: int = 15) -> list[str]:
-    """Keep diagnostics, cap per file, keep the totals line."""
-    out, counts = [], {}
+    """Keep every error diagnostic; cap the other lines of each file; keep the totals line."""
+    out, counts, other = [], {}, {}
     for l in lines:
         m = re.match(r"^([^\s:(]+\.[A-Za-z]{1,5})[(:]", l.strip())
         if m:
             f = m.group(1)
             counts[f] = counts.get(f, 0) + 1
-            if counts[f] == per_file + 1:
-                out.append(f"  … more diagnostics in {f} (see total below)")
-            if counts[f] > per_file:
-                continue
+            if not ERROR_RE.search(l):
+                other[f] = other.get(f, 0) + 1
+                if other[f] == per_file + 1:
+                    out.append(f"  … more non-error lines in {f} omitted (see total below)")
+                if other[f] > per_file:
+                    continue
         out.append(l)
     if counts:
         out.append(f"[tokopt] {sum(counts.values())} diagnostics in {len(counts)} files")
@@ -308,18 +311,17 @@ FILTERS = {
 
 
 def budget_cut(lines: list[str], max_lines: int, head: int) -> list[str]:
-    """Head + all error lines + tail, within max_lines. Order is preserved."""
-    if len(lines) <= max_lines:
+    """All error lines (outside the budget) + head and tail of the rest within max_lines (A2.6)."""
+    err = {i for i, l in enumerate(lines) if ERROR_RE.search(l)}
+    rest = [i for i in range(len(lines)) if i not in err]
+    if len(rest) <= max_lines:
         return lines
     tail = max(max_lines - head - 20, 20)
-    keep = set(range(min(head, len(lines)))) | set(range(len(lines) - tail, len(lines)))
-    room = max_lines - len(keep)
-    for i, l in enumerate(lines):
-        if room <= 0:
-            break
-        if i not in keep and ERROR_RE.search(l):
-            keep.add(i)
-            room -= 1
+    while head + tail > max_lines and tail > 5:
+        tail -= 1
+    while head + tail > max_lines and head > 5:
+        head -= 1
+    keep = err | set(rest[:head]) | set(rest[-tail:])
     out, last = [], -1
     for i in sorted(keep):
         if i != last + 1:

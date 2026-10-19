@@ -1,0 +1,42 @@
+PASS src/utils/format.test.js
+  formatPrice
+    ✓ formats integers (2 ms)
+    ✓ formats decimals (1 ms)
+    ✓ rounds half up
+  formatDate
+    ✓ uses ISO by default (1 ms)
+    ✓ accepts a locale
+PASS src/utils/slug.test.js
+  slugify
+    ✓ lowercases (1 ms)
+    ✓ strips accents
+    ✓ collapses dashes
+FAIL src/cart/total.test.js
+  cart total
+    ✓ sums line items (3 ms)
+    ✓ applies percentage discount (1 ms)
+    ✕ applies fixed discount (4 ms)
+    ✓ handles empty cart
+
+  ● cart total › applies fixed discount
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 90
+    Received: 100
+
+      18 |   it('applies fixed discount', () => {
+      19 |     const cart = makeCart([{ price: 100, qty: 1 }]);
+    > 20 |     expect(total(cart, { fixed: 10 })).toBe(90);
+         |                                        ^
+      21 |   });
+      22 | });
+      23 |
+
+      at Object.toBe (src/cart/total.test.js:20:40)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 11 passed, 12 total
+Snapshots:   0 total
+Time:        1.284 s
+Ran all test suites.

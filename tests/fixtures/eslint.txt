@@ -1,0 +1,13 @@
+
+/home/user/app/src/api/client.js
+   3:10  error    'axios' is defined but never used     no-unused-vars
+  14:5   warning  Unexpected console statement          no-console
+  27:18  error    Expected '===' and instead saw '=='   eqeqeq
+
+/home/user/app/src/ui/Button.jsx
+   1:8   error    'React' is defined but never used     no-unused-vars
+   9:3   warning  Unexpected console statement          no-console
+
+✖ 5 problems (3 errors, 2 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

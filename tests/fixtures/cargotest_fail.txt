@@ -1,0 +1,41 @@
+   Compiling proc-macro2 v1.0.86
+   Compiling unicode-ident v1.0.12
+   Compiling quote v1.0.36
+   Compiling serde v1.0.204
+   Compiling calc v0.1.0 (/home/user/calc)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.52s
+     Running unittests src/lib.rs (target/debug/deps/calc-1a2b3c4d5e6f7a8b)
+
+running 8 tests
+test tests::add_works ... ok
+test tests::sub_works ... ok
+test tests::mul_works ... ok
+test tests::parse_empty ... ok
+test tests::parse_spaces ... ok
+test tests::div_by_zero ... FAILED
+test tests::parse_hex ... ok
+test tests::parse_negative ... FAILED
+
+failures:
+
+---- tests::div_by_zero stdout ----
+
+thread 'tests::div_by_zero' panicked at src/lib.rs:42:9:
+attempt to divide by zero
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::parse_negative stdout ----
+
+thread 'tests::parse_negative' panicked at src/lib.rs:51:9:
+assertion `left == right` failed
+  left: Some(-3)
+ right: None
+
+
+failures:
+    tests::div_by_zero
+    tests::parse_negative
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`

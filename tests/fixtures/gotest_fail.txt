@@ -1,0 +1,44 @@
+=== RUN   TestParseConfig
+--- PASS: TestParseConfig (0.00s)
+=== RUN   TestParseConfigEmpty
+--- PASS: TestParseConfigEmpty (0.00s)
+=== RUN   TestMerge
+=== RUN   TestMerge/overrides
+=== RUN   TestMerge/defaults
+    merge_test.go:41: Merge() port = 8080, want 9090
+--- FAIL: TestMerge (0.00s)
+    --- PASS: TestMerge/overrides (0.00s)
+    --- FAIL: TestMerge/defaults (0.00s)
+FAIL
+FAIL	example.com/app/config	0.004s
+=== RUN   TestHandler
+--- PASS: TestHandler (0.00s)
+=== RUN   TestHandlerNilBody
+--- FAIL: TestHandlerNilBody (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x5f3a2c]
+
+goroutine 7 [running]:
+testing.tRunner.func1.2({0x6a1b20, 0x8c4e90})
+	/usr/local/go/src/testing/testing.go:1734 +0x21c
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1737 +0x35e
+panic({0x6a1b20?, 0x8c4e90?})
+	/usr/local/go/src/runtime/panic.go:787 +0x132
+example.com/app/server.(*Handler).ServeHTTP(0xc000012345, {0x7b2f40, 0xc0000a2000}, 0xc0000b4000)
+	/home/user/app/server/handler.go:58 +0x4f
+example.com/app/server.TestHandlerNilBody(0xc000103a40)
+	/home/user/app/server/handler_test.go:33 +0x112
+testing.tRunner(0xc000103a40, 0x72c8d8)
+	/usr/local/go/src/testing/testing.go:1792 +0xf4
+created by testing.(*T).Run in goroutine 1
+	/usr/local/go/src/testing/testing.go:1851 +0x413
+FAIL	example.com/app/server	0.006s
+=== RUN   TestSlug
+--- PASS: TestSlug (0.00s)
+=== RUN   TestTruncate
+--- PASS: TestTruncate (0.00s)
+PASS
+ok  	example.com/app/util	0.002s
+FAIL
