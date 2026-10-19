@@ -1,0 +1,290 @@
+"""`tokopt install` / `uninstall` / `doctor` for Claude Code (A8).
+
+install adds three hooks and a statusLine to Claude Code's settings.json, keeping everything else;
+uninstall removes exactly what install added. What install created (the file, an empty `hooks`
+object…) is recorded in ~/.tokopt/install.json so uninstall can put back the settings as they were.
+The rules block for CLAUDE.md / AGENTS.md / GEMINI.md comes with P3-T5.
+"""
+from __future__ import annotations
+
+import copy
+import datetime
+import json
+import os
+import re
+import shlex
+import shutil
+import sqlite3
+import subprocess
+import sys
+import time
+from pathlib import PureWindowsPath
+
+from tokopt import __version__, runner, store
+from tokopt.config import claude_dir, tokopt_home
+
+HOOKS = [("PreToolUse", "Bash", "bash"), ("PreToolUse", "Read|Grep|Glob", "read"),
+         ("SessionStart", "compact|clear", "session-start")]
+# Also matches a quoted path (`'/my dir/tokopt' hook bash`) and `python -m tokopt hook bash`.
+HOOK_RE = re.compile(r"tokopt(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start)\b")
+STATUS_RE = re.compile(r"tokopt(?:\.exe)?['\"]?\s+statusline\b")
+
+
+class InstallError(Exception):
+    pass
+
+
+def settings_path():
+    return claude_dir() / "settings.json"
+
+
+def tokopt_command(argv0: str | None = None, which=shutil.which, python: str | None = None) -> str:
+    """How Claude Code should start tokopt: this console script, else `tokopt` on PATH, else `python -m tokopt`."""
+    argv0 = sys.argv[0] if argv0 is None else argv0
+    if re.split(r"[/\\]", argv0)[-1].lower() in ("tokopt", "tokopt.exe"):
+        return _quote(argv0 if os.path.isabs(argv0) or PureWindowsPath(argv0).is_absolute()
+                      else os.path.abspath(argv0))
+    found = which("tokopt")
+    return _quote(found) if found else f"{_quote(python or sys.executable)} -m tokopt"
+
+
+def _quote(path: str) -> str:
+    """A Windows path becomes C:/… (double-quoted if it has spaces), valid in Git Bash and cmd alike."""
+    if PureWindowsPath(path).drive:
+        path = path.replace("\\", "/")
+        return f'"{path}"' if " " in path else path
+    return shlex.quote(path)
+
+
+# --------------------------------------------------------------------------- files
+def _load(path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as e:
+        raise InstallError(f"{path} is not valid JSON ({e}); fix it, then run again") from None
+    if not isinstance(data, dict):
+        raise InstallError(f"{path} is not a JSON object; fix it, then run again")
+    return data
+
+
+def _save(path, data: dict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tokopt-tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _backup(path):
+    if path.exists():
+        d = tokopt_home() / "backups" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        d.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, d / path.name)
+
+
+def _records() -> dict:
+    try:
+        data = json.loads((tokopt_home() / "install.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_records(records: dict):
+    f = tokopt_home() / "install.json"
+    if records:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
+    elif f.exists():
+        f.unlink()
+
+
+# --------------------------------------------------------------------------- settings.json
+def _groups(settings: dict, event: str) -> list:
+    hooks = settings.get("hooks")
+    groups = hooks.get(event) if isinstance(hooks, dict) else None
+    return groups if isinstance(groups, list) else []
+
+
+def _find_hook(groups: list, name: str) -> dict | None:
+    for g in groups:
+        for h in (g.get("hooks") if isinstance(g, dict) and isinstance(g.get("hooks"), list) else []):
+            m = HOOK_RE.search(str(h.get("command", ""))) if isinstance(h, dict) else None
+            if m and m.group(1) == name:
+                return h
+    return None
+
+
+def _is_ours(status) -> bool:
+    return isinstance(status, dict) and bool(STATUS_RE.search(str(status.get("command", ""))))
+
+
+def install(exe: str | None = None) -> list[str]:
+    msgs = []
+    if not exe:
+        exe = tokopt_command()
+        if exe.endswith(" -m tokopt"):
+            msgs.append(f"note: tokopt is not on PATH, so hooks run `{exe}`; "
+                        f"check that it works outside this shell with `tokopt doctor`")
+    path = settings_path()
+    current = _load(path)
+    s = copy.deepcopy(current) if current is not None else {}
+    records = _records()
+    created = list(records.get(str(path), {}).get("created", []))
+    if current is None:
+        created.append("file")
+    if "hooks" not in s:
+        s["hooks"] = {}
+        created.append("hooks")
+    elif not isinstance(s["hooks"], dict):
+        raise InstallError(f'"hooks" in {path} is not an object; fix it, then run again')
+    for event, matcher, name in HOOKS:
+        if not isinstance(s["hooks"].get(event), list):
+            if event in s["hooks"]:
+                raise InstallError(f'"hooks.{event}" in {path} is not a list; fix it, then run again')
+            s["hooks"][event] = []
+            created.append(f"hooks.{event}")
+        command = f"{exe} hook {name}"
+        entry = _find_hook(s["hooks"][event], name)
+        if entry is None:
+            s["hooks"][event].append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+            msgs.append(f"added {event} [{matcher}] → {command}")
+        elif entry["command"] != command:
+            msgs.append(f"updated {event} [{matcher}]: {entry['command']} → {command}")
+            entry["command"] = command
+        else:
+            msgs.append(f"already installed: {event} [{matcher}] → {command}")
+    status = s.get("statusLine")
+    if status is None:
+        s["statusLine"] = {"type": "command", "command": f"{exe} statusline"}
+        msgs.append(f"added statusLine → {exe} statusline")
+    elif _is_ours(status):
+        status["command"] = f"{exe} statusline"
+    else:
+        msgs.append("statusLine kept: you already have one (tokopt statusline is optional)")
+    if s != current:
+        _backup(path)
+        _save(path, s)
+    records[str(path)] = {"created": sorted(set(created)), "command": exe}
+    _save_records(records)
+    msgs.append(f"settings: {path}")
+    return msgs
+
+
+def uninstall() -> list[str]:
+    path = settings_path()
+    current = _load(path)
+    records = _records()
+    record = records.pop(str(path), None)
+    created = record["created"] if record else None  # None: no record, drop containers that we emptied
+
+    def may_drop(key: str) -> bool:
+        return created is None or key in created
+
+    if current is None:
+        _save_records(records)
+        return [f"nothing to remove: {path} does not exist"]
+    s = copy.deepcopy(current)
+    removed = 0
+    hooks = s.get("hooks")
+    if isinstance(hooks, dict):
+        for event in list(hooks):
+            groups = hooks[event]
+            if not isinstance(groups, list):
+                continue
+            before = removed
+            for g in list(groups):
+                if not isinstance(g, dict) or not isinstance(g.get("hooks"), list):
+                    continue
+                keep = [h for h in g["hooks"] if not (isinstance(h, dict) and HOOK_RE.search(str(h.get("command", ""))))]
+                removed += len(g["hooks"]) - len(keep)
+                if not keep and len(keep) != len(g["hooks"]):
+                    groups.remove(g)
+                else:
+                    g["hooks"] = keep
+            if not groups and may_drop(f"hooks.{event}") and (record or removed > before):
+                del hooks[event]
+        if not hooks and may_drop("hooks") and (record or removed):
+            del s["hooks"]
+    if _is_ours(s.get("statusLine")):
+        del s["statusLine"]
+        removed += 1
+    _save_records(records)
+    if s == current:
+        return [f"nothing to remove from {path}"]
+    _backup(path)
+    if s == {} and created and "file" in created:
+        path.unlink()
+        return [f"removed {removed} tokopt entries; deleted {path} (tokopt had created it)"]
+    _save(path, s)
+    return [f"removed {removed} tokopt entries from {path}"]
+
+
+# --------------------------------------------------------------------------- doctor
+def _missing_program(command: str) -> str | None:
+    try:
+        first = shlex.split(command)[0]
+    except (ValueError, IndexError):
+        return command
+    if "/" in first or "\\" in first:
+        return None if os.path.exists(first) else first
+    return None if shutil.which(first) else first
+
+
+def _does_not_run(command: str) -> str | None:
+    """Why `<tokopt part of the hook command> --version`, run by bash as Claude Code runs hooks, fails (None: it works)."""
+    probe = command.rsplit(" hook ", 1)[0] + " --version"
+    try:
+        p = subprocess.run(runner.shell_argv(probe), capture_output=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return str(e)
+    out = p.stdout.decode("utf-8", errors="replace").strip()
+    if p.returncode == 0 and out.startswith("tokopt "):
+        return None
+    err = p.stderr.decode("utf-8", errors="replace").strip().splitlines()
+    return err[-1] if err else out or f"exit {p.returncode}"
+
+
+def doctor() -> tuple[list[str], bool]:
+    path = settings_path()
+    lines = [f"tokopt {__version__}", f"  command:  {tokopt_command()}",
+             f"  Python {sys.version.split()[0]} ({sys.executable})", f"  settings: {path}"]
+    ok = True
+    try:
+        settings = _load(path) or {}
+    except InstallError as e:
+        lines.append(f"  ⚠ {e}")
+        settings, ok = {}, False
+    probed: dict = {}  # tokopt command → why it fails, checked once
+    for event, matcher, name in HOOKS:
+        entry = _find_hook(_groups(settings, event), name)
+        if entry is None:
+            lines.append(f"  hook {name:<14} missing ({event} [{matcher}])")
+            ok = False
+            continue
+        missing = _missing_program(entry["command"])
+        if missing:
+            problem = f"  ⚠ {missing} not found"
+        else:
+            prefix = entry["command"].rsplit(" hook ", 1)[0]
+            if prefix not in probed:
+                probed[prefix] = _does_not_run(entry["command"])
+            problem = f"  ⚠ does not run: {probed[prefix]}" if probed[prefix] else ""
+        lines.append(f"  hook {name:<14} installed: {entry['command']}{problem}")
+        ok = ok and not problem
+    status = settings.get("statusLine")
+    lines.append(f"  statusLine          {'tokopt' if _is_ours(status) else 'yours (kept)' if status else 'none'}")
+    runs = guard = 0
+    if (tokopt_home() / "tokopt.db").exists():
+        since = time.time() - 7 * 86400
+        try:
+            with store.db() as c:
+                runs = c.execute("SELECT COUNT(*) FROM runs WHERE ts >= ?", (since,)).fetchone()[0]
+                guard = c.execute("SELECT COUNT(*) FROM guard WHERE ts >= ?", (since,)).fetchone()[0]
+        except sqlite3.Error as e:
+            lines.append(f"  ⚠ cannot read {tokopt_home() / 'tokopt.db'}: {e}")
+    lines.append(f"  last 7 days: {runs} runs, {guard} guard events")
+    if not ok:
+        lines.append("  fix: run `tokopt install`, then restart Claude Code")
+    return lines, ok

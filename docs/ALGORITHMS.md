@@ -433,14 +433,18 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
 
 - **Cài đặt** idempotent:
   1. Backup sang `~/.tokopt/backups/<ts>/`.
-  2. **Claude Code** `~/.claude/settings.json`: thêm hook với `command = "<đường dẫn tuyệt đối tới tokopt> hook …"`, bỏ qua nếu đã có entry chứa `tokopt hook`.
+  2. **Claude Code** `~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`): thêm hook với `command = "<đường dẫn tuyệt đối tới tokopt> hook …"`. Đã có entry chứa `tokopt hook <tên>` thì không thêm entry mới; nếu đường dẫn khác (cài lại ở chỗ khác) thì cập nhật command của entry đó tại chỗ, để hook không trỏ vào file đã mất.
+     - Đường dẫn tokopt: console script đang chạy, rồi `tokopt` trên PATH, cuối cùng `<python> -m tokopt` (kèm cảnh báo, vì Claude Code có thể không import được tokopt). Đường dẫn Windows ghi dạng `C:/…`, có dấu cách thì đặt trong nháy kép, để chạy được cả trong Git Bash lẫn cmd `[ASSUMPTION]` (chưa biết Claude Code trên Windows chạy hook bằng shell nào; kiểm ở P5-T2).
+     - `settings.json` không phải JSON hợp lệ hoặc không phải object → dừng, exit 1, không ghi đè.
+     - Những gì install tự tạo (file, `hooks`, `hooks.<event>`) ghi vào `~/.tokopt/install.json`, để uninstall trả lại đúng như trước, kể cả container rỗng mà người dùng đã có. Ghi file kiểu atomic (file tạm + `os.replace`).
      - PreToolUse `Bash` → `hook bash`
      - PreToolUse `Read|Grep|Glob` → `hook read`
      - SessionStart `compact|clear` → `hook session-start`
      - `statusLine` → `tokopt statusline`, chỉ khi người dùng chưa có statusLine.
-  3. Rules block giữa marker `<!-- tokopt:begin vN -->`…`<!-- tokopt:end -->` trong CLAUDE.md, AGENTS.md, GEMINI.md. Thay thế block cũ, giữ nguyên nội dung khác.
+  3. (P3-T5) Rules block giữa marker `<!-- tokopt:begin vN -->`…`<!-- tokopt:end -->` trong CLAUDE.md, AGENTS.md, GEMINI.md. Thay thế block cũ, giữ nguyên nội dung khác.
   4. **Codex, Gemini:** v0.1 chỉ cài rules block, hướng dẫn agent tự dùng `tokopt run --` và `tokopt outline`. Hook native cho hai agent này là `[TBD]`.
-- **Gỡ:** xoá đúng các entry chứa `tokopt hook` hoặc `tokopt statusline`, xoá rules block; không đụng vào gì khác.
+- **Gỡ:** xoá đúng các entry chứa `tokopt hook` hoặc `tokopt statusline`, xoá rules block; không đụng vào gì khác. Group/event/`hooks` bị rỗng do việc gỡ chỉ bị xoá khi install đã tạo chúng (theo `install.json`; không có bản ghi thì xoá). File do install tạo mà gỡ xong còn `{}` thì xoá file. Mỗi lần ghi đều backup trước.
+- **`tokopt doctor`:** phiên bản, lệnh tokopt sẽ cài, Python (phiên bản, đường dẫn), đường dẫn settings, từng hook: `installed`/`missing`, chương trình không tồn tại (`not found`) hoặc chạy `<lệnh> --version` qua bash (như Claude Code chạy hook) không ra `tokopt …` (`does not run: <lý do>`), statusLine (`tokopt`/`yours (kept)`/`none`), số bản ghi `runs` và `guard` 7 ngày qua. Exit 1 khi thiếu hook hoặc hook không chạy được.
 - `tokopt init-project`: thêm `permissions.deny` cho các thư mục junk vào `.claude/settings.json` của project, và tạo `.geminiignore`.
 - **Script bootstrap một lệnh:**
   - `install.sh`: cần python3 ≥ 3.9. Ưu tiên `uv tool install`; nếu không có thì tạo `python3 -m venv ~/.tokopt/venv`, `pip install`, rồi symlink `~/.local/bin/tokopt`. Cuối cùng chạy `tokopt install`.

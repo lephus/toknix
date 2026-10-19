@@ -113,7 +113,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Mỗi lần deny ghi đúng 1 dòng vào bảng `guard`.
 - **(N1.4)** Grep `output_mode="content"` không có `head_limit` → `updatedInput` thêm `head_limit=200`; có `head_limit` sẵn hoặc mode khác → không đụng; `grep_head_limit=0` → tắt.
 
-**P2-T3 `[ ]` `tokopt install` / `uninstall` / `doctor` cho Claude Code (A8)**
+**P2-T3 `[x]` `tokopt install` / `uninstall` / `doctor` cho Claude Code (A8)**
 - Cài vào `settings.json` có sẵn nội dung của người dùng: giữ nguyên mọi key cũ, thêm đúng 3 hook và statusLine (chỉ khi chưa có).
 - Chạy install 2 lần không tạo entry trùng.
 - `uninstall` trả `settings.json` về đúng như trước khi cài (so sánh JSON).
@@ -128,6 +128,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
   - Agent vẫn sửa được test.
 - Ghi kết quả vào `docs/VERIFY.md` và chốt hai `[ASSUMPTION]` của A3 và A4 (updatedInput khi không có permissionDecision; Claude Code có tự dedupe Read không).
 - **(N1.4)** Chốt thêm: `updatedInput` cho Grep có được áp dụng không, và khi `head_limit` cắt bớt thì agent có được báo không. Không được báo → đổi mặc định `grep_head_limit` thành 0.
+- Chốt thêm (từ P2-T3): matcher `compact|clear` của SessionStart có kích hoạt hook không (sau `/compact`, đọc lại file đã đọc 2 lần phải được cho qua); và hook chạy được khi Claude Code khởi động từ môi trường không có `PYTHONPATH` (`tokopt doctor` không báo `does not run`).
 
 ## P3 — Truy xuất code
 

@@ -5,23 +5,21 @@ import json
 import os
 from pathlib import Path
 
-HOME = Path.home()
-
-
+# Home is read at call time (never at import), so a test or a caller that changes HOME is honoured.
 def tokopt_home() -> Path:
-    return Path(os.environ.get("TOKOPT_HOME", HOME / ".tokopt"))
+    return Path(os.environ.get("TOKOPT_HOME") or Path.home() / ".tokopt")
 
 
 def claude_dir() -> Path:
-    return Path(os.environ.get("CLAUDE_CONFIG_DIR", HOME / ".claude"))
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
 
 
 def codex_dir() -> Path:
-    return Path(os.environ.get("CODEX_HOME", HOME / ".codex"))
+    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
 
 
 def gemini_dir() -> Path:
-    return HOME / ".gemini"
+    return Path.home() / ".gemini"
 
 
 DEFAULTS: dict = {

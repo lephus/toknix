@@ -58,6 +58,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _setup(command: str) -> int:
+    from tokopt import installer
+    from tokopt.runner import write_out
+    if command == "doctor":
+        lines, ok = installer.doctor()
+        write_out("\n".join(lines) + "\n")
+        return 0 if ok else 1
+    try:
+        msgs = installer.install() if command == "install" else installer.uninstall()
+    except (installer.InstallError, OSError) as e:
+        print(f"tokopt {command}: {e}", file=sys.stderr)
+        return 1
+    if command == "install":
+        msgs.append("restart Claude Code to load the hooks; check with `tokopt doctor`")
+    write_out("".join(m + "\n" for m in msgs))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     ns = parser.parse_args(argv)
@@ -80,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
     if ns.command == "gain":
         from tokopt import measure
         return measure.gain(ns.days, ns.json)
+    if ns.command in ("install", "uninstall", "doctor"):
+        return _setup(ns.command)
     if ns.command == "recall":
         from tokopt import runner
         return runner.recall(ns.id, ns.grep, ns.lines)
