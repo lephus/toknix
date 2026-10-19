@@ -427,6 +427,8 @@ in:  "ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear
 yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tăng dần từ offset đã lưu
 ```
 
+- Cho tới P4-T4, `tokopt statusline` là stub: đọc hết stdin, không in gì, exit 0, vì `install` (P2-T3) đã có thể thêm nó vào `statusLine`.
+
 ---
 
 ## A8. Cài đặt và gỡ (`tokopt install` / `tokopt uninstall`)

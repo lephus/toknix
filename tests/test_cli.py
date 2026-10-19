@@ -1,5 +1,6 @@
 import argparse
 import io
+import json
 import os
 import subprocess
 import sys
@@ -57,6 +58,16 @@ class TestCli(unittest.TestCase):
         with mock.patch.object(sys, "stdin", io.StringIO("")):
             code, out, err = call(["hook", "bash"])
         self.assertEqual((code, out, err), (0, "", ""))
+
+    def test_statusline_stub_is_silent_and_exits_0(self):
+        # Installed into settings.json by P2-T3; until P4-T4 it must not show an error in Claude Code.
+        payload = json.dumps({"session_id": "s", "transcript_path": "/x.jsonl", "model": {"display_name": "Opus"}})
+        env = dict(os.environ, PYTHONPATH=str(support.SRC))
+        p = subprocess.run([sys.executable, "-m", "tokopt", "statusline"], input=payload.encode("utf-8"),
+                           capture_output=True, env=env, timeout=30)
+        self.assertEqual((p.returncode, p.stdout, p.stderr), (0, b"", b""))
+        with mock.patch.object(sys, "stdin", io.StringIO(payload)):
+            self.assertEqual(call(["statusline"]), (0, "", ""))
 
     def test_no_command_prints_help(self):
         code, out, _ = call([])
