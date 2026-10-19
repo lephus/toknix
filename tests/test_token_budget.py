@@ -299,7 +299,8 @@ class TestRunner(TempHome):
 
     def tee_ids(self) -> list[str]:
         d = os.path.join(self.tmp.name, "tee")
-        return sorted(f[:-4] for f in os.listdir(d)) if os.path.isdir(d) else []
+        # <id>.log is the raw output; <id>.out.log what the agent got (A6.7)
+        return sorted(f[:-4] for f in os.listdir(d) if not f.endswith(".out.log")) if os.path.isdir(d) else []
 
     def test_lossy_change_is_teed_even_when_small(self):
         text = "\n".join([distinct(i) for i in range(40)] + ["q" * 850]) + "\n"  # cut saves < 10 %

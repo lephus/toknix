@@ -30,10 +30,10 @@ CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini
 src/toknix/      cli.py, config.py, textutil.py, store.py, filters.py, runner.py, hooks.py,
                  outline.py, langs.py (regex-language extract), codesearch.py (symbol, refs),
                  transcripts.py, measure.py (gain, calibration), reports.py (report, waste, context,
-                 snapshot), bench.py, statusline.py, installer.py
+                 snapshot), bench.py, statusline.py, installer.py, ui.py (toknix ui)
 tests/           test_*.py, fixtures/ (output thật, không sửa tay), fake_agents/
 scripts/         bench_codesearch.py (đo symbol/refs trên repo 2.000 file)
-src/toknix/templates/  rules.md, variants/ (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md; nằm trong package để pip/uv mang theo)
+src/toknix/templates/  rules.md, ui.html, variants/ (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md; nằm trong package để pip/uv mang theo)
 docs/            PLAN.md, ALGORITHMS.md, VERIFY.md
 install.sh, install.ps1
 ```

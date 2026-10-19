@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>toknix ui</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e4e4df;
+  --accent: #2f6fde; --good: #1f8a4c; --bad: #c4352b; --warn: #b7791f; --chip: #eef0f3;
+  --dim: #b4b4ae; --sel: #e8f0fd; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141413; --panel: #1d1d1b; --text: #ececea; --muted: #9a9a94; --line: #30302d;
+    --accent: #6f9cf0; --good: #4cc27f; --bad: #f07167; --warn: #e0a84a; --chip: #2a2a27;
+    --dim: #5c5c57; --sel: #23324d;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141413; --panel: #1d1d1b; --text: #ececea; --muted: #9a9a94; --line: #30302d;
+  --accent: #6f9cf0; --good: #4cc27f; --bad: #f07167; --warn: #e0a84a; --chip: #2a2a27;
+  --dim: #5c5c57; --sel: #23324d;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 10px; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.dot.off { background: var(--bad); }
+.spacer { flex: 1; }
+button, input { font: inherit; color: inherit; }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 16px; margin-bottom: 16px; }
+.card .v { font-size: 22px; font-weight: 600; }
+.card .s { color: var(--muted); font-size: 12px; }
+.chart { display: flex; align-items: flex-end; gap: 3px; height: 64px; margin-top: 8px; }
+.bar { flex: 1; display: flex; flex-direction: column-reverse; min-width: 4px; height: 100%; }
+.bar span { display: block; }
+.bar .f { background: var(--accent); }
+.bar .g { background: var(--warn); }
+.legend { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: -1px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.chip { border-radius: 999px; padding: 2px 10px; background: var(--chip); border: 1px solid transparent; }
+.chip.on { border-color: var(--accent); color: var(--accent); }
+#q { flex: 1; min-width: 160px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.ev { display: grid; grid-template-columns: 74px 92px 1fr auto; gap: 10px; align-items: baseline;
+  padding: 6px 8px; border-bottom: 1px solid var(--line); cursor: default; }
+.ev > *, .cards > *, .grid2 > * { min-width: 0; }
+.panel { overflow-x: auto; }
+.ev.click { cursor: pointer; }
+.ev.click:hover, .ev.sel { background: var(--sel); }
+.ev .t { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ev .c { font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev .m { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.badge { font-size: 11px; border-radius: 4px; padding: 1px 6px; background: var(--chip); white-space: nowrap; }
+.badge.guard { color: var(--warn); }
+.exit { color: var(--bad); font-weight: 600; }
+.good { color: var(--good); }
+.empty { color: var(--muted); padding: 24px 8px; text-align: center; }
+.detail { margin-top: 12px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.cols > div { min-width: 0; }
+.out { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: auto; max-height: 70vh;
+  font: 12px/1.5 var(--mono); padding: 6px 0; }
+.out div { white-space: pre; padding: 0 10px 0 0; }
+.out div::before { content: attr(data-n); display: inline-block; width: 52px; padding-right: 10px; text-align: right;
+  color: var(--dim); user-select: none; }
+.out .drop { color: var(--dim); }
+.cmd { font: 600 13px/1.4 var(--mono); margin: 0 0 4px; word-break: break-all; }
+.note { color: var(--muted); font-size: 12px; margin: 6px 0; }
+.more { text-align: center; padding: 10px; }
+@media (max-width: 720px) {
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .ev { grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; }
+  .ev .t, .ev .m { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>toknix</h1>
+    <span class="live"><span class="dot" id="dot"></span><span id="live">live</span></span>
+    <span class="spacer"></span>
+    <button id="theme" title="Light / dark">◐</button>
+    <button id="refresh" title="Recompute the gain summary (reads transcripts)">Refresh summary</button>
+  </header>
+
+  <div class="cards">
+    <div class="panel card"><div class="s">Saved today</div><div class="v" id="today">—</div>
+      <div class="s" id="today-sub"></div></div>
+    <div class="panel card"><div class="s">Saved directly (all time)</div><div class="v" id="direct">—</div>
+      <div class="s" id="direct-sub"></div></div>
+    <div class="panel card"><div class="s">With re-reads (estimate)</div><div class="v" id="etu">—</div>
+      <div class="s" id="etu-sub"></div></div>
+    <div class="panel card"><div class="s">Last 14 days</div>
+      <div class="chart" id="chart"></div>
+      <div class="legend"><i style="background:var(--accent)"></i>filters<i style="background:var(--warn)"></i>read guard</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel"><h2>By filter kind</h2><table id="kinds"></table></div>
+    <div class="panel"><h2>By read-guard rule</h2><table id="rules"></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Activity</h2>
+    <div class="toolbar">
+      <button class="chip on" data-f="all">All</button>
+      <button class="chip" data-f="run">Filtered runs</button>
+      <button class="chip" data-f="guard">Read guard</button>
+      <input id="q" type="search" placeholder="Filter by command or path">
+    </div>
+    <div id="events"></div>
+    <div class="more"><button id="older" hidden>Load older</button></div>
+    <div class="detail" id="detail" hidden></div>
+  </div>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = String(text);
+  return e;
+};
+const fmt = (n) => {
+  if (n === null || n === undefined) return "—";
+  const a = Math.abs(n);
+  if (a >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (a >= 1e4) return Math.round(n / 1e3) + "k";
+  if (a >= 1e3) return (n / 1e3).toFixed(1) + "k";
+  return String(Math.round(n));
+};
+const pad = (n) => String(n).padStart(2, "0");
+const when = (ts) => {
+  const d = new Date(ts * 1000), now = new Date();
+  const hms = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  return d.toDateString() === now.toDateString() ? hms : pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + " " + hms.slice(0, 5);
+};
+async function api(path) {
+  const r = await fetch(path, {cache: "no-store"});
+  if (!r.ok) throw new Error(r.status + " " + (await r.text()));
+  return r.json();
+}
+
+// theme toggle (remembered per browser; the page works without storage)
+const THEME_KEY = "toknix-ui-theme";
+try { const t = localStorage.getItem(THEME_KEY); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+$("theme").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+};
+
+// ---- summary (gain) ----
+function table(node, head, rows) {
+  node.replaceChildren();
+  if (!rows.length) { const tr = el("tr"); tr.append(el("td", "empty", "nothing yet")); node.append(tr); return; }
+  const tr = el("tr");
+  head.forEach(([h, n]) => tr.append(el("th", n ? "n" : "", h)));
+  node.append(tr);
+  rows.forEach((r) => {
+    const row = el("tr");
+    r.forEach((v, i) => row.append(el("td", head[i][1] ? "n" : "", v)));
+    node.append(row);
+  });
+}
+async function loadSummary() {
+  $("refresh").disabled = true;
+  try {
+    const g = await api("/api/summary");
+    if (g.no_data) {
+      $("direct").textContent = "0";
+      $("direct-sub").textContent = "no data yet: run an agent with the hooks installed";
+    } else {
+      $("direct").textContent = fmt(g.direct_tokens) + " tok";
+      $("direct-sub").textContent = "filters " + fmt(g.filter_tokens) + " · read guard " + fmt(g.guard_tokens);
+      $("etu").textContent = fmt(g.reread.etu) + " ETU";
+      $("etu-sub").textContent = "direct × " + g.reread.multiplier.toFixed(2) + " (R̄ " + g.reread.r_bar +
+        (g.reread.r_bar_source === "default" ? ", default" : ", from transcripts") + ")" +
+        (g.wrapped.share !== null ? " · " + Math.round(g.wrapped.share * 100) + "% of Bash calls wrapped" : "");
+    }
+    table($("kinds"), [["kind"], ["runs", 1], ["cuts", 1], ["saved", 1], ["recalled", 1]],
+      g.kinds.map((k) => [k.kind + (k.warn ? " ⚠" : ""), k.runs, k.cuts, fmt(k.saved_tokens),
+        k.recall_rate === null ? "—" : k.recalled + " (" + Math.round(k.recall_rate * 100) + "%)"]));
+    table($("rules"), [["rule"], ["denials", 1], ["saved", 1]],
+      g.rules.map((r) => [r.rule, r.denials, fmt(r.saved_tokens)]));
+  } catch (e) {
+    $("direct-sub").textContent = "summary failed: " + e.message;
+  } finally {
+    $("refresh").disabled = false;
+  }
+}
+$("refresh").onclick = loadSummary;
+
+// ---- daily chart ----
+async function loadDaily() {
+  const days = await api("/api/daily?days=14");
+  const chart = $("chart");
+  chart.replaceChildren();
+  const max = Math.max(1, ...days.map((d) => d.filter_tokens + d.guard_tokens));
+  days.forEach((d) => {
+    const b = el("div", "bar");
+    b.title = d.day + ": filters " + fmt(d.filter_tokens) + ", read guard " + fmt(d.guard_tokens);
+    const f = el("span", "f"), g = el("span", "g");
+    f.style.height = (100 * d.filter_tokens / max) + "%";
+    g.style.height = (100 * d.guard_tokens / max) + "%";
+    b.append(f, g);
+    chart.append(b);
+  });
+  const t = days.length ? days[days.length - 1] : {filter_tokens: 0, guard_tokens: 0};
+  $("today").textContent = fmt(t.filter_tokens + t.guard_tokens) + " tok";
+  $("today-sub").textContent = "filters " + fmt(t.filter_tokens) + " · read guard " + fmt(t.guard_tokens);
+}
+
+// ---- activity ----
+let latest = [], older = [], filter = "all", selected = null, noMore = false;
+const PAGE = 200;
+const key = (e) => e.type + ":" + e.ts + ":" + (e.tee_id || e.path || e.cmd);
+
+function shown() {
+  const q = $("q").value.trim().toLowerCase();
+  const all = latest.concat(older);
+  return all.filter((e) => (filter === "all" || e.type === filter) &&
+    (!q || (e.cmd || e.path || "").toLowerCase().includes(q)));
+}
+function row(e) {
+  const r = el("div", "ev");
+  r.append(el("span", "t", when(e.ts)));
+  if (e.type === "run") {
+    r.append(el("span", "badge", e.kind));
+    r.append(el("span", "c", e.cmd));
+    const m = el("span", "m");
+    const pct = e.raw_chars ? Math.round(100 * (1 - e.out_chars / e.raw_chars)) : 0;
+    m.append(e.raw_lines + "→" + e.out_lines + " lines ");
+    if (e.saved_tokens > 0) m.append(el("span", "good", "−" + fmt(e.saved_tokens) + " tok (" + pct + "%)"));
+    if (e.exit) m.append(" ", el("span", "exit", "exit " + e.exit));
+    if (e.recalled) m.append(" · recalled");
+    if (e.error_overflow) m.append(" · errors over budget");
+    r.append(m);
+    if (e.tee_id) {
+      r.classList.add("click");
+      r.dataset.tee = e.tee_id;
+      r.title = e.has_output ? "Show the original and the filtered output" : "The saved output was pruned";
+      r.onclick = () => openRun(e, r);
+    }
+  } else {
+    r.append(el("span", "badge guard", "guard: " + e.rule));
+    const p = el("span", "c", e.path.length > 90 ? "…" + e.path.slice(-89) : e.path);  // the tail names the file
+    p.title = e.path;
+    r.append(p);
+    r.append(el("span", "m", e.est_tokens ? "~" + fmt(e.est_tokens) + " tok kept out" : "denied"));
+  }
+  if (selected && selected === key(e)) r.classList.add("sel");
+  return r;
+}
+function render() {
+  const box = $("events");
+  const items = shown();
+  box.replaceChildren();
+  if (!items.length) {
+    box.append(el("div", "empty", latest.length || older.length ? "nothing matches the filter" :
+      "nothing yet: toknix records a row each time a hook rewrites a command or the read guard denies a read"));
+  }
+  items.forEach((e) => box.append(row(e)));
+  $("older").hidden = noMore || latest.length < PAGE;
+}
+async function loadEvents() {
+  try {
+    latest = await api("/api/events?limit=" + PAGE);
+    const lastTs = latest.length ? latest[latest.length - 1].ts : Infinity;
+    older = older.filter((e) => e.ts < lastTs);
+    render();
+    const m = /^#run=([0-9a-f]+)$/.exec(location.hash);  // a link to one run opens it once
+    if (m && !selected) {
+      const e = latest.find((x) => x.tee_id === m[1]);
+      const r = e && [...document.querySelectorAll(".ev.click")].find((x) => x.dataset.tee === e.tee_id);
+      if (r) openRun(e, r);
+    }
+    $("dot").classList.remove("off");
+    $("live").textContent = "live · " + when(Date.now() / 1000);
+  } catch (e) {
+    $("dot").classList.add("off");
+    $("live").textContent = "server not reachable (is `toknix ui` still running?)";
+  }
+}
+$("older").onclick = async () => {
+  const all = latest.concat(older);
+  const before = all.length ? all[all.length - 1].ts : Date.now() / 1000;
+  const page = await api("/api/events?limit=" + PAGE + "&before=" + before);
+  noMore = page.length < PAGE;
+  older = older.concat(page);
+  render();
+};
+document.querySelectorAll(".chip").forEach((c) => c.onclick = () => {
+  document.querySelectorAll(".chip").forEach((x) => x.classList.toggle("on", x === c));
+  filter = c.dataset.f;
+  render();
+});
+$("q").oninput = render;
+
+// ---- one run: original | filtered ----
+const MAX_LINES = 20000;
+function lines(text) {
+  const ls = text.split("\n");
+  if (ls.length && ls[ls.length - 1] === "") ls.pop();
+  return ls;
+}
+function pane(title, text, truncated, keep) {
+  const wrap = el("div");
+  wrap.append(el("h2", "", title));
+  if (text === null) {
+    wrap.append(el("div", "note", "not kept: this run is from before toknix saved the filtered output"));
+    return wrap;
+  }
+  const ls = lines(text);
+  const out = el("div", "out");
+  ls.slice(0, MAX_LINES).forEach((l, i) => {
+    const d = el("div", keep && !keep.has(l) ? "drop" : "", l);
+    d.dataset.n = i + 1;
+    out.append(d);
+  });
+  wrap.append(el("div", "note", ls.length + " lines" + (truncated ? " (cut: the file is longer)" : "") +
+    (ls.length > MAX_LINES ? ", first " + MAX_LINES + " shown" : "")));
+  wrap.append(out);
+  return wrap;
+}
+async function openRun(e, r) {
+  selected = key(e);
+  history.replaceState(null, "", "#run=" + e.tee_id);
+  document.querySelectorAll(".ev.sel").forEach((x) => x.classList.remove("sel"));
+  r.classList.add("sel");
+  const box = $("detail");
+  box.hidden = false;
+  box.replaceChildren(el("div", "cmd", "$ " + e.cmd));
+  if (!e.has_output) {
+    box.append(el("div", "note", "The saved output of this run was pruned (tee_keep_days)."));
+    box.scrollIntoView({behavior: "smooth", block: "nearest"});
+    return;
+  }
+  try {
+    const o = await api("/api/output/" + encodeURIComponent(e.tee_id));
+    const keep = o.filtered === null ? null : new Set(lines(o.filtered));
+    box.append(el("div", "note", "recall id " + o.tee_id + (keep ? " · dimmed lines on the left are not in the " +
+      "filtered output as they are (dropped, or shortened)" : "")));
+    const cols = el("div", "cols");
+    cols.append(pane("Original output", o.original, o.original_truncated, keep),
+      pane("What the agent got", o.filtered, o.filtered_truncated, null));
+    box.append(cols);
+  } catch (err) {
+    box.append(el("div", "note", "could not load: " + err.message));
+  }
+  box.scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+
+loadSummary();
+loadDaily().catch(() => {});
+loadEvents();
+setInterval(() => { loadEvents(); loadDaily().catch(() => {}); }, 3000);
+</script>
+</body>
+</html>

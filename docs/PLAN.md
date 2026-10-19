@@ -188,6 +188,15 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Transcript 20 MB: lần chạy đầu < 1 giây, các lần sau < 150 ms (đọc tăng dần).
 - Ngưỡng màu đúng ở 60% và 80%.
 
+**P4-T5 `[x]` `toknix ui`: trang localhost xem toknix đang làm gì (A6.7)**
+- Run có tee lưu thêm `<id>.out.log`, nội dung đúng bằng output agent nhận.
+- API trả đúng sự kiện (mới nhất trước), số liệu theo ngày và output gốc/đã lọc. tee_id lạ hoặc `../` thì trả 404. Output quá dài bị cắt, có cờ báo.
+- Host lạ thì trả 403. Chưa có DB thì không tạo DB. Xem output không ghi recall.
+- Cổng mặc định bận thì dùng cổng khác; nếu cổng do `--port` chọn mà bận thì exit 1.
+  - Kết quả (2026-10-19): `src/toknix/ui.py`, `templates/ui.html`, 26 test.
+    - Đã kiểm thật bằng dữ liệu từ `toknix run` và hook read: chụp Chrome headless ở chế độ sáng, chế độ tối và khổ hẹp; API được kiểm bằng curl (Host lạ bị 403).
+    - Thêm `#run=<id>` để mở thẳng một run.
+
 ## P5 — Phân phối
 
 **P5-T1 `[x]` `install.sh` và `install.ps1` (A8)**

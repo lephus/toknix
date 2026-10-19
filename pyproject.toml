@@ -30,4 +30,4 @@ version = { attr = "toknix.__version__" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-toknix = ["templates/*.md", "templates/variants/*.md"]
+toknix = ["templates/*.md", "templates/*.html", "templates/variants/*.md"]

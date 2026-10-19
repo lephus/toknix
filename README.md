@@ -138,6 +138,7 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix run -- "<cmd>"` | run a command, print filtered output, keep the original recallable; keeps the exit code |
 | `toknix recall <id> [--grep RE] [--lines A:B]` | print the full output of a filtered run |
 | `toknix gain [--days N] [--json]` | tokens saved by the filters and the read guard |
+| `toknix ui [--port N] [--no-open]` | a page on `http://127.0.0.1:8765` to watch toknix work: each filtered command with its original and filtered output side by side, read-guard denials, savings per day. Local only, read-only |
 | `toknix outline <file>` | symbols of a file with line ranges (`L12-40  def foo(a, b)`) |
 | `toknix symbol <name> [--kind K] [--path DIR]` | print a function or class (`Class.method` works) with line numbers |
 | `toknix refs <name> [--path DIR]` | where a name is used in code (not in strings or comments), definition left out |

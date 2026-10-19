@@ -23,6 +23,7 @@ COMMANDS = [
     ("bench", "run A/B tasks with a real agent (A6.3)"),
     ("compare", "compare two bench labels (A6.3)"),
     ("statusline", "Claude Code status line (A7)"),
+    ("ui", "local web page: what toknix filtered and blocked (A6.7)"),
     ("install", "install hooks and rules (A8)"),
     ("uninstall", "remove hooks and rules (A8)"),
     ("init-project", "add project-level deny rules (A8)"),
@@ -33,6 +34,13 @@ COMMANDS = [
 def positive_int(text: str) -> int:
     n = int(text)
     if n < 1:
+        raise ValueError(text)
+    return n
+
+
+def port_number(text: str) -> int:
+    n = int(text)
+    if not 0 <= n <= 65535:
         raise ValueError(text)
     return n
 
@@ -80,6 +88,10 @@ def build_parser() -> argparse.ArgumentParser:
         elif name == "gain":
             p.add_argument("--json", action="store_true", help="machine-readable output")
             p.add_argument("--days", type=positive_int, metavar="N", help="only the last N days (default: all)")
+        elif name == "ui":
+            p.add_argument("--port", type=port_number, metavar="N",
+                           help="port on 127.0.0.1 (default: 8765, or a free one when it is taken)")
+            p.add_argument("--no-open", action="store_true", help="do not open a browser")
         elif name == "recall":
             p.add_argument("id")
             p.add_argument("--grep", metavar="REGEX", help="only lines matching REGEX, with line numbers")
@@ -169,6 +181,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"toknix init-project: {e}", file=sys.stderr)
             return 1
         return 0
+    if ns.command == "ui":
+        from toknix import ui
+        return ui.serve(ns.port, not ns.no_open)
     if ns.command == "recall":
         from toknix import runner
         return runner.recall(ns.id, ns.grep, ns.lines)

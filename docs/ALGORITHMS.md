@@ -556,6 +556,38 @@ compare A B:
 - `compare` thêm cột median output tokens và verdict riêng cho output.
 - Nhánh A luôn là rules v1; mỗi biến thể là một nhánh B, so riêng từng cặp với v1. Biến thể thắng khi pass rate không giảm, median output tokens giảm ≥ 10% và cận trên CI 95% bootstrap của mức thay đổi output < 0. Nhiều biến thể cùng thắng thì chọn biến thể giảm output nhiều nhất.
 
+### A6.7 Xem toknix đang làm gì (`toknix ui`)
+
+Một trang web chỉ đọc, chạy ở máy người dùng: xem lệnh nào đã được lọc, bớt được bao nhiêu, output gốc cạnh output agent nhận, và các lần read guard chặn.
+
+- **Server:** `http.server` của stdlib.
+  - Chỉ nghe `127.0.0.1`. Cổng mặc định 8765; nếu cổng đó đang bận thì lấy một cổng trống bất kỳ. `--port N` chọn cổng; khi đó cổng bận là lỗi (exit 1).
+  - In URL ra terminal, mở trình duyệt (trừ khi có `--no-open`). Ctrl+C thì dừng, exit 0.
+  - Header `Host` phải là `127.0.0.1:<cổng>` hoặc `localhost:<cổng>`, nếu không thì trả 403. Lý do: chặn DNS rebinding, vì một trang web lạ có thể trỏ tên miền của nó về 127.0.0.1 để đọc output lệnh.
+  - Chỉ nhận GET. Mọi response có `Cache-Control: no-store`; không gửi header CORS. Trang không tải gì từ bên ngoài (HTML, CSS, JS nằm sẵn trong package).
+- **Chỉ đọc:**
+  - Chưa có DB thì trả dữ liệu rỗng, không tạo DB.
+  - Xem output không tính là recall (N2.1 chỉ đếm lần agent gọi `toknix recall`).
+  - Không ghi gì ra ngoài `~/.toknix/`.
+- **API (JSON):**
+  - `/api/events?limit=N&before=TS`: các bản ghi `runs` và `guard` trộn chung, mới nhất trước.
+    - `limit` mặc định 200, tối đa 1.000.
+    - Run có: kind, cmd, exit, số dòng và ký tự trước/sau, token tiết kiệm (cách tính của `gain`), tee_id, cờ còn output gốc (file tee chưa bị dọn), cờ đã bị recall, error_overflow.
+    - Guard có: rule, path, session, est_tokens.
+  - `/api/daily?days=N`: token tiết kiệm theo ngày (giờ máy), tách filter và guard. Mặc định 14 ngày, tối đa 90.
+  - `/api/summary?days=N`: đúng `gain --json`. Phần này đọc transcript nên chậm; trang chỉ gọi khi mở và khi bấm làm mới.
+  - `/api/output/<tee_id>`: `original` là file tee, `filtered` là output agent đã nhận (null với run cũ chưa lưu).
+    - tee_id phải khớp `TEE_ID_RE`; nếu không khớp hoặc không có file thì trả 404.
+    - Mỗi phần tối đa `ui_max_output_chars` (1.000.000) ký tự, kèm cờ `*_truncated`.
+- **Lưu output đã lọc:** khi một run có tee, `toknix run` ghi thêm `tee/<id>.out.log`. File này chứa đúng body agent nhận, kể cả footer; được dọn cùng file tee (`*.log`, `tee_keep_days`). Run không có tee (passthrough, cắt < 10%) không lưu output nào; trang chỉ hiện số liệu.
+- **Trang:**
+  - Đầu trang: tổng hôm nay và biểu đồ 14 ngày.
+  - Danh sách sự kiện, tự làm mới mỗi 3 giây. Lọc được theo loại (run hoặc guard) và theo chữ trong lệnh hoặc path.
+  - Bấm vào một run có tee thì thấy output gốc và output đã lọc cạnh nhau. Bên gốc làm mờ những dòng không có trong output đã lọc.
+  - Có khung tóm tắt `gain` (theo kind, theo rule).
+  - URL `#run=<tee_id>` mở thẳng run đó.
+  - Mọi chuỗi lấy từ dữ liệu được đưa vào trang bằng `textContent`, không qua HTML.
+
 ---
 
 ## A7. Statusline (`toknix statusline`)

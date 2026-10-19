@@ -135,6 +135,7 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix run -- "<lệnh>"` | chạy lệnh, in output đã lọc, giữ bản gốc để lấy lại; giữ nguyên exit code |
 | `toknix recall <id> [--grep RE] [--lines A:B]` | in lại output đầy đủ của một lần chạy đã lọc |
 | `toknix gain [--days N] [--json]` | số token tiết kiệm nhờ bộ lọc và read guard |
+| `toknix ui [--port N] [--no-open]` | trang `http://127.0.0.1:8765` để xem toknix làm việc: từng lệnh đã lọc với output gốc và output đã lọc cạnh nhau, các lần read guard chặn, token tiết kiệm theo ngày. Chỉ chạy trên máy, chỉ đọc |
 | `toknix outline <file>` | các symbol của một file kèm khoảng dòng (`L12-40  def foo(a, b)`) |
 | `toknix symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
 | `toknix refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |

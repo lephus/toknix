@@ -128,7 +128,13 @@ def filter_output(cmd: str, raw: bytes, code: int) -> str:
     raw_cc, out_cc = char_classes(text), char_classes(body)
     store.record_run(kind, cmd, code, len(text), len(body), len(lines), len(out), tee_id, overflow,
                      {k: raw_cc[k] - out_cc[k] for k in raw_cc})
-    return body + ("\n" if body and not body.endswith("\n") else "")
+    body += "\n" if body and not body.endswith("\n") else ""
+    if tee_id:  # what the agent got, next to the raw output, for `toknix ui` (A6.7)
+        try:
+            (tee_dir() / f"{tee_id}.out.log").write_bytes(body.encode("utf-8"))
+        except OSError:
+            pass
+    return body
 
 
 def save_tee(raw: bytes, keep_days: int) -> str:

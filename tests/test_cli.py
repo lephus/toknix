@@ -16,7 +16,7 @@ V01_COMMANDS = [
     "run", "recall", "gain", "hook",
     "outline", "symbol", "refs", "map",
     "report", "waste", "context", "snapshot", "bench", "compare",
-    "statusline",
+    "statusline", "ui",
     "install", "uninstall", "init-project", "doctor",
 ]
 
