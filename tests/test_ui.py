@@ -46,7 +46,7 @@ class TempHome(unittest.TestCase):
         d.mkdir(exist_ok=True)
         (d / f"{tee_id}.log").write_bytes(raw)
         if filtered is not None:
-            (d / f"{tee_id}.out.log").write_text(filtered, encoding="utf-8")
+            (d / f"{tee_id}.out.log").write_bytes(filtered.encode("utf-8"))  # as runner writes it: no \r\n on Windows
 
 
 class Served(TempHome):
