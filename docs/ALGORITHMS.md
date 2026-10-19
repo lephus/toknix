@@ -125,7 +125,7 @@ Bất biến của mọi bộ lọc:
 
 - Không bỏ dòng khớp `ERROR_RE`: error, failed, fail, fatal, exception, traceback, panic, assert, cannot, could not, not found, undefined, denied, refused, segfault, warning, warn, `^E\s`, `^\s*at .+:\d+`.
 - Luôn giữ dòng tổng kết cuối.
-- Bất biến ERROR_RE là **tuyệt đối** (người dùng chốt 2026-10-18): dòng khớp luôn được giữ **nguyên văn**, kể cả khi vượt ngân sách; không bị cắt dòng dài, không bị chuẩn hoá. Hai ngoại lệ không làm mất nội dung: `dedupe_runs` gộp các dòng giống hệt liên tiếp thành `… [×N]`; bộ lọc install gộp các dòng `deprecated`.
+- Bất biến ERROR_RE là **tuyệt đối** (người dùng chốt 2026-10-18): dòng khớp luôn được giữ **nguyên văn**, kể cả khi vượt ngân sách; không bị cắt dòng dài, không bị chuẩn hoá. Hai ngoại lệ không làm mất nội dung: `dedupe_runs` gộp các dòng giống hệt liên tiếp thành `… [×N]`; bộ lọc install gộp các dòng `deprecated`. Ngoại lệ thứ ba (người dùng chốt 2026-10-19): khi `gitdiff` vượt ngân sách, khối file bị rút gọn thành `path (+a -d)` kể cả khi có dòng khớp `ERROR_RE`, vì đó là code trong diff chứ không phải lỗi lúc chạy; agent lấy lại bằng `git diff -- <file>` hoặc `tokopt recall`.
 
 | kind | Bỏ | Giữ / biến đổi |
 |---|---|---|
