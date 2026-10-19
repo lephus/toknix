@@ -205,7 +205,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
     - Thêm job PSScriptAnalyzer, benchmark `symbol`/`refs`, và job cài thật bằng script: Ubuntu 24.04 (PEP 668, nhánh venv), macOS, Windows. Job này đóng phần còn lại của P5-T1.
     - **Chưa chạy lần nào**, vì repo chưa được push lên `lephus/toknix`. Test suite chưa từng chạy trên Windows, nên lần chạy đầu có thể lộ lỗi riêng của Windows.
 
-**P5-T3 `[ ]` README tiếng Việt và tiếng Anh, `docs/VERIFY.md`, CHANGELOG, LICENSE MIT**
+**P5-T3 `[x]` README tiếng Việt và tiếng Anh, `docs/VERIFY.md`, CHANGELOG, LICENSE MIT**
 - README có:
   - cài 1 lệnh;
   - bảng lệnh;

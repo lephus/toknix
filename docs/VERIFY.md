@@ -42,15 +42,15 @@ cp ~/.claude/settings.json ~/settings.json.before-tokopt 2>/dev/null || true
 
 ## 1. Cài tokopt lên PATH
 
-Hook chạy trong môi trường của Claude Code, nên `tokopt` phải gọi được mà không cần `PYTHONPATH`. Chọn **một** trong hai cách, chạy ở thư mục repo tokopt:
+Hook chạy trong môi trường của Claude Code, nên `tokopt` phải gọi được mà không cần `PYTHONPATH`. Dùng script cài, chạy ở thư mục repo tokopt:
 
 ```bash
-uv tool install --editable .          # nếu có uv
-# hoặc
-python3 -m pip install --user -e .    # cần ~/.local/bin trong PATH
+sh install.sh --from . --no-hooks   # trước khi code có trên GitHub
+# sau khi đã push lên lephus/toknix:
+# curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh -s -- --no-hooks
 ```
 
-Mở **terminal mới** rồi kiểm tra:
+Script dùng `uv tool install` nếu có uv; nếu không thì tạo venv `~/.tokopt/venv` và link `~/.local/bin/tokopt`. `--no-hooks` để bước 2 tự chạy `tokopt install`. Mở **terminal mới** rồi kiểm tra:
 
 ```bash
 command -v tokopt        # phải ra một đường dẫn, ví dụ ~/.local/bin/tokopt
@@ -259,7 +259,7 @@ Trong một phiên `claude` mới, gửi: *"Dùng tool Read đọc dòng 1 của
 ```bash
 tokopt uninstall
 tokopt doctor; echo "exit $?"          # bây giờ phải báo missing, exit 1
-uv tool uninstall tokopt || python3 -m pip uninstall -y tokopt
+sh install.sh --uninstall              # gỡ cả lệnh tokopt (uv tool hoặc venv)
 rm -rf ~/tokopt-verify                  # repo mẫu
 rm -rf ~/.tokopt                        # dữ liệu tokopt (tuỳ chọn)
 ```

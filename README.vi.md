@@ -1,0 +1,245 @@
+# tokopt
+
+**Cắt token mà coding agent lãng phí, và chứng minh được.** · [English](README.md)
+
+tokopt là một công cụ dòng lệnh (Python ≥ 3.9, chỉ dùng thư viện chuẩn) cho Claude Code, Codex CLI và
+Gemini CLI. Nó làm ba việc:
+
+1. **Cắt phần lãng phí:** output lệnh ồn ào, đọc file sinh tự động, đọc cả file trong khi chỉ cần một hàm.
+2. **Đo phần đã cắt**, từ dữ liệu của chính nó và từ transcript của agent.
+3. **Chứng minh chất lượng không giảm**, bằng cách chạy A/B một agent thật trên task của chính bạn.
+
+Không có gì rời khỏi máy bạn. Mọi dữ liệu tokopt giữ nằm trong `~/.tokopt/`.
+
+## Cài đặt
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
+```
+
+Trên Windows (PowerShell, đã cài Git for Windows):
+
+```powershell
+irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 | iex
+```
+
+Script cài:
+
+- dùng `uv tool install` nếu máy có [uv](https://docs.astral.sh/uv/). Nếu không, nó tạo một venv riêng
+  trong `~/.tokopt/venv`, nên Python hệ thống bị đánh dấu "externally managed" (PEP 668, ví dụ Ubuntu 24.04)
+  không bị đụng tới, rồi tạo `~/.local/bin/tokopt` trỏ vào venv đó;
+- chạy `tokopt install`, rồi `tokopt doctor`.
+
+| Muốn | Chạy |
+|---|---|
+| xem trước sẽ làm gì | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
+| chỉ cài lệnh, không cài hook | `… \| sh -s -- --no-hooks` |
+| gỡ hết | `… \| sh -s -- --uninstall`, hoặc `tokopt uninstall` nếu chỉ muốn gỡ hook và rules |
+| cài không qua script | `uv tool install git+https://github.com/lephus/toknix && tokopt install` |
+
+Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKOPT_DRY_RUN = "1"` hoặc
+`$env:TOKOPT_UNINSTALL = "1"` trước khi chạy.
+
+### `tokopt install` thay đổi những gì
+
+`~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`):
+
+| Hook | Lệnh |
+|---|---|
+| PreToolUse `Bash` | `tokopt hook bash` |
+| PreToolUse `Read\|Grep\|Glob` | `tokopt hook read` |
+| SessionStart `compact\|clear` | `tokopt hook session-start` |
+
+Lệnh cũng thêm `statusLine` → `tokopt statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
+khác của bạn giữ nguyên.
+
+Rules block được đặt giữa hai marker `<!-- tokopt:begin v1 -->` và `<!-- tokopt:end -->`, trong
+`~/.claude/CLAUDE.md`. Nó cũng được đặt vào `~/.codex/AGENTS.md` và `~/.gemini/GEMINI.md`, nhưng chỉ khi
+máy có cài Codex hoặc Gemini CLI.
+
+Mọi thay đổi đều được backup trước vào `~/.tokopt/backups/`. `tokopt uninstall` trả các file về đúng như
+cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `tokopt doctor`.
+
+## Trong một phiên làm việc, tokopt làm gì
+
+- **Output lệnh:** hook Bash viết lại các lệnh ồn ào (test, build, cài gói, git, liệt kê file) thành
+  `tokopt run -- '<lệnh>'`.
+  - Agent vẫn nhận đủ lỗi, phần tổng kết và exit code. Test pass, thanh tiến độ và log tải về bị bỏ.
+  - **Dòng lỗi không bao giờ bị cắt.**
+  - Khi có phần bị cắt, output kết thúc bằng
+    `[tokopt: 84 → 37 lines; full output: tokopt recall 851e91; exit 1]`.
+  - `tokopt recall <id>` in lại output gốc, đúng từng byte. `--grep` và `--lines` chỉ in một phần.
+  - Lệnh bắt đầu bằng `TOKOPT_RAW=1` không bao giờ bị viết lại.
+- **Read guard:** chặn ba kiểu đọc, và luôn nói cách đọc thay thế.
+  - Đọc cả một file sinh tự động, file vendor hoặc lockfile (`node_modules/`, `package-lock.json`,
+    `.min.js`…). Đọc một lát cắt bằng offset/limit vẫn được.
+  - Đọc cả một file dài hơn 800 dòng. Lời nhắc gợi ý dùng `tokopt outline`.
+  - Lần đọc thứ ba y hệt của một file không đổi. Bộ đếm reset sau `/compact` hoặc `/clear`.
+
+  Nó cũng thêm `head_limit: 200` cho các lệnh Grep ở chế độ content chưa có giới hạn.
+- **Tìm code theo tên:** `tokopt outline`, `symbol`, `refs`, `map` chạy được với Python (chính xác, qua
+  `ast`) và JS/TS, Go, Java, Rust, PHP, Ruby, Dart, Kotlin, C# (bằng regex, có che chuỗi và comment).
+- **Rules block:** nhắc agent dùng các lệnh trên, trả lời bằng diff thay vì tóm tắt, sửa file bằng Edit thay
+  vì viết lại cả file, và giữ đầy đủ suy luận khi debug, khi làm bảo mật hay migration. Block dài 282 token.
+
+## Các lệnh
+
+| Lệnh | Làm gì |
+|---|---|
+| `tokopt run -- "<lệnh>"` | chạy lệnh, in output đã lọc, giữ bản gốc để lấy lại; giữ nguyên exit code |
+| `tokopt recall <id> [--grep RE] [--lines A:B]` | in lại output đầy đủ của một lần chạy đã lọc |
+| `tokopt gain [--days N] [--json]` | số token tiết kiệm nhờ bộ lọc và read guard |
+| `tokopt outline <file>` | các symbol của một file kèm khoảng dòng (`L12-40  def foo(a, b)`) |
+| `tokopt symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
+| `tokopt refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
+| `tokopt map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
+| `tokopt report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU, cache hit, tỉ trọng output, các session tốn nhất |
+| `tokopt waste [--days 7] [--json]` | 7 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ…), kèm cách sửa |
+| `tokopt context [--days 30] [--path DIR] [--json]` | file chỉ dẫn được nạp mỗi session, MCP server và skill, kèm số lần chúng được dùng |
+| `tokopt snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
+| `tokopt bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
+| `tokopt compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
+| `tokopt statusline` | status line của Claude Code: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear at 60%` |
+| `tokopt install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
+| `tokopt init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
+
+**ETU** là đơn vị để so sánh chi phí: `input + 1,25 × cache_write + 0,1 × cache_read + 5 × output`, theo tỉ
+lệ giá niêm yết của Anthropic. Codex và Gemini có giá khác, nên với hai agent này hãy đặt `weights` trong
+config.
+
+## Đọc `tokopt gain`
+
+```
+tokopt gain (all time)
+
+Saved directly: 15.1k tokens (filters 15.1k, read guard 0)
+With re-reads (estimate): 49.1k ETU = direct × 3.25 (w_cw 1.25 + w_cr 0.1 × R̄ 20)
+  R̄ = 20 is the default value, not measured from transcripts yet
+
+By filter kind
+  kind          runs  cuts   saved  recalled  rate
+  generic          3     2   15.1k         0    0%
+```
+
+- **Saved directly** là phần agent không phải nhận: output gốc trừ output đã lọc, cộng các file mà read guard
+  đã chặn. Đây là số token ước lượng. Hãy coi nó là ước tính, không phải hoá đơn.
+- **With re-reads** gần với số tiền bạn thật sự trả. Token đã vào context được ghi vào cache một lần, rồi
+  được đọc lại ở mọi request sau đó trong session.
+  - R̄ là trung vị số request còn lại sau một kết quả Bash, đo từ transcript của bạn.
+  - Khi chưa có transcript, R̄ là 20, và dòng output ghi rõ đó là giá trị mặc định.
+- **cuts / recalled / rate:** mỗi bộ lọc đã cắt output bao nhiêu lần, và sau đó bạn hay agent cần đến
+  `tokopt recall` bao nhiêu lần.
+  - Nếu tỉ lệ này trên 20% với từ 10 lần cắt trở lên, `gain` cảnh báo bộ lọc có thể cắt quá tay. Khi đó hãy
+    báo lại lệnh đã gặp.
+- **Bash calls wrapped** là tỉ lệ lệnh Bash đã đi qua `tokopt run`.
+- Một lần chạy mà riêng các dòng lỗi đã vượt ngân sách token được đếm là `error_overflow`. Các dòng lỗi đó
+  vẫn được giữ đủ.
+
+## Đọc `tokopt compare`
+
+`tokopt bench` chạy mỗi task trong `tasks.json` nhiều lần. Mỗi lần dùng một `git worktree` mới, và worktree
+đó luôn bị xoá sau khi chạy xong, kể cả khi bị timeout:
+
+```json
+{"repo": ".", "ref": "HEAD", "agent": "claude", "repeat": 3, "timeout": 900,
+ "agent_args": ["--permission-mode", "acceptEdits"],
+ "tasks": [{"id": "fix-cart", "prompt": "Sửa các test giỏ hàng đang fail.", "check": "npm test"}]}
+```
+
+Chạy một lần khi chưa có tokopt và một lần khi đã có, rồi so sánh:
+
+```
+tokopt compare baseline → v01 (12 vs 12 runs, 3 common tasks)
+
+  pass rate             100% → 100%
+  median ETU            37,151 → 24,606  -33.8% (95% CI -36.3% … -31.2%)
+  median output tokens  2,972 → 1,712  -42.4% (95% CI -44.6% … -40.2%)
+  ...
+verdict: ACCEPT
+output verdict: ACCEPT
+```
+
+| Verdict | Khi nào |
+|---|---|
+| **ACCEPT** | pass rate không giảm, median ETU giảm ít nhất 10%, và cả khoảng tin cậy 95% (bootstrap, 2.000 lần lấy mẫu) nằm dưới 0 |
+| **REJECT** | pass rate giảm, hoặc B không rẻ hơn |
+| **INCONCLUSIVE** | B rẻ hơn nhưng chưa rõ ràng: hãy chạy thêm vài lần |
+
+**Output verdict** áp cùng luật đó, nhưng chỉ cho output token. Đây là cách chọn biến thể rules
+(`bench --rules variant.md`).
+
+Chỉ các task có ở cả hai lần chạy mới được so. Ví dụ trên là kết quả của agent giả trong bộ test. Chạy với
+agent thật thì tốn tiền thật, vì vậy việc đó do bạn tự chạy.
+
+## Cấu hình
+
+Thiết lập nằm trong `~/.tokopt/config.json`. Chỉ những key bạn đặt mới ghi đè giá trị mặc định (xem trong
+`src/tokopt/config.py`). Các key bạn hay cần đổi nhất:
+
+| Key | Mặc định | Ý nghĩa |
+|---|---|---|
+| `max_lines`, `max_tokens` | 120, 3000 | ngân sách của một output đã lọc (nhân đôi khi lệnh fail) |
+| `wrap_programs` | các trình chạy test, trình quản lý gói, git, docker… | các lệnh mà hook Bash viết lại |
+| `guard_junk`, `guard_big_file_lines`, `guard_repeat_reads` | true, 800, 2 | các luật của read guard (`0` để tắt một luật) |
+| `grep_head_limit` | 200 | giới hạn thêm vào Grep ở chế độ content (`0` = tắt) |
+| `context_window` | 200000 | dùng cho status line; model 1M được tự nhận ra |
+| `weights` | `[1, 1.25, 0.1, 5]` | trọng số ETU: input, cache write, cache read, output |
+| `hook_permission` | `null` | xem cảnh báo bên dưới |
+
+| Biến môi trường | Tác dụng |
+|---|---|
+| `TOKOPT_RAW=1` | `tokopt run` in output gốc, không lọc |
+| `TOKOPT_DEBUG=1` | hook in lỗi ra stderr. Mặc định hook không bao giờ chặn agent và im lặng khi lỗi |
+| `TOKOPT_HOME` | nơi tokopt giữ dữ liệu (mặc định `~/.tokopt`) |
+
+### ⚠ `hook_permission`
+
+Mặc định, hook Bash chỉ viết lại lệnh. Sau đó Claude Code vẫn hỏi quyền như với lệnh gốc.
+
+Đặt `"hook_permission": "allow"` thì hook sẽ tự duyệt **mọi** lệnh nó viết lại. Điều đó gồm cả
+`git push --force` và bất cứ lệnh nào mà permission rule của bạn lẽ ra đã chặn. Đừng đặt giá trị này, trừ
+khi bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
+
+## Giới hạn đã biết
+
+- **Permission rule có thể không khớp với lệnh đã bị viết lại.** Một rule như `Bash(npm test:*)` có thể
+  không khớp với `tokopt run -- 'npm test'`, nên Claude Code có thể hỏi quyền ở chỗ trước đây không hỏi.
+  Điều này chưa được kiểm trên Claude Code; nó là check B trong [docs/VERIFY.md](docs/VERIFY.md).
+- **Số token là ước lượng.**
+  - tokopt đếm số ký tự theo từng lớp: khoảng 4 ký tự/token với văn bản thường, 2 với hex/base64, 1,5 với
+    ký tự ngoài ASCII.
+  - tokopt có thể hiệu chỉnh các tỉ lệ này từ transcript của bạn. Trên những transcript đã thử, phép fit
+    chưa đạt ngưỡng chất lượng (sai số trung vị 21–25%, trong khi ngưỡng là 15%), nên tỉ lệ mặc định vẫn
+    được dùng.
+  - Vì vậy `gain` hiện số ước tính. Còn `report` và `waste` dùng số `usage` chính xác lấy từ transcript.
+- **Codex và Gemini CLI chưa có hook.** Hai agent này chỉ nhận rules block, để agent tự gọi `tokopt run` và
+  `tokopt outline`. Transcript của Gemini không được đọc.
+- **Một số hành vi của Claude Code chưa được xác nhận trên session thật** ([docs/VERIFY.md](docs/VERIFY.md)):
+  - `updatedInput` có được áp dụng khi hook không gửi permission decision không;
+  - Claude Code có tự bỏ qua các lần Read lặp lại không;
+  - khi Grep bị `head_limit` cắt bớt, agent có được báo không;
+  - các rule deny do `init-project` thêm có khớp không.
+- **Windows** được hỗ trợ qua Git Bash, giống cách Claude Code chạy trên Windows, nhưng bộ test chưa từng
+  chạy trên Windows.
+- **Outline:**
+  - Với các ngôn ngữ ngoài Python, outline dựa trên regex. Code đã minify có thể làm nó nhầm.
+  - Swift, C và C++ chưa được hỗ trợ; với các file đó, `outline` in 200 dòng đầu.
+  - `map` tính cả tên xuất hiện trong chuỗi và comment là một lần dùng.
+- **Tỉ lệ "Bash calls wrapped" trong `gain` là ước lượng.** Nó đếm các lệnh có chứa `tokopt run`, hoặc có
+  footer của tokopt trong output.
+
+## Phát triển
+
+```bash
+python -m unittest discover -s tests -v        # chỉ thư viện chuẩn, không cần pytest
+python scripts/bench_codesearch.py 2000        # đo symbol/refs trên một repo sinh tự động 2.000 file
+```
+
+- [docs/PLAN.md](docs/PLAN.md): những gì đã làm và thứ tự làm.
+- [docs/ALGORITHMS.md](docs/ALGORITHMS.md): mỗi phần hoạt động thế nào. Đây là tài liệu gốc: khi tài liệu
+  và code không khớp, tài liệu được sửa trước.
+- [docs/VERIFY.md](docs/VERIFY.md): các bước kiểm trên một session Claude Code thật.
+
+## Giấy phép
+
+MIT, xem [LICENSE](LICENSE).

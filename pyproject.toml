@@ -6,12 +6,19 @@ build-backend = "setuptools.build_meta"
 name = "tokopt"
 dynamic = ["version"]
 description = "Cut the tokens AI coding agents waste, and prove it."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Phu Le"}]
 requires-python = ">=3.9"
 dependencies = []
 classifiers = [
     "Programming Language :: Python :: 3",
     "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
 ]
+
+[project.urls]
+Homepage = "https://github.com/lephus/toknix"
 
 [project.scripts]
 tokopt = "tokopt.cli:main"
