@@ -42,7 +42,7 @@ def program_of(cmd: str) -> tuple[str, list[str]]:
             words = words[1:]
         elif w in ("uv", "poetry", "pipenv", "pdm", "hatch") and len(words) > 1 and words[1] == "run":
             words = words[2:]
-        elif re.match(r"^python[0-9.]*$", w) and len(words) > 2 and words[1] == "-m":
+        elif re.match(r"^python[0-9.]*(\.exe)?$", re.split(r"[/\\]", w)[-1]) and len(words) > 2 and words[1] == "-m":
             words = words[2:]
         else:
             break

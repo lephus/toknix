@@ -83,12 +83,13 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Bảng `runs` thêm cột `error_overflow`.
 - Mọi dòng mới trong bảng "Kiểm chứng A2" pass; fixture viết tay `build_longlines.txt`, `build_timestamps.txt` ghi nguồn trong `tests/fixtures/README.md`.
 
-**P1-T4 `[ ]` `tokopt run` và `recall` end-to-end**
+**P1-T4 `[x]` `tokopt run` và `recall` end-to-end**
 - `tokopt run -- "exit 3"` trả exit code 3.
 - `tokopt run -- "python -m pytest tests/fixtures_py"` (một suite có 2 test fail) in footer `tokopt recall <id>`; lệnh `tokopt recall <id>` in lại nguyên output gốc.
 - `TOKOPT_RAW=1` cho ra output nguyên văn.
 - **(N2.1)** `recall` ghi 1 dòng vào bảng `recalls(ts, tee_id)`; tee được lưu cả khi có biến đổi mất thông tin dù kích thước giảm < 10% (A2.1).
 - Chạy được trên Windows qua Git Bash (CI xanh trên `windows-latest`).
+  - Kết quả (2026-10-19): code đã xử lý Windows (tìm Git Bash, không lấy bash của WSL, output UTF-8 dạng byte, tee nhị phân), có unit test cho việc chọn shell. Chưa có CI nên tiêu chí `windows-latest` được kiểm ở P5-T2.
 
 **P1-T5 `[ ]` `tokopt gain`**
 - Đọc bảng `runs` và `guard`, in tổng token tiết kiệm ước lượng theo kind và theo rule, cùng top 10 lệnh.

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS runs(
   error_overflow INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS guard(
   ts REAL, session TEXT, rule TEXT, path TEXT, est_tokens INTEGER);
+CREATE TABLE IF NOT EXISTS recalls(
+  ts REAL, tee_id TEXT);
 CREATE TABLE IF NOT EXISTS reads(
   session TEXT, path TEXT, mtime REAL, span TEXT, n INTEGER,
   PRIMARY KEY(session, path, span));
@@ -41,8 +43,16 @@ def record_run(kind, cmd, exit_code, raw, out, raw_lines, out_lines, tee_id, err
             c.execute("INSERT INTO runs VALUES(?,?,?,?,?,?,?,?,?,?)",
                       (time.time(), kind, cmd[:300], exit_code, raw, out, raw_lines, out_lines, tee_id,
                        int(error_overflow)))
-    except sqlite3.Error:
+    except (sqlite3.Error, OSError):
         pass  # stats are best-effort; never break the agent's command
+
+
+def record_recall(tee_id):
+    try:
+        with db() as c:
+            c.execute("INSERT INTO recalls VALUES(?,?)", (time.time(), tee_id))
+    except (sqlite3.Error, OSError):
+        pass
 
 
 def record_guard(session, rule, path, est):

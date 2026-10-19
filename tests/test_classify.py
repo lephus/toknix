@@ -17,6 +17,10 @@ PROGRAM_CASES = [
     ("poetry run mypy src", "mypy", ["src"]),
     ("python -m pytest -x", "pytest", ["-x"]),
     ("python3.11 -m pip install requests", "pip", ["install", "requests"]),
+    (".venv/bin/python -m pytest -x", "pytest", ["-x"]),  # python by path (P1-T4)
+    ("/usr/bin/python3.12 -m pytest", "pytest", []),
+    ("C:/Python39/python.exe -m pytest", "pytest", []),
+    ("python.exe -m pip install x", "pip", ["install", "x"]),
     ("/usr/bin/find . -name '*.py'", "find", [".", "-name", "*.py"]),
     ("./gradlew test", "./gradlew", ["test"]),
     ("npm test | tail -5", "npm", ["test"]),

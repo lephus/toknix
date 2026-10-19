@@ -25,3 +25,7 @@ Không phải output chụp; viết tay theo đúng format của công cụ ở 
 | eslint.txt | `npx eslint src` — 3 error, 2 warning ở 2 file | Formatter `stylish` (mặc định) của ESLint 8 |
 | build_longlines.txt (P1-T3b) | `make build` — esbuild bundle in metafile JSON minified trên 1 dòng (3.442 ký tự), make echo lệnh esbuild dài (863 ký tự), rồi `tsc --noEmit` báo 1 lỗi TS2322 với kiểu dài (916 ký tự, khớp ERROR_RE) kèm dòng giải thích dài (923 ký tự); exit 2 | Make 4 (echo lệnh, `make: *** [Makefile:N: target] Error 2`), esbuild 0.21 (bảng kích thước output, `⚡ Done in`), tsc 5 (`file(line,col): error TSxxxx:`). Sinh bằng script một lần, dữ liệu cố định |
 | build_timestamps.txt (P1-T3b) | `./gradlew bootRun` — Spring Boot 3.3 khởi động, 1 request lỗi kèm stack trace, vài request, shutdown khi Ctrl-C | Gradle 8 (`> Task …`, `BUILD FAILED in`), log mặc định của Spring Boot 3.3 (`<ISO 8601 có offset>  LEVEL PID --- [app] [thread] logger : msg`), `spring.jpa.show-sql` in dòng `Hibernate: …` không có timestamp. Ba chuỗi timestamp dài 21, 5 và 3 dòng |
+
+## Suite mẫu `fixtures_py/` (P1-T4)
+
+`test_shop.py`: 40 test pass, 2 test fail (1 assert, 1 exception), viết bằng `unittest.TestCase` để chạy được bằng cả `python -m pytest tests/fixtures_py` và `python -m unittest discover -s tests/fixtures_py`. Không có `__init__.py` nên suite của tokopt không chạy nó. `pytest.ini` bật `-v` và tắt cacheprovider để không ghi `.pytest_cache` vào repo. Test end-to-end với pytest tự bỏ qua khi máy không có pytest (tokopt không phụ thuộc pytest).

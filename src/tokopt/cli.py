@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import sys
 
 from tokopt import __version__
@@ -35,7 +36,15 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", metavar="<command>")
     for name, help_text in COMMANDS:
         p = sub.add_parser(name, help=help_text)
-        p.add_argument("args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+        if name == "run":
+            p.add_argument("cmd", nargs=argparse.REMAINDER, metavar="-- <command>",
+                           help='one quoted string (as hook bash writes it), or the words of the command')
+        elif name == "recall":
+            p.add_argument("id")
+            p.add_argument("--grep", metavar="REGEX", help="only lines matching REGEX, with line numbers")
+            p.add_argument("--lines", metavar="A:B", help="only lines A to B (1-based, inclusive)")
+        else:
+            p.add_argument("args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
     return parser
 
 
@@ -47,5 +56,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if ns.command == "hook":
         return 0  # a hook must never break the agent; stays silent until implemented
+    if ns.command == "run":
+        words = ns.cmd[1:] if ns.cmd[:1] == ["--"] else ns.cmd
+        if not words:
+            print('usage: tokopt run -- "<command>"', file=sys.stderr)
+            return 2
+        from tokopt import runner
+        return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command == "recall":
+        from tokopt import runner
+        return runner.recall(ns.id, ns.grep, ns.lines)
     print(f"tokopt {ns.command}: not implemented yet", file=sys.stderr)
     return 2

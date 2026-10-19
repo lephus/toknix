@@ -1,3 +1,4 @@
+import argparse
 import io
 import os
 import subprocess
@@ -36,11 +37,8 @@ class TestCli(unittest.TestCase):
         self.assertEqual(out.strip(), "tokopt 0.1.0")
 
     def test_every_v01_command_is_registered(self):
-        parser = cli.build_parser()
-        for name in V01_COMMANDS:
-            with self.subTest(command=name):
-                ns = parser.parse_args([name])
-                self.assertEqual(ns.command, name)
+        sub = next(a for a in cli.build_parser()._actions if isinstance(a, argparse._SubParsersAction))
+        self.assertEqual(sorted(sub.choices), sorted(V01_COMMANDS))
 
     def test_stub_reports_not_implemented(self):
         code, out, err = call(["gain"])
@@ -49,7 +47,7 @@ class TestCli(unittest.TestCase):
         self.assertIn("not implemented", err)
 
     def test_stub_accepts_extra_arguments(self):
-        code, _, err = call(["run", "--", "echo hi"])
+        code, _, err = call(["symbol", "--", "foo"])
         self.assertEqual(code, 2)
         self.assertIn("not implemented", err)
 

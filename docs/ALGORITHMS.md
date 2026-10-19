@@ -71,14 +71,18 @@ run(cmd):
 
   lossy = normalize_costly hoặc cut_long_lines đã đổi ≥ 1 dòng
   if lossy or len(join(out)) < 0.9 × len(text):   # lưu tee khi thật sự cắt hoặc có biến đổi mất thông tin
-      id = random hex(6); save text → ~/.tokopt/tee/<id>.log
+      id = random hex(6); save p.stdout (bytes gốc) → ~/.tokopt/tee/<id>.log
       append footer: "[tokopt: N → M lines; full output: tokopt recall <id>; exit X]"
   print(out); record_run(...)           # A6
-  return p.returncode                   # BẮT BUỘC giữ nguyên exit code
+  return p.returncode                   # BẮT BUỘC giữ nguyên exit code; bị kill bởi signal N → 128 + N như shell
 ```
 
-- **Shell:** luôn chạy bằng `bash` (lấy qua `shutil.which("bash")`), fallback `/bin/sh`. Agent viết cú pháp bash, nên không dùng `$SHELL` vì người dùng có thể đang dùng fish hoặc zsh.
-- **Windows:** dùng bash của Git Bash, vì Claude Code trên Windows cũng chạy qua Git Bash. `[ASSUMPTION]`
+- **Shell:** luôn chạy bằng `bash` (lấy qua `shutil.which("bash")`), fallback `/bin/sh`. Agent viết cú pháp bash, nên không dùng `$SHELL` vì người dùng có thể đang dùng fish hoặc zsh. `TOKOPT_SHELL` ghi đè tất cả.
+- **Windows:** dùng bash của Git Bash, vì Claude Code trên Windows cũng chạy qua Git Bash. `[ASSUMPTION]` Thứ tự tìm: `CLAUDE_CODE_GIT_BASH_PATH` (biến Claude Code dùng), `bin\bash.exe` cạnh `git.exe` trên PATH, rồi `bash` trên PATH nếu không nằm trong `System32` hay `WindowsApps` (đó là launcher của WSL, chạy lệnh trong hệ điều hành khác).
+- **Output:** ghi byte UTF-8 thẳng vào stdout, không phụ thuộc encoding của console và không đổi `\n` thành `\r\n` trên Windows. Footer chỉ in khi lưu tee thành công.
+- **Không bao giờ làm mất output:** lỗi bất kỳ trong bước lọc (config hỏng, bug bộ lọc) → in nguyên văn output gốc, giữ exit code, không in gì thêm (trừ khi `TOKOPT_DEBUG=1`). `~/.tokopt` không ghi được → vẫn in output đã lọc, chỉ mất tee và thống kê.
+- **Dòng lệnh:** `tokopt run -- "<cmd>"` (một chuỗi, như hook A3 viết) chạy nguyên chuỗi; nhiều từ (`tokopt run -- npm test`) được ghép lại bằng `shlex.join`. `--` là tuỳ chọn.
+- **Đếm dòng:** N trong footer là số dòng của output gốc (không tính phần rỗng sau dấu xuống dòng cuối), cùng cách đánh số với `recall --lines` / `--grep`.
 
 ### A2.2 normalize
 
@@ -96,7 +100,7 @@ rstrip mỗi dòng
    - `VAR=value`,
    - wrapper `sudo npx pnpx bunx time nice env command exec`,
    - `uv/poetry/pipenv/pdm/hatch run`,
-   - `python -m`.
+   - `python -m` (cả khi gọi bằng đường dẫn hoặc có `.exe`: `.venv/bin/python -m`, `python.exe -m`).
 3. Từ còn lại đầu tiên là `prog`. Lấy basename, trừ trường hợp bắt đầu bằng `./`.
    - Với `git`: bỏ global option đứng trước subcommand: `-C <dir>`, `-c <k=v>`, `--no-pager`, `--git-dir=…`, `--work-tree=…` (cả dạng `--git-dir <dir>`). Ví dụ `git -C sub log` → `gitlog`.
 4. Tra bảng:
@@ -183,9 +187,9 @@ Lý do: lỗi thường nằm ở cuối (stack trace, summary), còn ngữ cả
 tokopt recall <id> [--grep REGEX] [--lines a:b]
 ```
 
-In output gốc, có thể lọc theo regex (kèm số dòng) hoặc theo đoạn dòng. File tee tự xoá sau `tee_keep_days` (7 ngày); việc dọn chạy ngẫu nhiên khoảng 1/50 lần `run`.
+Không có tuỳ chọn: in **nguyên văn từng byte** output gốc. Có `--grep` / `--lines`: in các dòng đã qua `normalize` (bỏ ANSI, frame cuối của progress bar), để regex khớp được cả output có màu. `--lines a:b` đánh số từ 1, gồm cả hai đầu (`a:`, `:b`, `a` đều hợp lệ); dùng cả hai thì `--grep` lọc trong đoạn `--lines` và giữ số dòng gốc. Tham số sai → exit 2; id không tồn tại → exit 1. Id chỉ gồm chữ số hex, nên không đọc được file ngoài `~/.tokopt/tee/`. File tee tự xoá sau `tee_keep_days` (7 ngày); việc dọn chạy ngẫu nhiên khoảng 1/50 lần `run`.
 
-Mỗi lần chạy, `recall` ghi một dòng vào bảng `recalls(ts, tee_id)` (best-effort như `record_run`). Đây là dữ liệu cho tỉ lệ recall trong `gain` (A6.2).
+Mỗi lần chạy với id hợp lệ (kể cả id đã hết hạn), `recall` ghi một dòng vào bảng `recalls(ts, tee_id)` (best-effort như `record_run`). Đây là dữ liệu cho tỉ lệ recall trong `gain` (A6.2).
 
 ### Kiểm chứng A2 (dùng fixture thật trong `tests/fixtures/`)
 
