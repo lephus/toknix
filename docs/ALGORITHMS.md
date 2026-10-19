@@ -357,6 +357,29 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   3. Chạy `extract` trên các file đó, khớp đúng tên (hoặc `Class.method`).
   4. In code của symbol kèm số dòng. Tối đa 3 kết quả và 300 dòng mỗi kết quả; các kết quả khác chỉ liệt kê vị trí.
 - `tokopt refs <name>`: regex `\bname\b` trên các file nguồn, nhóm theo file, tối đa 50 dòng. Bỏ dòng định nghĩa.
+- Chi tiết đã chốt khi implement (P3-T3, `src/tokopt/codesearch.py`):
+  - **File nguồn:**
+    - lấy từ `git ls-files --cached --others --exclude-standard`, nên gồm cả file mới chưa commit nhưng không file nào bị ignore; không phải git repo thì duyệt thư mục;
+    - chỉ các ngôn ngữ `extract` hỗ trợ, bỏ `junk_patterns` (cùng hàm `config.is_junk` với read guard), file > 1 MB, file có byte NUL trong 8 KB đầu;
+    - `--path DIR` đổi gốc tìm kiếm.
+  - **Đường dẫn in ra:** tương đối với thư mục hiện tại nếu file nằm dưới đó, ngược lại là đường dẫn tuyệt đối.
+  - **`symbol`:**
+    - `name` khớp mọi symbol cùng tên. `A.b` (sâu bao nhiêu cấp cũng được) khớp phần đuôi của tên đầy đủ; `--kind` lọc theo kind.
+    - Mỗi kết quả in một dòng tiêu đề `path:start-end  kind Tên.đầy.đủ`, rồi từng dòng code dạng `{số:>5}  {dòng}`.
+    - Quá 300 dòng thì in `… N more lines; Read path with offset=… limit=…`. Từ kết quả thứ 4 trở đi thì in `also: …`.
+    - Dòng cuối là `[N matches]`. Không tìm thấy thì báo ra stderr và exit 1.
+  - **`refs`:**
+    - Chỉ đếm tên trong code: chuỗi và comment bị che, dùng lexer của A5.1 cho regex-language và `tokenize` cho Python. Code trong interpolation (`${total(1)}`, f-string từ Python 3.12) vẫn được đếm.
+    - `A.b` tìm theo `b`. Dòng định nghĩa là dòng đầu tiên trong phạm vi symbol cùng tên có chứa tên đó, và được liệt kê riêng ở dòng cuối.
+    - Mỗi chỗ dùng in một dòng `{số:>6}: {dòng đã strip}`, nhóm theo file.
+    - Quá 50 dòng thì phần còn lại vẫn được liệt kê, dạng `path: N more at lines 11-30, 42`, nên không chỗ dùng nào bị mất.
+    - Không có kết quả thì exit 1.
+  - **Tiền lọc (để repo lớn vẫn nhanh):** cả hai bước đều trả về tập lớn hơn tập thật, chỉ bỏ những file chắc chắn không có kết quả. Test so kết quả có và không có tiền lọc trên hơn 300 tên, và kiểm thêm trên 631 file thật với 300 tên.
+    - `symbol` chỉ parse file có một dòng chứa tên mà khớp một pattern khai báo của ngôn ngữ, với đúng tên đó trong nhóm bắt. Ngoại lệ: `companion object` không tên của Kotlin.
+    - `refs` chỉ che chuỗi/comment của file mà byte có chứa tên ở dạng nguyên từ.
+  - **Đo 2026-10-19:**
+    - repo tổng hợp 2.000 file (`scripts/bench_codesearch.py`): 0,15–0,2 s mỗi lệnh, tính cả khởi động Python;
+    - một project thật có 4.678 file nguồn: 0,4–0,9 s.
 - `tokopt map [DIR] [--budget 1500]` (repo map kiểu aider, bản rút gọn):
   ```
   defs = extract mọi file

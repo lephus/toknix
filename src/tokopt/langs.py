@@ -15,6 +15,7 @@ LANG_BY_EXT = {
     ".go": "go", ".java": "java", ".rs": "rust", ".php": "php", ".rb": "ruby", ".rake": "ruby",
     ".dart": "dart", ".kt": "kotlin", ".kts": "kotlin", ".cs": "cs",
 }
+BRACES = re.compile(r"[{}]")
 MAX_DECL_CHARS = 300  # declarations start a line; never run the patterns over a 50k-char data line
 CLASS_LIKE = {"class", "interface", "enum", "record", "struct", "object", "mixin", "extension", "trait", "impl",
               "union", "module"}
@@ -38,28 +39,53 @@ class Found:
 # --------------------------------------------------------------------------- masking
 REGEX_AFTER_CHAR = "(,=:[!&|?{};+-*%~^"  # not < or >: JSX `</b>` and `<p>/path`
 REGEX_AFTER_WORD = re.compile(r"\b(?:return|typeof|case|in|of|delete|void|throw|new|yield|await|when)\s*$")
+NOT_NEWLINE = re.compile(r"[^\n]")
+PERCENT_LITERAL = re.compile(r"%[wWiIqQr]?([(\[{<|!/])")
+RUST_RAW = re.compile(r'b?r(#*)"')
+CS_PREFIX = re.compile(r'(\$+@?|@\$*)"')
+_BASE_TRIGGERS = "\n/'\"`"
+TRIGGERS = {lang: re.compile("[" + re.escape(_BASE_TRIGGERS + extra) + "]" + word)
+            for lang, extra, word in (("js", "", ""), ("ts", "", ""), ("go", "", ""), ("java", "", ""),
+                                      ("kotlin", "", ""), ("php", "#", ""), ("ruby", "#=<%", ""),
+                                      ("rust", "", r"|(?<!\w)[rb]"), ("dart", "", r"|(?<!\w)r"),
+                                      ("cs", "$@", ""))}
 HEREDOC = re.compile(r"<<([~-]?)(['\"]?)([A-Za-z_]\w*)\2")
 
 
 class _Masker:
     """code: strings and comments blanked; nc ("no comments"): only comments blanked. Newlines kept."""
 
-    def __init__(self, text: str, lang: str):
+    def __init__(self, text: str, lang: str, keep_interpolations: bool = False):
         self.t, self.lang, self.n = text, lang, len(text)
         self.code, self.nc = list(text), list(text)
+        self.keep = keep_interpolations
+        self.depth = 0  # strings being scanned (an interpolation can hold strings)
+        self.interpolations: list[tuple[int, int]] = []  # code spans inside the outermost strings
 
     def blank(self, a: int, b: int, comment: bool):
-        for k in range(a, min(b, self.n)):
-            if self.t[k] != "\n":
-                self.code[k] = " "
-                if comment:
-                    self.nc[k] = " "
+        b = min(b, self.n)
+        if b <= a:
+            return
+        blanked = list(NOT_NEWLINE.sub(" ", self.t[a:b]))
+        self.code[a:b] = blanked
+        if comment:
+            self.nc[a:b] = blanked
 
     def run(self) -> tuple[str, str]:
         t, n, lang = self.t, self.n, self.lang
         i, prev = 0, ""  # prev: last significant code char (regex-literal and JSX heuristics)
         heredocs: list[tuple[str, bool]] = []
+        trigger = TRIGGERS[lang]
         while i < n:
+            m = trigger.search(t, i)
+            j = m.start() if m else n
+            if j > i:  # plain code: only the last significant character matters
+                seg = t[i:j].rstrip()
+                if seg:
+                    prev = seg[-1]
+                i = j
+                if i >= n:
+                    break
             c = t[i]
             nxt = t[i + 1] if i + 1 < n else ""
             if c == "\n":
@@ -98,7 +124,7 @@ class _Masker:
                     i = m.end()
                     prev = "x"
                     continue
-                m = re.compile(r"%[wWiIqQr]?([(\[{<|!/])").match(t, i)
+                m = PERCENT_LITERAL.match(t, i)
                 if m and not (prev.isalnum() or prev in "_)]"):
                     j = self.percent_literal(m.end(), m.group(1))
                     self.blank(i, j, False)
@@ -119,6 +145,8 @@ class _Masker:
             if not c.isspace():
                 prev = c
             i += 1
+        for a, b in self.interpolations:  # mask each span as code of its own, nested strings blanked again
+            self.code[a:b] = mask(self.t[a:b], self.lang, True)[0]
         return "".join(self.code), "".join(self.nc)
 
     def block_comment_end(self, i: int) -> int:
@@ -193,7 +221,7 @@ class _Masker:
         c = t[i]
         ident_before = i > 0 and (t[i - 1].isalnum() or t[i - 1] == "_")
         if lang == "rust":
-            m = re.compile(r'b?r(#*)"').match(t, i)
+            m = RUST_RAW.match(t, i)
             if m and not ident_before:
                 close = '"' + m.group(1)
                 j = t.find(close, m.end())
@@ -206,7 +234,7 @@ class _Masker:
                     return i + 3
                 return 0  # a lifetime: 'a
         if lang == "cs" and c in "$@":
-            m = re.compile(r'(\$+@?|@\$*)"').match(t, i)
+            m = CS_PREFIX.match(t, i)
             if m:
                 return self.cs_string(m.end(), "@" in m.group(1), "$" in m.group(1))
         if lang == "dart" and c == "r" and t[i + 1:i + 2] in ("'", '"') and not ident_before:
@@ -238,6 +266,13 @@ class _Masker:
         return self.plain_string(i + 1, c, interp)
 
     def plain_string(self, i: int, quote: str, interp: str | None) -> int:
+        self.depth += 1
+        try:
+            return self._plain_string(i, quote, interp)
+        finally:
+            self.depth -= 1
+
+    def _plain_string(self, i: int, quote: str, interp: str | None) -> int:
         t = self.t
         while i < self.n:
             ch = t[i]
@@ -255,6 +290,13 @@ class _Masker:
         return self.n
 
     def cs_string(self, i: int, verbatim: bool, interpolated: bool) -> int:
+        self.depth += 1
+        try:
+            return self._cs_string(i, verbatim, interpolated)
+        finally:
+            self.depth -= 1
+
+    def _cs_string(self, i: int, verbatim: bool, interpolated: bool) -> int:
         t = self.t
         while i < self.n:
             ch = t[i]
@@ -277,6 +319,12 @@ class _Masker:
 
     def code_until_brace(self, i: int) -> int:
         """Inside an interpolation: skip code, nested strings included, to the closing "}"."""
+        end = self._code_until_brace(i)
+        if self.keep and self.depth == 1:
+            self.interpolations.append((i, end - 1))
+        return end
+
+    def _code_until_brace(self, i: int) -> int:
         depth, prev = 1, "{"
         while i < self.n:
             ch = self.t[i]
@@ -298,8 +346,10 @@ class _Masker:
         return self.n
 
 
-def mask(text: str, lang: str) -> tuple[str, str]:
-    return _Masker(text, lang).run()
+def mask(text: str, lang: str, keep_interpolations: bool = False) -> tuple[str, str]:
+    """(code, nc): code has strings and comments blanked, nc only comments. With keep_interpolations the
+    code inside `${...}` stays visible (refs count `${total(1)}` as a use; extract never needs it)."""
+    return _Masker(text, lang, keep_interpolations).run()
 
 
 # --------------------------------------------------------------------------- start patterns
@@ -393,11 +443,11 @@ class _Source:
             self.starts.append(self.starts[-1] + len(line) + 1)
         self.match: dict[int, int] = {}
         stack = []
-        for k, ch in enumerate(self.code):
-            if ch == "{":
-                stack.append(k)
-            elif ch == "}" and stack:
-                self.match[stack.pop()] = k
+        for m in BRACES.finditer(self.code):
+            if m.group() == "{":
+                stack.append(m.start())
+            elif stack:
+                self.match[stack.pop()] = m.start()
 
     def line_of(self, pos: int) -> int:
         lo, hi = 0, len(self.starts) - 1

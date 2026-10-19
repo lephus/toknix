@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
                            help='one quoted string (as hook bash writes it), or the words of the command')
         elif name == "outline":
             p.add_argument("file")
+        elif name in ("symbol", "refs"):
+            p.add_argument("name", help="a name, or Class.method")
+            p.add_argument("--path", metavar="DIR", help="search under DIR (default: the current directory)")
+            if name == "symbol":
+                p.add_argument("--kind", metavar="K", help="class, function, method, interface, struct, …")
         elif name == "gain":
             p.add_argument("--json", action="store_true", help="machine-readable output")
             p.add_argument("--days", type=positive_int, metavar="N", help="only the last N days (default: all)")
@@ -97,6 +102,11 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from tokopt import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command in ("symbol", "refs"):
+        from tokopt import codesearch
+        if ns.command == "symbol":
+            return codesearch.symbol(ns.name, ns.path, ns.kind)
+        return codesearch.refs(ns.name, ns.path)
     if ns.command == "outline":
         from tokopt import outline
         return outline.run(ns.file)

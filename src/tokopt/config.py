@@ -62,6 +62,21 @@ DEFAULTS: dict = {
 }
 
 
+def is_junk(path: str, patterns: list[str]) -> str | None:
+    """The junk pattern a path matches: `/dir/` a path segment, `.ext` a suffix, others the whole file name."""
+    p = "/" + path.replace("\\", "/").lstrip("/")
+    for pat in patterns:
+        if pat.startswith("/"):
+            hit = pat in p + ("/" if pat.endswith("/") else "")
+        elif pat.startswith("."):
+            hit = p.endswith(pat)
+        else:
+            hit = p.endswith("/" + pat)
+        if hit:
+            return pat
+    return None
+
+
 def load() -> dict:
     cfg = dict(DEFAULTS)
     f = tokopt_home() / "config.json"

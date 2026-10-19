@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 from tokopt import filters, store
-from tokopt.config import load
+from tokopt.config import is_junk, load
 from tokopt.textutil import est_tokens
 
 # A command that changes the agent's own shell (cwd/env), at the start of any statement: after ; & | or a newline,
@@ -62,21 +62,6 @@ def hook_bash(data: dict) -> dict | None:
     return {"hookSpecificOutput": out}
 
 
-def _is_junk(path: str, cfg: dict) -> str | None:
-    """`/dir/` patterns match a path segment, `.ext` patterns a suffix, other patterns the whole file name."""
-    p = "/" + path.replace("\\", "/").lstrip("/")
-    for pat in cfg["junk_patterns"]:
-        if pat.startswith("/"):
-            hit = pat in p + ("/" if pat.endswith("/") else "")
-        elif pat.startswith("."):
-            hit = p.endswith(pat)
-        else:
-            hit = p.endswith("/" + pat)
-        if hit:
-            return pat
-    return None
-
-
 def _count_lines(path: Path, cap_bytes: int = 50_000_000) -> int:
     n = 0
     with path.open("rb") as fh:
@@ -97,7 +82,7 @@ def hook_read(data: dict) -> dict | None:
     session = data.get("session_id", "")
     path = ti.get("file_path") or ti.get("path") or ""
     if tool in ("Grep", "Glob"):
-        if path and cfg["guard_junk"] and (pat := _is_junk(path.rstrip("/") + "/", cfg)):
+        if path and cfg["guard_junk"] and (pat := is_junk(path.rstrip("/") + "/", cfg["junk_patterns"])):
             store.record_guard(session, "junk", path, 0)
             return _deny(f"tokopt: '{path}' is a generated/vendor path ({pat}). Search source directories instead, "
                          f"or set TOKOPT guard_junk=false in ~/.tokopt/config.json if you really need it.")
@@ -112,7 +97,7 @@ def hook_read(data: dict) -> dict | None:
     if not p.is_absolute() and data.get("cwd"):  # Claude Code sends absolute paths; be safe with relative ones
         p = Path(data["cwd"]) / p
     has_span = ti.get("offset") is not None or ti.get("limit") is not None
-    if cfg["guard_junk"] and not has_span and (pat := _is_junk(path, cfg)):  # a slice is allowed (A4 R1)
+    if cfg["guard_junk"] and not has_span and (pat := is_junk(path, cfg["junk_patterns"])):  # a slice is allowed (A4 R1)
         size = p.stat().st_size if p.exists() else 0
         store.record_guard(session, "junk", path, size // 4)
         return _deny(f"tokopt: '{path}' matches '{pat}' (generated, vendored or lockfile; ~{size // 4:,} tokens). "

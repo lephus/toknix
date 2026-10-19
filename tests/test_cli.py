@@ -49,7 +49,7 @@ class TestCli(unittest.TestCase):
         self.assertIn("not implemented", err)
 
     def test_stub_accepts_extra_arguments(self):
-        code, _, err = call(["symbol", "--", "foo"])
+        code, _, err = call(["map", "--", "foo"])
         self.assertEqual(code, 2)
         self.assertIn("not implemented", err)
 

@@ -140,7 +140,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Mỗi ngôn ngữ có một file mẫu ≥ 80 dòng (có class, method, hàm lồng, chuỗi chứa `{`).
 - Recall symbol ≥ 90%, sai `end` tối đa 1 dòng.
 
-**P3-T3 `[ ]` `tokopt symbol` và `tokopt refs`**
+**P3-T3 `[x]` `tokopt symbol` và `tokopt refs`**
 - Trên chính repo tokopt: `tokopt symbol budget_cut` in đúng thân hàm kèm số dòng.
 - `tokopt refs classify` liệt kê đủ chỗ gọi, không lẫn dòng định nghĩa.
 - Repo 2.000 file: chạy < 2 giây (benchmark bằng script trong `scripts/`).
