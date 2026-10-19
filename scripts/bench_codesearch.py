@@ -7,6 +7,7 @@ Wall time of the real CLI, Python start-up included. Exit 1 when a command takes
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -58,14 +59,17 @@ def make_repo(root: Path, n_files: int) -> None:
     (root / "lib.py").write_text(f"def {TARGET}(items):\n    return sum(items)\n", encoding="utf-8")
     env = dict(os.environ, GIT_AUTHOR_NAME="b", GIT_AUTHOR_EMAIL="b@b", GIT_COMMITTER_NAME="b",
                GIT_COMMITTER_EMAIL="b@b")
+    # No auto gc / maintenance: after a 2,000-file commit git may start one in the background, which then
+    # writes into .git/objects while the temp dir is being removed (seen on CI: "Directory not empty").
+    no_bg = ["-c", "gc.auto=0", "-c", "maintenance.auto=false"]
     for args in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "bench"]):
-        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, env=env)
+        subprocess.run(["git", *no_bg, "-C", str(root), *args], check=True, capture_output=True, env=env)
 
 
 def run(n_files: int = 2000) -> dict[str, float]:
     """Seconds per command on a fresh repo of n_files files."""
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
+    root = Path(tempfile.mkdtemp(prefix="tokopt-bench-codesearch-"))
+    try:
         make_repo(root, n_files)
         env = dict(os.environ, PYTHONPATH=str(ROOT / "src"), TOKOPT_HOME=str(root / ".tokopt-home"))
         timings = {}
@@ -77,6 +81,23 @@ def run(n_files: int = 2000) -> dict[str, float]:
             if p.returncode != 0:
                 raise RuntimeError(f"tokopt {command} failed: {p.stderr.decode(errors='replace')}")
         return timings
+    finally:
+        _remove(root)
+
+
+def _remove(path: Path, tries: int = 5) -> None:
+    """rmtree that waits out a straggler still writing (TemporaryDirectory's ignore_cleanup_errors is 3.10+)."""
+    for attempt in range(tries):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            if attempt == tries - 1:
+                shutil.rmtree(path, ignore_errors=True)
+                return
+            time.sleep(0.5 * (attempt + 1))
 
 
 def main() -> int:
