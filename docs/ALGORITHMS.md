@@ -532,6 +532,12 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
      - SessionStart `compact|clear` → `hook session-start`
      - `statusLine` → `tokopt statusline`, chỉ khi người dùng chưa có statusLine.
   3. (P3-T5) Rules block giữa marker `<!-- tokopt:begin vN -->`…`<!-- tokopt:end -->` trong CLAUDE.md, AGENTS.md, GEMINI.md. Thay thế block cũ, giữ nguyên nội dung khác.
+     - File đích là file chỉ dẫn toàn cục của từng agent: `$CLAUDE_CONFIG_DIR` hoặc `~/.claude/CLAUDE.md` (luôn ghi), `$CODEX_HOME` hoặc `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`. Hai file sau chỉ được ghi khi thư mục của agent đã tồn tại; tokopt không tạo thư mục cho agent không dùng.
+     - Nội dung là `src/tokopt/templates/rules.md` (v1, ≤ 350 token theo A1). Biến thể nằm trong `templates/variants/` để bench chọn (N1.5c). Chưa có bench thì cài v1.
+     - Có block (bất kỳ vN) thì thay đúng chỗ đó. Chưa có thì nối vào cuối, sau một dòng trống; file chưa có thì tạo mới. Phần ngăn cách đã thêm được ghi vào `install.json` (`rules:<path>`).
+     - File được đọc và ghi dạng byte UTF-8, giữ nguyên CRLF (block cũng dùng CRLF). File không phải UTF-8 → dừng, không ghi.
+     - Gỡ: bỏ block và đúng phần ngăn cách đã thêm, nên file trở về đúng từng byte; file do install tạo thì bị xoá. Nội dung người dùng thêm quanh block sau khi cài vẫn được giữ. Không có bản ghi thì bỏ block cùng một dòng trống ngay trước nó.
+     - `doctor` liệt kê từng file: `v1 in <path>`, `missing in <path>` (tính là lỗi), hoặc `<agent> not installed`.
   4. **Codex, Gemini:** v0.1 chỉ cài rules block, hướng dẫn agent tự dùng `tokopt run --` và `tokopt outline`. Hook native cho hai agent này là `[TBD]`.
 - **Gỡ:** xoá đúng các entry chứa `tokopt hook` hoặc `tokopt statusline`, xoá rules block; không đụng vào gì khác. Group/event/`hooks` bị rỗng do việc gỡ chỉ bị xoá khi install đã tạo chúng (theo `install.json`; không có bản ghi thì xoá). File do install tạo mà gỡ xong còn `{}` thì xoá file. Mỗi lần ghi đều backup trước.
 - **`tokopt doctor`:** phiên bản, lệnh tokopt sẽ cài, Python (phiên bản, đường dẫn), đường dẫn settings, từng hook: `installed`/`missing`, chương trình không tồn tại (`not found`) hoặc chạy `<lệnh> --version` qua bash (như Claude Code chạy hook) không ra `tokopt …` (`does not run: <lý do>`), statusLine (`tokopt`/`yours (kept)`/`none`), số bản ghi `runs` và `guard` 7 ngày qua. Exit 1 khi thiếu hook hoặc hook không chạy được.

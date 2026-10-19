@@ -32,7 +32,7 @@ src/tokopt/      cli.py, config.py, textutil.py, store.py, filters.py, runner.py
                  transcripts.py, measure.py, bench.py, statusline.py, installer.py
 tests/           test_*.py, fixtures/ (output thật, không sửa tay), fake_agents/
 scripts/         bench_codesearch.py (đo symbol/refs trên repo 2.000 file)
-templates/       rules.md (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md)
+src/tokopt/templates/  rules.md, variants/ (rules block cài vào CLAUDE.md / AGENTS.md / GEMINI.md; nằm trong package để pip/uv mang theo)
 docs/            PLAN.md, ALGORITHMS.md, VERIFY.md
 install.sh, install.ps1
 ```

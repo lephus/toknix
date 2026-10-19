@@ -149,7 +149,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Output không vượt `--budget` quá 5%.
 - File có nhiều symbol được tham chiếu nhiều đứng đầu (test với một repo fixture nhỏ có thứ hạng biết trước).
 
-**P3-T5 `[ ]` Rules block v1**
+**P3-T5 `[x]` Rules block v1**
 - Viết `templates/rules.md` (≤ 350 token theo A1), nội dung:
   - dùng `tokopt outline`, `symbol`, `refs` trước khi Read cả file;
   - khi output bị cắt thì dùng `tokopt recall`;
@@ -159,6 +159,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
   - **(N1.5b)** viết ít: không tóm tắt lại thay đổi vừa làm, không dán lại code đã có trong diff, sửa file có sẵn bằng Edit thay vì Write, trả lời ngắn khi không được hỏi giải thích.
 - Thêm ít nhất 1 biến thể ngắn gọn hơn trong `templates/variants/`, mỗi bản ≤ 350 token. Mặc định cài v1.
 - `install` chèn block vào CLAUDE.md, AGENTS.md, GEMINI.md đúng theo marker.
+  - Kết quả (2026-10-19): template nằm trong package ở `src/tokopt/templates/` (khai báo `package-data`), vì `templates/` ở gốc repo không có trong gói khi cài bằng pip/uv. v1: 282 token; `variants/terse.md`: 107 token.
 
 ## P4 — Đo lường
 

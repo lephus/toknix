@@ -18,10 +18,10 @@ import sqlite3
 import subprocess
 import sys
 import time
-from pathlib import PureWindowsPath
+from pathlib import Path, PureWindowsPath
 
 from tokopt import __version__, runner, store
-from tokopt.config import claude_dir, tokopt_home
+from tokopt.config import claude_dir, codex_dir, gemini_dir, tokopt_home
 
 HOOKS = [("PreToolUse", "Bash", "bash"), ("PreToolUse", "Read|Grep|Glob", "read"),
          ("SessionStart", "compact|clear", "session-start")]
@@ -167,15 +167,22 @@ def install(exe: str | None = None) -> list[str]:
         _backup(path)
         _save(path, s)
     records[str(path)] = {"created": sorted(set(created)), "command": exe}
+    msgs += _install_rules(records)
     _save_records(records)
     msgs.append(f"settings: {path}")
     return msgs
 
 
 def uninstall() -> list[str]:
+    records = _records()
+    msgs = _uninstall_settings(records) + _uninstall_rules(records)
+    _save_records(records)
+    return msgs
+
+
+def _uninstall_settings(records: dict) -> list[str]:
     path = settings_path()
     current = _load(path)
-    records = _records()
     record = records.pop(str(path), None)
     created = record["created"] if record else None  # None: no record, drop containers that we emptied
 
@@ -183,7 +190,6 @@ def uninstall() -> list[str]:
         return created is None or key in created
 
     if current is None:
-        _save_records(records)
         return [f"nothing to remove: {path} does not exist"]
     s = copy.deepcopy(current)
     removed = 0
@@ -210,7 +216,6 @@ def uninstall() -> list[str]:
     if _is_ours(s.get("statusLine")):
         del s["statusLine"]
         removed += 1
-    _save_records(records)
     if s == current:
         return [f"nothing to remove from {path}"]
     _backup(path)
@@ -219,6 +224,92 @@ def uninstall() -> list[str]:
         return [f"removed {removed} tokopt entries; deleted {path} (tokopt had created it)"]
     _save(path, s)
     return [f"removed {removed} tokopt entries from {path}"]
+
+
+# --------------------------------------------------------------------------- rules block (A8 step 3, P3-T5)
+RULES_VERSION = 1
+TEMPLATES = Path(__file__).resolve().parent / "templates"
+RULES_BLOCK_RE = re.compile(r"<!-- tokopt:begin v(\d+) -->\r?\n.*?<!-- tokopt:end -->(?:\r?\n)?", re.S)
+
+
+def rules_targets() -> list[tuple[str, Path, Path | None]]:
+    """(agent, instruction file, directory that must exist first). Claude Code's file is always written;
+    Codex and Gemini CLI only when they are installed, so no directory is created for an agent not in use."""
+    return [("Claude Code", claude_dir() / "CLAUDE.md", None),
+            ("Codex", codex_dir() / "AGENTS.md", codex_dir()),
+            ("Gemini CLI", gemini_dir() / "GEMINI.md", gemini_dir())]
+
+
+def _rules_block(newline: str) -> str:
+    rules = (TEMPLATES / "rules.md").read_text(encoding="utf-8")
+    return (f"<!-- tokopt:begin v{RULES_VERSION} -->{newline}" + rules.replace("\n", newline)
+            + f"<!-- tokopt:end -->{newline}")
+
+
+def _read_instructions(path: Path) -> str | None:
+    """Text as stored (CRLF kept); None when missing. Not UTF-8 → left alone (InstallError)."""
+    if not path.exists():
+        return None
+    try:
+        return path.read_bytes().decode("utf-8")
+    except UnicodeDecodeError:
+        raise InstallError(f"{path} is not UTF-8; tokopt leaves it alone") from None
+
+
+def _install_rules(records: dict) -> list[str]:
+    msgs = []
+    for agent, path, needs in rules_targets():
+        if needs is not None and not needs.is_dir():
+            continue
+        current = _read_instructions(path)
+        text = current or ""
+        newline = "\r\n" if "\r\n" in text else "\n"
+        block = _rules_block(newline)
+        m = RULES_BLOCK_RE.search(text)
+        if m:  # replace the block wherever it is; the user's text around it stays
+            new = text[:m.start()] + block + text[m.end():]
+            if new == text:
+                msgs.append(f"rules v{RULES_VERSION} already in {path}")
+                continue
+            msgs.append(f"updated rules v{m.group(1)} → v{RULES_VERSION} in {path}")
+        else:  # append after a blank line; remember what was added so uninstall gives back the exact bytes
+            sep = "" if not text else newline if text.endswith("\n") else newline * 2
+            new = text + sep + block
+            records.setdefault(f"rules:{path}", {"created": current is None, "sep": sep})
+            msgs.append(f"added rules v{RULES_VERSION} → {path}")
+        _backup(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(new.encode("utf-8"))
+    return msgs
+
+
+def _uninstall_rules(records: dict) -> list[str]:
+    msgs = []
+    for agent, path, _ in rules_targets():
+        record = records.pop(f"rules:{path}", None)
+        text = _read_instructions(path) if path.exists() else None
+        m = RULES_BLOCK_RE.search(text) if text else None
+        if not m:
+            continue
+        before, after = text[:m.start()], text[m.end():]
+        if record:
+            sep = record["sep"]
+            if sep and before.endswith(sep):
+                before = before[:-len(sep)]
+        else:  # no record: drop the blank line an install would have put before the block
+            for blank in ("\r\n", "\n"):
+                if before.endswith(blank * 2):
+                    before = before[:-len(blank)]
+                    break
+        new = before + after
+        _backup(path)
+        if record and record["created"] and not new:
+            path.unlink()
+            msgs.append(f"removed rules; deleted {path} (tokopt had created it)")
+        else:
+            path.write_bytes(new.encode("utf-8"))
+            msgs.append(f"removed rules from {path}")
+    return msgs
 
 
 # --------------------------------------------------------------------------- doctor
@@ -275,6 +366,22 @@ def doctor() -> tuple[list[str], bool]:
         ok = ok and not problem
     status = settings.get("statusLine")
     lines.append(f"  statusLine          {'tokopt' if _is_ours(status) else 'yours (kept)' if status else 'none'}")
+    for agent, rules_path, needs in rules_targets():
+        if needs is not None and not needs.is_dir():
+            lines.append(f"  {'rules':<19} {agent} not installed (no {needs})")
+            continue
+        try:
+            m = RULES_BLOCK_RE.search(_read_instructions(rules_path) or "")
+        except InstallError as e:
+            lines.append(f"  {'rules':<19} ⚠ {e}")
+            ok = False
+            continue
+        if m:
+            old = "" if int(m.group(1)) == RULES_VERSION else f" (current is v{RULES_VERSION}: run `tokopt install`)"
+            lines.append(f"  {'rules':<19} v{m.group(1)} in {rules_path}{old}")
+        else:
+            lines.append(f"  {'rules':<19} missing in {rules_path}")
+            ok = False
     runs = guard = 0
     if (tokopt_home() / "tokopt.db").exists():
         since = time.time() - 7 * 86400
