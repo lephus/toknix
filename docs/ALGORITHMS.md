@@ -301,6 +301,53 @@ Ngôn ngữ khác: không hỗ trợ → outline trả 200 dòng đầu kèm th�
 | Rust | `^\s*(pub(\(\w+\))?\s+)?(async\s+)?fn\s+(\w+)`, `(struct\|enum\|trait\|impl)\s+…` |
 | PHP | `function\s+(\w+)`, `class\s+(\w+)` |
 
+Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
+
+- **Che trước, so sau.** Lexer thay nội dung chuỗi và comment bằng khoảng trắng (giữ xuống dòng), rồi mới chạy regex và đếm ngoặc. Đặc thù theo ngôn ngữ:
+  - template literal JS/TS và interpolation có chuỗi lồng: `${"}"}`, Kotlin/Dart `${…}`, Ruby `#{…}`, C# `$"…{x}…"` với `{{`;
+  - chỉ template literal mới interpolate trong JS/TS (`'[${=]'` là chữ thường);
+  - regex literal JS/Ruby:
+    - là regex khi `/` đứng sau `( , = : [ ! & | ? { } ; + - * % ~ ^`, hoặc sau `return typeof case …`, kể cả bên trong `${…}`;
+    - không phải regex khi đứng sau `<` hay `>` (JSX `</b>`, `<p>/path`), hoặc khi là `/>`;
+  - JSX: dấu nháy đứng ngay sau chữ (`Don't`) không mở chuỗi;
+  - chuỗi đặc biệt từng ngôn ngữ:
+    - Go: raw string;
+    - Rust: `r#"…"#`, và lifetime `'a` (không phải chuỗi);
+    - C#: `@"…"` với `""`;
+    - nháy ba của Kotlin/Java/C# và Dart; `r'…'` của Dart;
+    - `#` comment của PHP (trừ `#[`) và Ruby; heredoc và `%w(…)` của Ruby;
+  - comment khối lồng nhau ở Rust, Kotlin, Dart;
+  - chuỗi thường được kéo nhiều dòng ở Rust, PHP, Ruby.
+- **start** tính cả các dòng annotation/attribute/decorator ngay phía trên (`@…`, `#[…]`, C# `[…]`), kể cả decorator nhiều dòng, giống Python tính decorator.
+- **end:** quét header từ đầu dòng khai báo tới thân hàm. Header được theo dõi `() []`, và `<>` ở mức ngoài cùng cho generic.
+  - Gặp `{`: end là dòng có `}` khớp.
+  - Gặp `;`: end là dòng đó.
+  - Gặp `=` hoặc `=>`: thân là biểu thức, end ở `;` hoặc `,`, hoặc ở cuối một dòng không nối tiếp.
+  - Hết dòng mà dòng sau không nối tiếp (`{ : extends implements with where throws …`): end là dòng đó. Đây là khai báo không thân, ví dụ `data class`.
+  - `where` của Rust giữ header mở tới `{`.
+- **Phạm vi của pattern:**
+  - Method kiểu `Type name(…)` (Java, C#, Dart), và method hay field arrow trong class JS/TS, chỉ được thử khi dòng nằm trực tiếp trong thân class. Nếu không, lệnh gọi hàm trong thân method sẽ bị nhận nhầm.
+  - C# và Dart thử thêm ở mọi phạm vi (local function), nhưng loại mọi kết quả có từ khoá lệnh trong phần kiểu trả về (`return new T()`, `await x()`…).
+  - Constructor phải trùng tên class (Dart: `Cart.empty`).
+- **kind:** `function` nằm trực tiếp trong class/interface/struct/trait/impl/enum/record/object/mixin/extension/module thì thành `method`.
+- **parent:** tên đầy đủ có dấu chấm của symbol bao ngoài, xác định theo phạm vi dòng. Method Go nằm ngoài struct nên parent là null.
+- **Tên:**
+  - `impl` của Rust lấy tên kiểu đích (`impl Display for Cart` → `Cart`);
+  - `companion object` không tên → `Companion`;
+  - Kotlin bỏ backtick (`adds two items`);
+  - Ruby `def self.x` → `x`;
+  - Go `x := func(…)` là function.
+- **Không phải symbol:**
+  - method trong object literal JS; member của interface TS;
+  - method của anonymous class Java; compact constructor `Point {` của Java;
+  - property C#/Kotlin;
+  - hàm Dart top-level không có kiểu trả về;
+  - `class << self` của Ruby (method bên trong thuộc class bao ngoài).
+- **Hiệu năng:** pattern chỉ chạy trên 300 ký tự đầu của dòng, vì khai báo luôn ở đầu dòng. Một dòng dữ liệu 57k ký tự từng làm regex backtrack nhiều phút.
+- **Giới hạn đã biết:**
+  - Code đã minify (một dòng rất dài) có thể làm lexer đoán sai regex literal và lệch ngoặc. Outline của file một dòng vốn vô ích, và read guard đã chặn `dist/`, `.min.js`.
+  - Swift, C, C++ chưa hỗ trợ: A5.1 có liệt kê nhưng chúng không thuộc P3-T2.
+
 ### A5.2 Lệnh
 
 - `tokopt outline <file>`: in mỗi symbol một dòng, thụt lề 2 dấu cách mỗi cấp parent: `L12-40  def foo(a, b)`. Dòng cuối: `[N lines, ~T tokens; Read with offset=12 limit=29]`, với ví dụ offset/limit là symbol top-level dài nhất (bằng nhau thì lấy cái đầu); T tính bằng `est_tokens` với `token_ratios` trong config. Không có symbol → `no functions or classes` + `[N lines, ~T tokens]`. Ngôn ngữ chưa hỗ trợ hoặc file không parse được → `[tokopt: <lý do>; first 200 of N lines]` rồi 200 dòng đầu, exit 0. File không tồn tại, thư mục, file nhị phân (có byte NUL trong 8 KB đầu) → exit 1.
@@ -325,7 +372,11 @@ Ngôn ngữ khác: không hỗ trợ → outline trả 200 dòng đầu kèm th�
 - `tests/fixtures/code/` có một file mẫu cho mỗi ngôn ngữ, kèm file `expected_outline.json` viết tay.
 - Đạt khi:
   - Python khớp 100%.
-  - Ngôn ngữ dùng regex khớp ≥ 90% symbol và sai `end` tối đa 1 dòng.
+  - Ngôn ngữ dùng regex khớp ≥ 90% symbol và sai `end` tối đa 1 dòng. Một symbol khớp khi trùng `name`, `parent`, `start`; test còn đòi precision ≥ 85%. Kết quả P3-T2 (2026-10-19): cả 10 file mẫu đạt 100% recall, 100% precision.
+  - Kiểm thêm trên code thật (không có kỳ vọng viết tay): sau khi che, `{` và `}` phải cân bằng.
+    - Mẫu: 2026-10-19, khoảng 7.000 file trên máy người dùng (các project, node_modules, pub-cache, crates).
+    - Kết quả: 0 crash, 0 file chậm hơn 5 s.
+    - Lệch ngoặc: 0% ở mọi ngôn ngữ trừ JS/TS (0,1–0,6%), và toàn bộ số đó là code đã minify.
   - `tokopt symbol` trên chính repo tokopt tìm đúng `budget_cut` và in đúng thân hàm.
 
 ---

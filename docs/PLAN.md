@@ -136,7 +136,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Bao gồm class lồng, async def, decorator.
 - Khớp 100% với `expected_outline.json`.
 
-**P3-T2 `[ ]` `extract` cho JS/TS, Go, Java, Rust, PHP, Ruby, Dart, Kotlin, C#**
+**P3-T2 `[x]` `extract` cho JS/TS, Go, Java, Rust, PHP, Ruby, Dart, Kotlin, C#**
 - Mỗi ngôn ngữ có một file mẫu ≥ 80 dòng (có class, method, hàm lồng, chuỗi chứa `{`).
 - Recall symbol ≥ 90%, sai `end` tối đa 1 dòng.
 

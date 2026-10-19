@@ -12,6 +12,7 @@ import tokenize
 from pathlib import Path
 from typing import NamedTuple
 
+from tokopt import langs
 from tokopt.config import load
 from tokopt.runner import write_out
 from tokopt.textutil import est_tokens
@@ -46,9 +47,21 @@ def read_source(path) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+def read_text(path) -> str:
+    """Any other source file: UTF-8 (invalid bytes replaced), BOM dropped, newlines as \n."""
+    text = Path(path).read_bytes().decode("utf-8", errors="replace").lstrip("\ufeff")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def extract(path) -> list[Symbol] | None:
     """Symbols in source order; None when the language is not supported."""
-    if Path(path).suffix.lower() not in PYTHON_EXT:
+    suffix = Path(path).suffix.lower()
+    lang = langs.LANG_BY_EXT.get(suffix)
+    if lang:
+        text = read_text(path)
+        found = langs.extract_ruby(text) if lang == "ruby" else langs.extract_brace(text, lang)
+        return [Symbol(f.name, f.kind, f.start, f.end, f.parent, f.signature) for f in found]
+    if suffix not in PYTHON_EXT:
         return None
     text = read_source(path)
     try:
@@ -138,5 +151,6 @@ def run(file: str) -> int:
         head = lines[:FALLBACK_LINES]
         write_out("\n".join([f"[tokopt: {reason}; first {len(head)} of {len(lines)} lines]"] + head) + "\n")
         return 0
-    write_out(render(path, symbols, read_source(path), load().get("token_ratios")) + "\n")
+    text = read_source(path) if path.suffix.lower() in PYTHON_EXT else read_text(path)
+    write_out(render(path, symbols, text, load().get("token_ratios")) + "\n")
     return 0

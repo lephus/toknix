@@ -82,7 +82,7 @@ class TestExtractPython(TempDir):
         self.assertIn("line 1", str(e.exception))
 
     def test_unsupported_language_returns_none(self):
-        self.assertIsNone(outline.extract(self.write("m.rb", "def x\nend\n")))
+        self.assertIsNone(outline.extract(self.write("m.lua", "function x() end\n")))  # .rb is supported since P3-T2
 
     def test_pyi_is_python(self):
         self.assertEqual(outline.extract(self.write("m.pyi", "def f(x: int) -> int: ...\n"))[0].name, "f")
@@ -109,12 +109,12 @@ class TestOutlineCommand(TempDir):
         self.assertEqual((code, out), (0, f"no functions or classes\n[2 lines, ~{est_tokens(text)} tokens]\n"))
 
     def test_unsupported_language_prints_the_first_200_lines(self):
-        p = self.write("big.rb", "".join(f"puts {i}\n" for i in range(250)))
+        p = self.write("big.lua", "".join(f"print({i})\n" for i in range(250)))
         code, out, _ = self.outline(str(p))
         lines = out.splitlines()
         self.assertEqual(code, 0)
-        self.assertEqual(lines[0], "[tokopt: no outline for .rb files yet; first 200 of 250 lines]")
-        self.assertEqual(lines[1:], [f"puts {i}" for i in range(200)])
+        self.assertEqual(lines[0], "[tokopt: no outline for .lua files yet; first 200 of 250 lines]")
+        self.assertEqual(lines[1:], [f"print({i})" for i in range(200)])
 
     def test_python_that_does_not_parse_prints_the_first_200_lines(self):
         p = self.write("broken.py", "def f(:\n    pass\n")
