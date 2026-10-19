@@ -42,8 +42,11 @@ def tokopt_command(argv0: str | None = None, which=shutil.which, python: str | N
     """How Claude Code should start tokopt: this console script, else `tokopt` on PATH, else `python -m tokopt`."""
     argv0 = sys.argv[0] if argv0 is None else argv0
     if re.split(r"[/\\]", argv0)[-1].lower() in ("tokopt", "tokopt.exe"):
-        return _quote(argv0 if os.path.isabs(argv0) or PureWindowsPath(argv0).is_absolute()
-                      else os.path.abspath(argv0))
+        absolute = os.path.isabs(argv0) or argv0.startswith(("/", "\\")) or PureWindowsPath(argv0).is_absolute()
+        path = argv0 if absolute else os.path.abspath(argv0)
+        if not PureWindowsPath(path).suffix and os.path.exists(path + ".exe"):
+            path += ".exe"  # Windows console scripts get argv[0] without it
+        return _quote(path)
     found = which("tokopt")
     return _quote(found) if found else f"{_quote(python or sys.executable)} -m tokopt"
 
@@ -347,14 +350,22 @@ def init_project(root) -> list[str]:
 
 
 # --------------------------------------------------------------------------- doctor
+def _program(command: str) -> str:
+    """The program of a hook command: what comes before `[-m tokopt] hook|statusline`, unquoted. Not shlex:
+    in POSIX mode it would eat the backslashes of a Windows path."""
+    prefix = re.split(r"\s+(?:-m\s+tokopt\s+)?(?:hook|statusline)\b", command, maxsplit=1)[0].strip()
+    if len(prefix) >= 2 and prefix[0] == prefix[-1] and prefix[0] in "'\"":
+        prefix = prefix[1:-1]
+    return prefix
+
+
 def _missing_program(command: str) -> str | None:
-    try:
-        first = shlex.split(command)[0]
-    except (ValueError, IndexError):
+    program = _program(command)
+    if not program:
         return command
-    if "/" in first or "\\" in first:
-        return None if os.path.exists(first) else first
-    return None if shutil.which(first) else first
+    if "/" in program or "\\" in program:
+        return None if os.path.exists(program) or os.path.exists(program + ".exe") else program
+    return None if shutil.which(program) else program
 
 
 def _does_not_run(command: str) -> str | None:

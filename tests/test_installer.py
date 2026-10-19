@@ -260,6 +260,35 @@ class TestCommandPath(unittest.TestCase):
             self.assertIn("/x/tokopt hook bash", (Path(tmp) / "settings.json").read_text())
 
 
+class TestWindowsPaths(unittest.TestCase):
+    """Found by the first Windows CI run: console scripts have no .exe in argv[0], and shlex ate backslashes."""
+
+    def test_exe_suffix_added_when_the_exe_exists(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "tokopt.exe").write_text("")
+            got = installer.tokopt_command(argv0=str(Path(d) / "tokopt"), which=lambda _: None)
+            self.assertTrue(got.strip('"').replace("\\", "/").endswith("/tokopt.exe"), got)
+            plain = installer.tokopt_command(argv0=str(Path(d) / "other" / "tokopt"), which=lambda _: None)
+            self.assertFalse(plain.strip('"').endswith(".exe"), plain)
+
+    def test_program_of_a_hook_command(self):
+        cases = {r"C:\a\b\tokopt hook bash": r"C:\a\b\tokopt",
+                 '"C:/Program Files/t/tokopt.exe" hook read': "C:/Program Files/t/tokopt.exe",
+                 "/opt/t/tokopt hook session-start": "/opt/t/tokopt",
+                 "'/my dir/tokopt' hook bash": "/my dir/tokopt",
+                 "/usr/bin/python3 -m tokopt hook bash": "/usr/bin/python3",
+                 '"C:/py 3/python.exe" -m tokopt hook read': "C:/py 3/python.exe"}
+        for command, program in cases.items():
+            with self.subTest(command=command):
+                self.assertEqual(installer._program(command), program)
+
+    def test_an_exe_counts_as_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "tokopt.exe").write_text("")
+            self.assertIsNone(installer._missing_program(f"{d}/tokopt hook bash"))
+            self.assertIsNotNone(installer._missing_program(f"{d}/gone hook bash"))
+
+
 class TestDoctor(TempHome):
     def test_before_install(self):
         code, out, _ = self.main("doctor")
@@ -268,8 +297,8 @@ class TestDoctor(TempHome):
         self.assertIn("tokopt install", out)
 
     def test_after_install(self):
-        exe = self.fake_tokopt("echo 'tokopt 0.1.0'")
-        installer.install(exe=str(exe))
+        exe = installer._quote(str(self.fake_tokopt("echo 'tokopt 0.1.0'")))  # as tokopt_command writes it
+        installer.install(exe=exe)
         with mock.patch.object(store.time, "time", return_value=1_000.0):  # 10 days before "now"
             store.record_run("pytest", "pytest", 1, 10, 5, 1, 1, "")
         for _ in range(2):
@@ -279,7 +308,7 @@ class TestDoctor(TempHome):
             code, out, err = self.main("doctor")
         self.assertEqual((code, err), (0, ""))
         for name in ("bash", "read", "session-start"):
-            self.assertRegex(out, rf"hook {name}\s+installed: {re.escape(str(exe))} hook {name}")
+            self.assertRegex(out, rf"hook {name}\s+installed: {re.escape(exe)} hook {name}")
         self.assertIn(f"statusLine", out)
         self.assertIn(f"Python {sys.version.split()[0]}", out)
         self.assertIn(sys.executable, out)
@@ -294,7 +323,7 @@ class TestDoctor(TempHome):
         return exe
 
     def test_installed_command_that_does_not_run(self):  # e.g. `python -m tokopt` without tokopt importable
-        installer.install(exe=str(self.fake_tokopt("echo 'No module named tokopt' >&2; exit 1")))
+        installer.install(exe=installer._quote(str(self.fake_tokopt("echo 'No module named tokopt' >&2; exit 1"))))
         code, out, _ = self.main("doctor")
         self.assertEqual(code, 1)
         self.assertIn("does not run: No module named tokopt", out)

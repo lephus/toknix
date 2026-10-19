@@ -29,7 +29,9 @@ if (-not $From -and $env:TOKOPT_FROM) { $From = $env:TOKOPT_FROM }
 $Repo = if ($env:TOKOPT_REPO) { $env:TOKOPT_REPO } else { "lephus/toknix" }
 $Ref = if ($env:TOKOPT_REF) { $env:TOKOPT_REF } else { "main" }
 $Source = if ($From) { $From } else { "git+https://github.com/$Repo@$Ref" }
-$Venv = Join-Path $HOME ".tokopt\venv"
+# Python finds the home folder through USERPROFILE; PowerShell's $HOME is fixed when the shell starts.
+$UserHome = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
+$Venv = Join-Path $UserHome ".tokopt\venv"
 $Scripts = Join-Path $Venv "Scripts"
 
 function Write-Step([string]$Message) { Write-Host "tokopt: $Message" }

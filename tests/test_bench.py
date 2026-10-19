@@ -67,7 +67,7 @@ class BenchCase(unittest.TestCase):
     def worktrees(self) -> list[str]:
         out = subprocess.run(["git", "-C", str(self.repo), "worktree", "list", "--porcelain"], capture_output=True,
                              text=True).stdout
-        return [l for l in out.splitlines() if l.startswith("worktree ")]
+        return [Path(l[len("worktree "):]).resolve() for l in out.splitlines() if l.startswith("worktree ")]
 
 
 class TestBench(BenchCase):
@@ -82,7 +82,7 @@ class TestBench(BenchCase):
         self.assertEqual(r["usage"], {"input": 2000, "cache_write": 10000, "cache_read": 80000, "output": 3000})
         self.assertAlmostEqual(r["etu"], 2000 + 1.25 * 10000 + 0.1 * 80000 + 5 * 3000)
         self.assertEqual((r["cost"], r["turns"]), (0.5, 7))
-        self.assertEqual(self.worktrees(), [f"worktree {self.repo}"])  # every worktree removed
+        self.assertEqual(self.worktrees(), [self.repo.resolve()])  # git prints C:/… on Windows  # every worktree removed
 
     def test_failed_check(self):
         self.tasks_path = self.tasks(repeat=1, n_tasks=1)
@@ -96,7 +96,7 @@ class TestBench(BenchCase):
         r = self.results("slow")[0]
         self.assertTrue(r["timeout"])
         self.assertFalse(r["passed"])
-        self.assertEqual(self.worktrees(), [f"worktree {self.repo}"])
+        self.assertEqual(self.worktrees(), [self.repo.resolve()])  # git prints C:/… on Windows
 
     def test_rules_reach_the_worktree_and_global_block_warns(self):
         self.tasks_path = self.tasks(repeat=1, n_tasks=1)

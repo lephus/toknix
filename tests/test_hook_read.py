@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -113,7 +114,7 @@ class TestBigFile(GuardCase):
     def test_whole_read_of_a_big_file_is_denied_with_outline_hint(self):
         big = self.file("src/big_module.py", lines=2000)
         self.assertDenied(self.read(big), "2,000 lines", f"~{big.stat().st_size // 4:,} tokens",
-                          f"tokopt outline {big}", "offset/limit")
+                          f"tokopt outline {shlex.quote(str(big))}", "offset/limit")  # quoted on Windows
         self.assertEqual(self.guard_rows(), [("s1", "bigfile", str(big), big.stat().st_size // 4)])
 
     def test_a_range_of_the_same_file_is_allowed(self):
