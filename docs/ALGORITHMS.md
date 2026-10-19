@@ -570,7 +570,18 @@ in:  "ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k · /clear
 yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tăng dần từ offset đã lưu
 ```
 
-- Cho tới P4-T4, `tokopt statusline` là stub: đọc hết stdin, không in gì, exit 0, vì `install` (P2-T3) đã có thể thêm nó vào `statusLine`.
+- Chi tiết đã chốt khi implement (P4-T4, `src/tokopt/statusline.py`):
+  - **Đọc tăng dần:** cache `~/.tokopt/sl-<session>.json` giữ `offset` (byte), ETU cộng dồn, ctx, thời điểm bắt đầu, và 64 khoá request gần nhất.
+    - Chỉ đọc tới dòng hoàn chỉnh cuối cùng; dòng đang ghi dở chờ lần sau.
+    - Các dòng của một request đến ở hai lần đọc khác nhau vẫn chỉ được tính một lần, nhờ danh sách khoá.
+    - File ngắn hơn offset, hoặc đổi đường dẫn → đọc lại từ đầu.
+    - Chỉ dòng có `"usage"` mới được parse JSON.
+  - **ETU:** cộng mọi request của transcript, kể cả subagent, vì đó là chi phí thật. **ctx:** lấy từ request cuối của chuỗi chính.
+  - **Context window:** `context_window` trong config (200k). Model id có `[1m]` hoặc tên có `1M` → 1.000.000. ctx lớn hơn window đã cấu hình → window chuẩn nhỏ nhất (200k, 1M) chứa được ctx. Một phiên thật 69 MB từng hiện `ctx 467%` với 200k.
+  - **Thanh:** 10 ô, làm tròn xuống. Vàng từ `statusline_warn` (0,6), đỏ từ `statusline_alert` (0,8); `NO_COLOR` tắt màu.
+  - **saved:** các run có `ts` ≥ thời điểm bắt đầu phiên, cộng guard của `session_id` này. Dùng tỉ lệ của báo cáo, không nhân hệ số đọc lại.
+  - **Lỗi:** mọi lỗi → không in gì, exit 0 (`TOKOPT_DEBUG=1` in traceback). Gõ tay (stdin là terminal) → in một dòng hướng dẫn ra stderr.
+  - **Đo 2026-10-19:** transcript thật 69 MB: lần đầu 134 ms, các lần sau 30 ms (tính cả khởi động Python).
 
 ---
 

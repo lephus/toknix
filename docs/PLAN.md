@@ -184,7 +184,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Worktree luôn được xoá kể cả khi agent bị timeout.
 - **(N1.5c)** `bench --rules <file>` chèn block vào CLAUDE.md của worktree; cảnh báo khi CLAUDE.md global đã có block tokopt. `compare` có cột median output tokens và verdict output theo A6.3 (agent giả: biến thể giảm output 30%, pass như nhau → thắng; giảm 5% → không thắng).
 
-**P4-T4 `[ ]` `tokopt statusline` (A7)**
+**P4-T4 `[x]` `tokopt statusline` (A7)**
 - Transcript 20 MB: lần chạy đầu < 1 giây, các lần sau < 150 ms (đọc tăng dần).
 - Ngưỡng màu đúng ở 60% và 80%.
 

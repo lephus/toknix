@@ -147,13 +147,15 @@ def main(argv: list[str] | None = None) -> int:
     if ns.command == "gain":
         from tokopt import measure
         return measure.gain(ns.days, ns.json)
-    if ns.command == "statusline":  # stub until P4-T4: `install` adds it, so it must show nothing, not an error
+    if ns.command == "statusline":
         try:
-            if not sys.stdin.isatty():
-                sys.stdin.read()  # Claude Code writes the session JSON; take it so the writer never sees EPIPE
-        except (OSError, ValueError):
-            pass
-        return 0
+            if sys.stdin.isatty():  # typed by hand: there is no session JSON to wait for
+                print("tokopt statusline: Claude Code runs this with the session JSON on stdin", file=sys.stderr)
+                return 0
+            from tokopt import statusline
+        except Exception:
+            return 0
+        return statusline.main()
     if ns.command in ("install", "uninstall", "doctor"):
         return _setup(ns.command)
     if ns.command == "recall":
