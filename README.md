@@ -40,6 +40,28 @@ The installer:
 On Windows, `irm | iex` cannot pass options. Set `$env:TOKOPT_DRY_RUN = "1"` or
 `$env:TOKOPT_UNINSTALL = "1"` first.
 
+### Update
+
+Run the install command again:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
+```
+
+- It reinstalls tokopt from the latest `main`, even when the version number did not change.
+- Then `tokopt install` points the hooks at the new install and replaces the rules block with the new one.
+  It never adds a second copy.
+- Check with `tokopt --version` and `tokopt doctor`. `doctor` also says when the rules block is older than
+  the installed tokopt.
+
+To stay on a given release instead of `main`:
+`curl -fsSL …/install.sh | TOKOPT_REF=v0.1.0 sh`.
+
+**Publishing a new version**:
+1. Raise `__version__` in `src/tokopt/__init__.py` and add an entry to `CHANGELOG.md`.
+2. Push to `main`.
+3. Tag the release (`git tag v0.1.1 && git push origin v0.1.1`) so that it can be pinned.
+
 ### Uninstall
 
 Run the same script with `--uninstall`:

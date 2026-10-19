@@ -94,7 +94,8 @@ function Install-Tokopt {
     if (-not $python) { throw "tokopt: Python 3.9 or newer is required (py -3 / python not found or too old)" }
     if (Get-Command uv -ErrorAction SilentlyContinue) {
         Write-Step "installing with uv from $Source"
-        Invoke-Step "uv" @("tool", "install", "--force", $Source)
+        # --reinstall: a re-run must pick up new code even when the version number did not change
+        Invoke-Step "uv" @("tool", "install", "--force", "--reinstall", $Source)
     } else {
         Write-Step "installing in $Venv from $Source"
         $exe = $python[0]
@@ -102,7 +103,7 @@ function Install-Tokopt {
         Invoke-Step $exe ($rest + @("-m", "venv", $Venv))
         $venvPython = Join-Path $Scripts "python.exe"
         Invoke-Step $venvPython @("-m", "pip", "install", "--quiet", "--upgrade", "pip")
-        Invoke-Step $venvPython @("-m", "pip", "install", "--quiet", "--upgrade", $Source)
+        Invoke-Step $venvPython @("-m", "pip", "install", "--quiet", "--upgrade", "--force-reinstall", "--no-deps", $Source)
         Add-UserPath $Scripts
     }
     $tok = Get-TokoptCommand

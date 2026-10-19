@@ -40,6 +40,28 @@ Script cài:
 Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKOPT_DRY_RUN = "1"` hoặc
 `$env:TOKOPT_UNINSTALL = "1"` trước khi chạy.
 
+### Cập nhật
+
+Chạy lại lệnh cài:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
+```
+
+- Lệnh cài lại tokopt từ bản mới nhất trên `main`, kể cả khi số version không đổi.
+- Sau đó `tokopt install` trỏ các hook vào bản vừa cài và thay rules block bằng bản mới. Nó không bao giờ
+  tạo bản trùng.
+- Kiểm tra bằng `tokopt --version` và `tokopt doctor`. `doctor` cũng báo khi rules block cũ hơn bản tokopt
+  đang cài.
+
+Muốn đứng yên ở một bản phát hành thay vì `main`:
+`curl -fsSL …/install.sh | TOKOPT_REF=v0.1.0 sh`.
+
+**Khi phát hành bản mới**:
+1. Tăng `__version__` trong `src/tokopt/__init__.py` và thêm một mục vào `CHANGELOG.md`.
+2. Push lên `main`.
+3. Gắn tag cho bản phát hành (`git tag v0.1.1 && git push origin v0.1.1`) để người dùng có thể ghim bản đó.
+
 ### Gỡ cài đặt
 
 Chạy lại đúng script đã dùng để cài, thêm `--uninstall`:

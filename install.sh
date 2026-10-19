@@ -95,7 +95,8 @@ uninstall() {
 
 install_with_uv() {
     say "installing with uv from ${SOURCE}"
-    run uv tool install --force "$SOURCE"
+    # --reinstall: a re-run must pick up new code even when the version number did not change
+    run uv tool install --force --reinstall "$SOURCE"
 }
 
 install_with_venv() {
@@ -106,7 +107,7 @@ install_with_venv() {
     fi
     run "$py" -m venv "$VENV"
     run "${VENV}/bin/python" -m pip install --quiet --upgrade pip
-    run "${VENV}/bin/python" -m pip install --quiet --upgrade "$SOURCE"
+    run "${VENV}/bin/python" -m pip install --quiet --upgrade --force-reinstall --no-deps "$SOURCE"  # same reason
     run mkdir -p "$BIN_DIR"
     run ln -sf "${VENV}/bin/tokopt" "${BIN_DIR}/tokopt"
 }

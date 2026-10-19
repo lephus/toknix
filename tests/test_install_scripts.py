@@ -37,7 +37,7 @@ class TestInstallSh(unittest.TestCase):
     def test_dry_run_with_uv(self):
         p = self.sh("--dry-run")
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(self.plan(p), ["uv tool install --force git+https://github.com/lephus/toknix@main",
+        self.assertEqual(self.plan(p), ["uv tool install --force --reinstall git+https://github.com/lephus/toknix@main",
                                         "tokopt install", "tokopt doctor"])
         self.assertFalse((self.home / ".tokopt").exists())  # a dry run changes nothing
 
@@ -47,14 +47,14 @@ class TestInstallSh(unittest.TestCase):
         venv = self.home / ".tokopt" / "venv"
         steps = self.plan(p)
         self.assertTrue(steps[0].endswith(f"-m venv {venv}"))
-        self.assertIn(f"{venv}/bin/python -m pip install --quiet --upgrade git+https://github.com/lephus/toknix@main",
+        self.assertIn(f"{venv}/bin/python -m pip install --quiet --upgrade --force-reinstall --no-deps git+https://github.com/lephus/toknix@main",
                       steps)
         self.assertIn(f"ln -sf {venv}/bin/tokopt {self.home}/.local/bin/tokopt", steps)
 
     def test_from_ref_repo_and_no_hooks(self):
-        self.assertIn("uv tool install --force /src/tokopt", self.plan(self.sh("--dry-run", "--from", "/src/tokopt")))
+        self.assertIn("uv tool install --force --reinstall /src/tokopt", self.plan(self.sh("--dry-run", "--from", "/src/tokopt")))
         p = self.sh("--dry-run", TOKOPT_REPO="me/fork", TOKOPT_REF="v0.1.0")
-        self.assertIn("uv tool install --force git+https://github.com/me/fork@v0.1.0", self.plan(p))
+        self.assertIn("uv tool install --force --reinstall git+https://github.com/me/fork@v0.1.0", self.plan(p))
         self.assertNotIn("tokopt install", self.plan(self.sh("--dry-run", "--no-hooks")))
 
     def test_uninstall_dry_run(self):
@@ -79,7 +79,7 @@ class TestInstallPs1(unittest.TestCase):
     def test_same_source_and_switches_as_install_sh(self):
         text = PS1.read_text(encoding="utf-8")
         for needle in ('"lephus/toknix"', '"main"', "git+https://github.com/$Repo@$Ref", "[switch]$DryRun",
-                       "[switch]$Uninstall", "TOKOPT_DRY_RUN", "TOKOPT_UNINSTALL", "TOKOPT_FROM", "tool\", \"install"):
+                       "[switch]$Uninstall", "TOKOPT_DRY_RUN", "TOKOPT_UNINSTALL", "TOKOPT_FROM", "\"tool\", \"install\", \"--force\", \"--reinstall\""):
             with self.subTest(needle=needle):
                 self.assertIn(needle, text)
 
