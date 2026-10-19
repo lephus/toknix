@@ -608,6 +608,10 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
 - **Gỡ:** xoá đúng các entry chứa `tokopt hook` hoặc `tokopt statusline`, xoá rules block; không đụng vào gì khác. Group/event/`hooks` bị rỗng do việc gỡ chỉ bị xoá khi install đã tạo chúng (theo `install.json`; không có bản ghi thì xoá). File do install tạo mà gỡ xong còn `{}` thì xoá file. Mỗi lần ghi đều backup trước.
 - **`tokopt doctor`:** phiên bản, lệnh tokopt sẽ cài, Python (phiên bản, đường dẫn), đường dẫn settings, từng hook: `installed`/`missing`, chương trình không tồn tại (`not found`) hoặc chạy `<lệnh> --version` qua bash (như Claude Code chạy hook) không ra `tokopt …` (`does not run: <lý do>`), statusLine (`tokopt`/`yours (kept)`/`none`), số bản ghi `runs` và `guard` 7 ngày qua. Exit 1 khi thiếu hook hoặc hook không chạy được.
 - `tokopt init-project`: thêm `permissions.deny` cho các thư mục junk vào `.claude/settings.json` của project, và tạo `.geminiignore`.
+  - Chi tiết đã chốt khi implement:
+    - Với mỗi pattern thư mục của `junk_patterns` (`/node_modules/`…), thêm một rule `Read(./**/<dir>/**)` vào `<project>/.claude/settings.json`, và dòng `<dir>/` vào `.geminiignore`. Rule đã có thì giữ nguyên; chạy lại không thêm trùng; `--path DIR` chọn project.
+    - Chỉ thư mục, không thêm lockfile hay `.min.js`, vì read guard đã chặn đọc cả file nhưng vẫn cho đọc lát cắt (A4 R1); rule deny thì chặn luôn cả lát cắt.
+    - `[ASSUMPTION]` Claude Code khớp `**` trong permission rule như gitignore và áp rule Read cho cả Grep/Glob. Kiểm ở P2-T4 (`docs/VERIFY.md`, check H).
 - **Script bootstrap một lệnh:**
   - `install.sh`: cần python3 ≥ 3.9. Ưu tiên `uv tool install`; nếu không có thì tạo `python3 -m venv ~/.tokopt/venv`, `pip install`, rồi symlink `~/.local/bin/tokopt`. Cuối cùng chạy `tokopt install`.
   - `install.ps1`: tương tự, dùng `venv\Scripts\tokopt.exe`.

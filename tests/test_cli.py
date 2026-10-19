@@ -43,13 +43,15 @@ class TestCli(unittest.TestCase):
         self.assertEqual(sorted(sub.choices), sorted(V01_COMMANDS))
 
     def test_stub_reports_not_implemented(self):
-        code, out, err = call(["init-project"])
+        with mock.patch.object(cli, "COMMANDS", cli.COMMANDS + [("future", "not built yet")]):
+            code, out, err = call(["future"])
         self.assertEqual(code, 2)
         self.assertEqual(out, "")
         self.assertIn("not implemented", err)
 
     def test_stub_accepts_extra_arguments(self):
-        code, _, err = call(["init-project", "--", "foo"])
+        with mock.patch.object(cli, "COMMANDS", cli.COMMANDS + [("future", "not built yet")]):
+            code, _, err = call(["future", "--", "foo"])
         self.assertEqual(code, 2)
         self.assertIn("not implemented", err)
 

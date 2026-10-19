@@ -312,6 +312,40 @@ def _uninstall_rules(records: dict) -> list[str]:
     return msgs
 
 
+# --------------------------------------------------------------------------- init-project (A8)
+def init_project(root) -> list[str]:
+    """Deny Read of the junk directories (Claude Code applies Read rules to Grep and Glob too) in the
+    project's .claude/settings.json, and list them in .geminiignore. Existing entries are kept; idempotent."""
+    from tokopt.config import load
+    root = Path(root)
+    dirs = [p.strip("/") for p in load()["junk_patterns"] if p.startswith("/") and p.endswith("/")]
+    msgs = []
+    path = root / ".claude" / "settings.json"
+    settings = _load(path) or {}
+    perms = settings.setdefault("permissions", {})
+    if not isinstance(perms, dict) or not isinstance(perms.setdefault("deny", []), list):
+        raise InstallError(f'"permissions.deny" in {path} is not a list; fix it, then run again')
+    new = [f"Read(./**/{d}/**)" for d in dirs if f"Read(./**/{d}/**)" not in perms["deny"]]
+    if new:
+        perms["deny"] += new
+        _backup(path)
+        _save(path, settings)
+        msgs.append(f"added {len(new)} deny rules to {path.relative_to(root).as_posix()}")
+    else:
+        msgs.append(f"deny rules already in {path.relative_to(root).as_posix()}")
+    ignore = root / ".geminiignore"
+    text = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
+    have = {line.strip() for line in text.splitlines()}
+    missing = [f"{d}/" for d in dirs if f"{d}/" not in have]
+    if missing:
+        text += ("" if not text or text.endswith("\n") else "\n") + "".join(f"{m}\n" for m in missing)
+        ignore.write_text(text, encoding="utf-8")
+        msgs.append(f"added {len(missing)} entries to .geminiignore")
+    else:
+        msgs.append(".geminiignore already lists them")
+    return msgs
+
+
 # --------------------------------------------------------------------------- doctor
 def _missing_program(command: str) -> str | None:
     try:

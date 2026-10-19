@@ -14,6 +14,7 @@ Mất khoảng 30 phút và tốn một ít token Claude Code thật (vài lư�
 | D | `updatedInput` của Grep (thêm `head_limit`) có được áp dụng? Khi bị cắt, agent có được báo không? | N1.4 `[ASSUMPTION]` | Không được báo → đổi mặc định `grep_head_limit` thành 0 |
 | E | Matcher `compact\|clear` của SessionStart có chạy hook sau `/compact`? | P2-T3 | Sửa matcher trong `installer.py` |
 | F | Hook chạy được khi Claude Code khởi động từ môi trường bình thường (không có `PYTHONPATH`)? | P2-T3 | Sửa cách cài (P5-T1) |
+| H | Rule `Read(./**/node_modules/**)` do `tokopt init-project` thêm có chặn Read (và Grep) trong `node_modules/` không? | A8 `[ASSUMPTION]` | Đổi cú pháp rule trong `installer.init_project` |
 
 Ba điều kiện đạt của P2-T4 nằm trong bước 4 (check A và G):
 
@@ -244,6 +245,15 @@ Rồi chạy `python3 ~/tokopt-verify/show.py 100000 | grep -A3 '>> Grep'` để
 - Nhận đủ 600 dòng → không được áp dụng.
 - Nếu bị cắt: kết quả có dòng báo cắt hay báo phân trang không (chép nguyên văn), hay chỉ dừng ở dòng 200 mà không nói gì? Ghi thêm câu agent trả lời về số dòng.
 
+## 6b. Rule của `init-project` (check H)
+
+```bash
+cd ~/tokopt-verify/shop && mkdir -p node_modules/pkg && echo "module.exports = 1" > node_modules/pkg/index.js
+tokopt init-project
+```
+
+Trong một phiên `claude` mới, gửi: *"Dùng tool Read đọc dòng 1 của `node_modules/pkg/index.js` (offset 1, limit 1)."* Read guard của tokopt cho phép đọc lát cắt, nên nếu bị chặn thì chính rule deny đã có tác dụng. Ghi lại thông báo chặn.
+
 ## 7. Dọn dẹp
 
 ```bash
@@ -288,4 +298,5 @@ Nếu trước khi cài bạn chưa có `~/.claude/settings.json` thì không c�
 | D — Grep nhận bao nhiêu dòng (200 hay 600) | | |
 | D — có báo bị cắt / phân trang không (chép nguyên văn) | | |
 | R2 — agent xử lý thế nào khi bị chặn đọc `big/catalog.py` | | |
+| H — rule của `init-project` chặn Read một lát cắt trong `node_modules/` | | |
 | `settings.json` sau `uninstall` giống hệt bản trước khi cài | | |

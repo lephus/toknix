@@ -48,6 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
                            help='one quoted string (as hook bash writes it), or the words of the command')
         elif name == "outline":
             p.add_argument("file")
+        elif name == "init-project":
+            p.add_argument("--path", metavar="DIR", help="project directory (default: the current directory)")
         elif name == "bench":
             p.add_argument("tasks", help="tasks.json (A6.3)")
             p.add_argument("--label", required=True, help="name of this run, used by compare")
@@ -158,6 +160,15 @@ def main(argv: list[str] | None = None) -> int:
         return statusline.main()
     if ns.command in ("install", "uninstall", "doctor"):
         return _setup(ns.command)
+    if ns.command == "init-project":
+        from tokopt import installer
+        from tokopt.runner import write_out
+        try:
+            write_out("".join(m + "\n" for m in installer.init_project(ns.path or ".")))
+        except (installer.InstallError, OSError) as e:
+            print(f"tokopt init-project: {e}", file=sys.stderr)
+            return 1
+        return 0
     if ns.command == "recall":
         from tokopt import runner
         return runner.recall(ns.id, ns.grep, ns.lines)
