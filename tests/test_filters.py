@@ -1,11 +1,13 @@
 """P1-T3: filters on real fixtures (A2.4–A2.6, "Kiểm chứng A2") and the absolute ERROR_RE invariant."""
+from __future__ import annotations
+
 import re
 import unittest
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
 from tokopt import config, filters
-from tokopt.filters import ERROR_RE, apply, budget_cut, f_lint
+from tokopt.filters import ERROR_RE, apply, budget_cut, f_build, f_lint
 from tokopt.textutil import normalize
 
 # fixture -> (command that produced it, exit code)
@@ -22,6 +24,8 @@ FIXTURES = {
     "gotest_fail.txt": ("go test -v ./...", 1),
     "cargotest_fail.txt": ("cargo test", 101),
     "eslint.txt": ("npx eslint src", 1),
+    "build_longlines.txt": ("make build", 2),
+    "build_timestamps.txt": ("./gradlew bootRun", 1),
 }
 
 OMITTED_RE = re.compile(r"^  … \d+ lines omitted …$")
@@ -38,8 +42,8 @@ def read(name: str) -> list[str]:
 def run_fixture(name: str, exit_code: int | None = None) -> tuple[list[str], list[str], str]:
     cmd, code = FIXTURES[name]
     lines = read(name)
-    out, kind = apply(cmd, lines, code if exit_code is None else exit_code, cfg())
-    return lines, out, kind
+    r = apply(cmd, lines, code if exit_code is None else exit_code, cfg())
+    return lines, r.lines, r.kind
 
 
 def kept_verbatim(line: str, out: list[str]) -> bool:
@@ -172,7 +176,7 @@ class TestErrorInvariant(unittest.TestCase):
         for i in range(500):
             lines.append(f"tests/test_x.py::test_case_{i} FAILED")
             lines.append(f"  some context line number {i} for case {i} " + "x" * (i % 7))
-        out, _ = apply("some-tool --check", lines, 1, cfg())
+        out = apply("some-tool --check", lines, 1, cfg()).lines
         failed = [l for l in lines if "FAILED" in l]
         self.assertEqual(len(failed), 500)
         for l in failed:
@@ -182,11 +186,11 @@ class TestErrorInvariant(unittest.TestCase):
 class TestBudgetCut(unittest.TestCase):
     def test_under_budget_is_unchanged(self):
         lines = [f"line {i}" for i in range(50)]
-        self.assertEqual(budget_cut(lines, 120, 30), lines)
+        self.assertEqual(budget_cut(lines, 120, 3000, 30), lines)
 
     def test_keeps_head_and_tail_with_gap_marker(self):
         lines = [f"line {i}" for i in range(200)]
-        out = budget_cut(lines, 120, 30)
+        out = budget_cut(lines, 120, 3000, 30)
         self.assertEqual(out[:30], lines[:30])
         self.assertEqual(out[30], "  … 100 lines omitted …")
         self.assertEqual(out[31:], lines[130:])
@@ -195,7 +199,7 @@ class TestBudgetCut(unittest.TestCase):
         lines = [f"line {i}" for i in range(300)]
         for i in range(40, 260, 2):  # 110 error lines in the middle
             lines[i] = f"error: case {i} broke"
-        out = budget_cut(lines, 120, 30)
+        out = budget_cut(lines, 120, 3000, 30)
         errors = [l for l in lines if ERROR_RE.search(l)]
         for l in errors:
             self.assertIn(l, out)
@@ -204,11 +208,19 @@ class TestBudgetCut(unittest.TestCase):
 
     def test_small_budget_shrinks_tail_then_head(self):
         lines = [f"line {i}" for i in range(200)]
-        out = budget_cut(lines, 30, 30)
+        out = budget_cut(lines, 30, 3000, 30)
         rest = [l for l in out if not OMITTED_RE.match(l)]
         self.assertLessEqual(len(rest), 30)
         self.assertEqual(out[0], "line 0")
         self.assertEqual(out[-1], "line 199")
+
+
+class TestBuild(unittest.TestCase):
+    def test_docker_layer_status_only(self):  # found by build_timestamps.txt (P1-T3b)
+        lines = ["a2abf6c4d29d: Waiting", "a2abf6c4d29d: Pull complete", "e1f3b4c5d6a7: Pulling fs layer",
+                 "GracefulShutdown : Commencing graceful shutdown. Waiting for active requests to complete",
+                 "Download complete: wrote dist/app.tar"]
+        self.assertEqual(f_build(lines, False), lines[3:])
 
 
 class TestLint(unittest.TestCase):

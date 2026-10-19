@@ -77,7 +77,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
     - Kết quả (2026-10-19): không tái hiện. `f_gitlog` trả 31 dòng có dòng omitted; 30 dòng là do `collapse_similar` gộp 4 commit liền nhau thành 3 dòng. Đã thêm test hồi quy.
 - Sửa cho khớp bất biến ERROR_RE tuyệt đối (A2.4): `budget_cut` giữ mọi dòng lỗi bất kể ngân sách; `f_lint` chỉ giới hạn 15 dòng không khớp ERROR_RE mỗi file. Property test kiểm tra dòng lỗi có mặt **nguyên văn**.
 
-**P1-T3b `[ ]` Bộ lọc nhận biết chi phí token (N1.2b–d; A2.5b, A2.5c, A2.6)**
+**P1-T3b `[x]` Bộ lọc nhận biết chi phí token (N1.2b–d; A2.5b, A2.5c, A2.6)**
 - `budget_cut(lines, max_lines, max_tokens, head)` theo A2.6; config thêm `max_tokens` (3000), `max_line_chars` (800), `normalize_hashes`, `normalize_timestamps` (bật), `normalize_paths` (tắt).
 - `normalize_costly` và `cut_long_lines` theo A2.5b, A2.5c; ngân sách token của `gitdiff` theo A2.4.
 - Bảng `runs` thêm cột `error_overflow`.

@@ -9,8 +9,12 @@ Rules shared by all filters:
 """
 from __future__ import annotations
 
+import os
 import re
 import shlex
+from typing import NamedTuple
+
+from tokopt.textutil import est_tokens
 
 ERROR_RE = re.compile(
     r"(?i)\b(error|errors|failed|failure|fail|fatal|exception|traceback|panic|assert(ion)?|"
@@ -256,11 +260,16 @@ def f_gitlog(lines: list[str], failed: bool, max_commits: int = 30) -> list[str]
     return out
 
 
-def f_gitdiff(lines: list[str], failed: bool, budget: int = 400) -> list[str]:
-    """Keep whole hunks up to the budget, then list the remaining files instead of cutting mid-hunk."""
-    if len(lines) <= budget:
+def f_gitdiff(lines: list[str], failed: bool, budget: int = 400, max_tokens: int | None = None,
+              ratios: dict | None = None) -> list[str]:
+    """Keep whole file blocks within 400 lines and max_tokens, then list the remaining files instead of
+    cutting mid-hunk. A block that alone exceeds the budget (minified, generated) is listed too."""
+    def tokens(b: list[str]) -> int:
+        return sum(est_tokens(l, ratios) for l in b) if max_tokens is not None else 0
+
+    if len(lines) <= budget and (max_tokens is None or tokens(lines) <= max_tokens):
         return lines
-    out, files_left, used = [], [], 0
+    out, files_left, used, used_tok = [], [], 0, 0
     cur_file: list[str] = []
     blocks: list[list[str]] = []
     for l in lines:
@@ -271,9 +280,11 @@ def f_gitdiff(lines: list[str], failed: bool, budget: int = 400) -> list[str]:
     if cur_file:
         blocks.append(cur_file)
     for b in blocks:
-        if used + len(b) <= budget:
+        t = tokens(b)
+        if used + len(b) <= budget and (max_tokens is None or used_tok + t <= max_tokens):
             out += b
             used += len(b)
+            used_tok += t
         else:
             m = re.match(r"diff --git a/(\S+)", b[0])
             adds = sum(1 for x in b if x.startswith("+") and not x.startswith("+++"))
@@ -299,7 +310,8 @@ def f_listing(lines: list[str], failed: bool, cap: int = 80) -> list[str]:
 
 def f_build(lines: list[str], failed: bool) -> list[str]:
     noise = re.compile(r"^(#\d+ (sha256|extracting|\[internal\])|\s*Downloading|\s*Downloaded|\[INFO\] Download|"
-                       r"> Task .* (UP-TO-DATE|NO-SOURCE)$|\s*\d+(\.\d+)?%|.*\b(Pulling fs layer|Waiting|Verifying Checksum|Download complete|Pull complete)\b)")
+                       r"> Task .* (UP-TO-DATE|NO-SOURCE)$|\s*\d+(\.\d+)?%|"
+                       r"[0-9a-f]{12}: (Pulling fs layer|Waiting|Verifying Checksum|Download complete|Pull complete)$)")
     return [l for l in lines if not noise.match(l)]
 
 
@@ -310,18 +322,79 @@ FILTERS = {
 }
 
 
-def budget_cut(lines: list[str], max_lines: int, head: int) -> list[str]:
-    """All error lines (outside the budget) + head and tail of the rest within max_lines (A2.6)."""
+# --------------------------------------------------------------------------- token cost (A2.5b, A2.5c)
+COSTLY_KINDS = {"install", "build", "gitnet"}  # never kinds that may print code or file names verbatim
+SHA_B64_RE = re.compile(r"\b(sha(?:256|512))-[A-Za-z0-9+/]{16,}={0,2}")
+LONG_HEX_RE = re.compile(r"\b[0-9a-fA-F]{32,}\b")
+TIMESTAMP_RE = re.compile(r"^\[?(?:\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?\]?\s+")
+CUT_HEAD, CUT_TAIL = 300, 200
+
+
+def normalize_costly(lines: list[str], kind: str, cfg: dict, cwd: str | None = None) -> list[str]:
+    """Same content, cheaper spelling: short hashes, fewer timestamps, relative paths. Error lines untouched."""
+    if kind not in COSTLY_KINDS:
+        return lines
+    out = list(lines)
+    if cfg.get("normalize_hashes"):
+        for i, l in enumerate(out):
+            if not ERROR_RE.search(l):
+                l = SHA_B64_RE.sub(r"\1-…", l)
+                out[i] = LONG_HEX_RE.sub(lambda m: m.group()[:12] + "…", l)
+    if cfg.get("normalize_paths"):
+        root = re.compile(r"(?<![\w./\\-])" + re.escape((cwd or os.getcwd()).rstrip("/\\")) + r"[/\\]")
+        out = [l if ERROR_RE.search(l) else root.sub("", l) for l in out]
+    if cfg.get("normalize_timestamps"):
+        i = 0
+        while i < len(out):
+            j = i
+            while j < len(out) and TIMESTAMP_RE.match(out[j]):
+                j += 1
+            if j - i >= 4:  # keep the first and last timestamp of the run
+                for k in range(i + 1, j - 1):
+                    if not ERROR_RE.search(out[k]):
+                        out[k] = TIMESTAMP_RE.sub("", out[k], count=1)
+            i = max(j, i + 1)
+    return out
+
+
+def cut_long_lines(lines: list[str], max_line_chars: int) -> list[str]:
+    """Non-error line over the limit → first 300 chars …[N chars]… last 200 chars."""
+    limit = max(max_line_chars, CUT_HEAD + CUT_TAIL + 20)  # a cut must make the line shorter
+    return [l if len(l) <= limit or ERROR_RE.search(l)
+            else f"{l[:CUT_HEAD]} …[{len(l) - CUT_HEAD - CUT_TAIL} chars]… {l[-CUT_TAIL:]}" for l in lines]
+
+
+def budget_cut(lines: list[str], max_lines: int, max_tokens: int, head: int,
+               ratios: dict | None = None) -> list[str]:
+    """All error lines (outside the budget) + head and tail of the rest within max_lines and max_tokens (A2.6)."""
     err = {i for i, l in enumerate(lines) if ERROR_RE.search(l)}
     rest = [i for i in range(len(lines)) if i not in err]
-    if len(rest) <= max_lines:
+    pre = [0]  # prefix sums of est_tokens over rest
+    for i in rest:
+        pre.append(pre[-1] + est_tokens(lines[i], ratios))
+    n = len(rest)
+    if n <= max_lines and pre[n] <= max_tokens:
         return lines
+
+    def span(h: int, t: int) -> tuple[int, int, tuple[int, int]]:
+        """rest[:h] ∪ rest[start:] → (h, start, (count, tokens)); the gap marker counts as tokens too."""
+        h = min(h, n)
+        start = max(n - t, h)
+        marker = est_tokens(f"  … {start - h} lines omitted …", ratios) if start > h else 0
+        return h, start, (h + n - start, pre[h] + pre[n] - pre[start] + marker)
+
     tail = max(max_lines - head - 20, 20)
-    while head + tail > max_lines and tail > 5:
-        tail -= 1
-    while head + tail > max_lines and head > 5:
-        head -= 1
-    keep = err | set(rest[:head]) | set(rest[-tail:])
+    while True:
+        h, start, (count, tokens) = span(head, tail)
+        if count <= max_lines and tokens <= max_tokens * 1.05:
+            break
+        if tail > 5:
+            tail -= 1
+        elif head > 5:
+            head -= 1
+        else:
+            break
+    keep = err | set(rest[:h]) | set(rest[start:])
     out, last = [], -1
     for i in sorted(keep):
         if i != last + 1:
@@ -331,12 +404,30 @@ def budget_cut(lines: list[str], max_lines: int, head: int) -> list[str]:
     return out
 
 
-def apply(cmd: str, lines: list[str], exit_code: int, cfg: dict) -> tuple[list[str], str]:
+class Filtered(NamedTuple):
+    lines: list[str]
+    kind: str
+    lossy: bool           # normalize_costly / cut_long_lines changed a line: keep a tee even if barely smaller
+    error_overflow: bool  # the error lines alone exceed max_tokens (A2.6)
+
+
+def apply(cmd: str, lines: list[str], exit_code: int, cfg: dict, cwd: str | None = None) -> Filtered:
+    """The filter part of the A2.1 pipeline: kind filter → normalize_costly → A2.5 → cut_long_lines → budget."""
     kind = classify(cmd)
     failed = exit_code != 0
-    out = FILTERS.get(kind, lambda l, f: l)(lines, failed)
-    out = squeeze_blank(collapse_similar(dedupe_runs(out)))
-    max_lines = cfg["max_lines"] * (2 if failed else 1)
+    ratios = cfg.get("token_ratios")
+    if kind == "gitdiff":
+        out = f_gitdiff(lines, failed, max_tokens=cfg["max_tokens"], ratios=ratios)
+    else:
+        out = FILTERS.get(kind, lambda l, f: l)(lines, failed)
+    costly = normalize_costly(out, kind, cfg, cwd)
+    lossy = costly != out
+    out = squeeze_blank(collapse_similar(dedupe_runs(costly)))
+    overflow = False
     if kind != "gitdiff":
-        out = budget_cut(out, max_lines, cfg["head_lines"])
-    return out, kind
+        k = 2 if failed else 1
+        cut = cut_long_lines(out, cfg["max_line_chars"])
+        lossy = lossy or cut != out
+        overflow = sum(est_tokens(l, ratios) for l in cut if ERROR_RE.search(l)) > cfg["max_tokens"] * k
+        out = budget_cut(cut, cfg["max_lines"] * k, cfg["max_tokens"] * k, cfg["head_lines"], ratios)
+    return Filtered(out, kind, lossy, overflow)

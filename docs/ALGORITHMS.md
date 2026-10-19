@@ -136,7 +136,7 @@ Bất biến của mọi bộ lọc:
 | gitdiff | — | Giữ **trọn khối file** (`diff --git …`) cho tới khi chạm ngân sách 400 dòng hoặc `max_tokens` (trần nào trước); khối file mà riêng nó đã vượt ngân sách cũng chỉ được liệt kê; các file còn lại liệt kê `path (+a -d)` kèm gợi ý `git diff -- <file>`. Không bao giờ cắt giữa hunk |
 | gitnet | Enumerating, Counting, Compressing, Receiving, Resolving, Writing objects | Mọi dòng còn lại |
 | listing | — | 80 mục đầu, kèm dòng báo số mục còn lại |
-| build | layer docker (sha256, extracting, Pulling fs layer, Waiting, Download complete), `> Task … UP-TO-DATE`, dòng chỉ có % | Mọi dòng còn lại |
+| build | layer docker (sha256, extracting; dòng trạng thái layer dạng `<12 hex>: Pulling fs layer / Waiting / Verifying Checksum / Download complete / Pull complete`), `> Task … UP-TO-DATE`, dòng chỉ có % | Mọi dòng còn lại (kể cả log ứng dụng có chữ `Waiting`) |
 | generic | — | Không lọc riêng, chỉ qua A2.5 và A2.6 |
 
 ### A2.5 Nén chung
@@ -152,12 +152,12 @@ Cùng nội dung, chọn cách viết tốn ít token hơn (ý tưởng MCE củ
 | Biến đổi | Cờ config | Mặc định |
 |---|---|---|
 | Hex ≥ 32 ký tự → 12 ký tự đầu + `…`; `sha512-<base64>` / `sha256-<base64>` → `sha512-…` / `sha256-…` | `normalize_hashes` | bật |
-| ≥ 4 dòng liên tiếp bắt đầu bằng timestamp (ISO 8601 hoặc `HH:MM:SS`) → bỏ timestamp ở các dòng giữa, giữ ở dòng đầu và dòng cuối | `normalize_timestamps` | bật |
+| ≥ 4 dòng liên tiếp bắt đầu bằng timestamp (ISO 8601 hoặc `HH:MM:SS`, có thể trong `[…]`) → bỏ timestamp ở các dòng giữa, giữ ở dòng đầu và dòng cuối. Dòng khớp `ERROR_RE` vẫn tính vào chuỗi nhưng giữ nguyên timestamp | `normalize_timestamps` | bật |
 | Đường dẫn tuyệt đối nằm dưới cwd → tương đối | `normalize_paths` | **tắt** (tool Read của Claude Code cần đường dẫn tuyệt đối) |
 
 ### A2.5c cut_long_lines(lines, max_line_chars)
 
-Dòng dài hơn `max_line_chars` (800 `[ASSUMPTION]`) và **không** khớp `ERROR_RE` → `<300 ký tự đầu> …[N chars]… <200 ký tự cuối>`. Không áp cho `gitdiff`.
+Dòng dài hơn `max_line_chars` (800 `[ASSUMPTION]`) và **không** khớp `ERROR_RE` → `<300 ký tự đầu> …[N chars]… <200 ký tự cuối>`, N là số ký tự bị bỏ. Không áp cho `gitdiff`. Nếu người dùng đặt `max_line_chars` < 520 thì vẫn dùng 520, để việc cắt luôn làm dòng ngắn đi.
 
 ### A2.6 budget_cut(lines, max_lines, max_tokens, head)
 
@@ -167,7 +167,7 @@ rest = các chỉ số còn lại
 if |rest| ≤ max_lines và Σ est_tokens(rest) ≤ max_tokens: return lines
 tail = max(max_lines − head − 20, 20)
 chọn từ rest: head phần tử đầu và tail phần tử cuối
-bớt dần tail rồi head (mỗi bên tối thiểu 5) cho tới khi |chọn| ≤ max_lines và Σ est_tokens(chọn) ≤ max_tokens × 1.05
+bớt dần tail rồi head (mỗi bên tối thiểu 5) cho tới khi |chọn| ≤ max_lines và Σ est_tokens(chọn) + est_tokens(dòng "… k lines omitted …" giữa head và tail) ≤ max_tokens × 1.05
 keep = err ∪ chọn
 xuất theo thứ tự tăng; chỗ nhảy cóc chèn "  … k lines omitted …"
 error_overflow = 1 nếu Σ est_tokens(err) > max_tokens (ghi vào bảng runs)

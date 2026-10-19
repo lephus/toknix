@@ -53,12 +53,12 @@ def run(cmd: str, raw: bool = False) -> int:
     lines = normalize(text)
     small = len(lines) <= cfg["pass_through_lines"] and len(text) <= cfg["pass_through_chars"]
     if small:
-        out, kind = lines, "passthrough"
+        out, kind, lossy, overflow = lines, "passthrough", False, False
     else:
-        out, kind = filters.apply(cmd, lines, p.returncode, cfg)
+        out, kind, lossy, overflow = filters.apply(cmd, lines, p.returncode, cfg)
     body = "\n".join(out)
     tee_id = ""
-    if not small and len(body) < len(text) * 0.9:
+    if not small and (lossy or len(body) < len(text) * 0.9):  # a lossy rewrite is recallable even if small
         tee_id = secrets.token_hex(3)
         (tee_dir() / f"{tee_id}.log").write_text(text, encoding="utf-8")
         body += (f"\n[tokopt: {len(lines)} → {len(out)} lines; full output: tokopt recall {tee_id}"
@@ -66,7 +66,7 @@ def run(cmd: str, raw: bool = False) -> int:
         if secrets.randbelow(50) == 0:
             prune_tee(cfg["tee_keep_days"])
     sys.stdout.write(body + ("\n" if body and not body.endswith("\n") else ""))
-    store.record_run(kind, cmd, p.returncode, len(text), len(body), len(lines), len(out), tee_id)
+    store.record_run(kind, cmd, p.returncode, len(text), len(body), len(lines), len(out), tee_id, overflow)
     return p.returncode
 
 

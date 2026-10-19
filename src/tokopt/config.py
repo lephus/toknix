@@ -27,6 +27,11 @@ def gemini_dir() -> Path:
 DEFAULTS: dict = {
     # output filter
     "max_lines": 120,            # budget for filtered output (doubled when the command fails)
+    "max_tokens": 3000,          # token budget for the non-error lines, est_tokens (doubled on failure; A2.6)
+    "max_line_chars": 800,       # longer non-error lines keep head 300 + tail 200 chars (A2.5c)
+    "normalize_hashes": True,    # install/build/gitnet only (A2.5b)
+    "normalize_timestamps": True,
+    "normalize_paths": False,    # Claude Code's Read needs absolute paths
     "pass_through_lines": 40,    # outputs at or under this size are never touched
     "pass_through_chars": 4000,
     "head_lines": 30,            # kept from the top when the budget forces a cut

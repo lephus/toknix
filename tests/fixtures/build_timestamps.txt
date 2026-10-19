@@ -1,0 +1,67 @@
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :resolveMainClassName UP-TO-DATE
+
+> Task :bootRun
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-10-17T09:12:01.104+07:00  INFO 4211 --- [shop] [           main] c.e.shop.ShopApplication                 : Starting ShopApplication using Java 21.0.4 with PID 4211 (/home/dev/shop/build/classes/java/main started by dev in /home/dev/shop)
+2026-10-17T09:12:01.109+07:00  INFO 4211 --- [shop] [           main] c.e.shop.ShopApplication                 : No active profile set, falling back to 1 default profile: "default"
+2026-10-17T09:12:02.031+07:00  INFO 4211 --- [shop] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-17T09:12:02.118+07:00  INFO 4211 --- [shop] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 74 ms. Found 3 JPA repository interfaces.
+2026-10-17T09:12:02.774+07:00  INFO 4211 --- [shop] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-10-17T09:12:02.790+07:00  INFO 4211 --- [shop] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-17T09:12:02.791+07:00  INFO 4211 --- [shop] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.30]
+2026-10-17T09:12:02.848+07:00  INFO 4211 --- [shop] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-17T09:12:02.849+07:00  INFO 4211 --- [shop] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1689 ms
+2026-10-17T09:12:03.012+07:00  INFO 4211 --- [shop] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-17T09:12:03.247+07:00  INFO 4211 --- [shop] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@6b9ce1bf
+2026-10-17T09:12:03.249+07:00  INFO 4211 --- [shop] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-17T09:12:03.402+07:00  INFO 4211 --- [shop] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-10-17T09:12:03.461+07:00  INFO 4211 --- [shop] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-10-17T09:12:04.390+07:00  WARN 4211 --- [shop] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-10-17T09:12:04.802+07:00  INFO 4211 --- [shop] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-10-17T09:12:04.813+07:00  INFO 4211 --- [shop] [           main] c.e.shop.ShopApplication                 : Started ShopApplication in 4.127 seconds (process running for 4.592)
+2026-10-17T09:12:19.551+07:00  INFO 4211 --- [shop] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-17T09:12:19.552+07:00  INFO 4211 --- [shop] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-17T09:12:19.554+07:00  INFO 4211 --- [shop] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-10-17T09:12:19.703+07:00 ERROR 4211 --- [shop] [nio-8080-exec-1] o.a.c.c.C.[.[.[/].[dispatcherServlet]    : Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed: java.lang.IllegalStateException: cart 91 has no owner] with root cause
+
+java.lang.IllegalStateException: cart 91 has no owner
+	at com.example.shop.cart.CartService.checkout(CartService.java:88) ~[main/:na]
+	at com.example.shop.cart.CartController.checkout(CartController.java:41) ~[main/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:255) ~[spring-web-6.1.13.jar:6.1.13]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.1.13.jar:6.1.13]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-10-17T09:12:27.118+07:00  INFO 4211 --- [shop] [nio-8080-exec-2] c.e.shop.cart.CartController             : GET /api/carts/17 -> 200 (12 ms)
+2026-10-17T09:12:27.664+07:00  INFO 4211 --- [shop] [nio-8080-exec-3] c.e.shop.catalog.ProductController       : GET /api/products?page=2 -> 200 (31 ms)
+2026-10-17T09:12:28.020+07:00  INFO 4211 --- [shop] [nio-8080-exec-4] c.e.shop.auth.SessionFilter              : session 7f2c refreshed for user 1042
+2026-10-17T09:12:28.405+07:00  INFO 4211 --- [shop] [nio-8080-exec-5] c.e.shop.order.OrderController           : POST /api/orders -> 201 (88 ms)
+2026-10-17T09:12:29.233+07:00  INFO 4211 --- [shop] [nio-8080-exec-6] c.e.shop.catalog.ProductController       : GET /api/products/301 -> 200 (9 ms)
+Hibernate: select p1_0.id,p1_0.name,p1_0.price,p1_0.stock from product p1_0 where p1_0.id=?
+2026-10-17T09:12:41.876+07:00  INFO 4211 --- [shop] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-17T09:12:41.891+07:00  INFO 4211 --- [shop] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2026-10-17T09:12:41.903+07:00  INFO 4211 --- [shop] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+> Task :bootRun FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':bootRun'.
+> Process 'command '/usr/lib/jvm/java-21-openjdk/bin/java'' finished with non-zero exit value 130
+
+BUILD FAILED in 43s
+3 actionable tasks: 1 executed, 3 up-to-date
