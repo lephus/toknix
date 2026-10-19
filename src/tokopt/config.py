@@ -49,6 +49,7 @@ DEFAULTS: dict = {
     "guard_junk": True,
     "guard_big_file_lines": 800,  # Read without offset/limit on a larger file is denied with a hint
     "guard_repeat_reads": 2,      # identical unchanged reads allowed per session before denial (0 = off)
+    "grep_head_limit": 200,       # Grep content mode without head_limit gets this one (0 = off; N1.4)
     "junk_patterns": [
         "/node_modules/", "/vendor/", "/dist/", "/build/", "/.next/", "/target/", "/coverage/",
         "/.git/", "/__pycache__/", ".min.js", ".min.css", ".map", "package-lock.json",

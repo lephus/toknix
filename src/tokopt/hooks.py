@@ -63,10 +63,16 @@ def hook_bash(data: dict) -> dict | None:
 
 
 def _is_junk(path: str, cfg: dict) -> str | None:
+    """`/dir/` patterns match a path segment, `.ext` patterns a suffix, other patterns the whole file name."""
     p = "/" + path.replace("\\", "/").lstrip("/")
     for pat in cfg["junk_patterns"]:
-        if (pat.startswith("/") and pat in p + ("/" if pat.endswith("/") else "")) or (
-                not pat.startswith("/") and p.endswith(pat)):
+        if pat.startswith("/"):
+            hit = pat in p + ("/" if pat.endswith("/") else "")
+        elif pat.startswith("."):
+            hit = p.endswith(pat)
+        else:
+            hit = p.endswith("/" + pat)
+        if hit:
             return pat
     return None
 
@@ -95,11 +101,18 @@ def hook_read(data: dict) -> dict | None:
             store.record_guard(session, "junk", path, 0)
             return _deny(f"tokopt: '{path}' is a generated/vendor path ({pat}). Search source directories instead, "
                          f"or set TOKOPT guard_junk=false in ~/.tokopt/config.json if you really need it.")
+        limit = cfg["grep_head_limit"]
+        if tool == "Grep" and ti.get("output_mode") == "content" and "head_limit" not in ti and limit:
+            return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                           "updatedInput": dict(ti, head_limit=limit)}}  # N1.4
         return None
     if tool != "Read" or not path:
         return None
     p = Path(path)
-    if cfg["guard_junk"] and (pat := _is_junk(path, cfg)):
+    if not p.is_absolute() and data.get("cwd"):  # Claude Code sends absolute paths; be safe with relative ones
+        p = Path(data["cwd"]) / p
+    has_span = ti.get("offset") is not None or ti.get("limit") is not None
+    if cfg["guard_junk"] and not has_span and (pat := _is_junk(path, cfg)):  # a slice is allowed (A4 R1)
         size = p.stat().st_size if p.exists() else 0
         store.record_guard(session, "junk", path, size // 4)
         return _deny(f"tokopt: '{path}' matches '{pat}' (generated, vendored or lockfile; ~{size // 4:,} tokens). "
@@ -110,7 +123,6 @@ def hook_read(data: dict) -> dict | None:
         st = p.stat()
     except OSError:
         return None
-    has_span = ti.get("offset") is not None or ti.get("limit") is not None
     big = cfg["guard_big_file_lines"]
     if big and not has_span and st.st_size > big * 40:
         n = _count_lines(p)

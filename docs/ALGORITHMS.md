@@ -245,16 +245,21 @@ output nếu wrap:
 Read(file_path, offset?, limit?):
   R1 junk:    path khớp junk_patterns (thư mục: chứa "/node_modules/"…; đuôi: endswith ".min.js", lockfile…)
               → deny "… is generated/vendored/lockfile (~T tokens). Read the source or manifest; slice with offset/limit if needed."
-              Ngoại lệ: có offset/limit → vẫn deny [TBD: có nên cho phép đọc lát cắt lockfile không]
+              Có offset/limit (đọc một lát cắt) → cho qua (người dùng chốt 2026-10-19: chỉ chặn đọc cả file,
+              để lời khuyên "slice with offset/limit" là đường ra thật khi agent cần xem code thư viện)
+              So khớp: pattern `/dir/` khớp một đoạn đường dẫn; `.ext` khớp đuôi; còn lại khớp nguyên tên file
+              (`package-lock.json` không khớp `my-package-lock.json`). Đường dẫn Windows đổi `\` thành `/` trước.
   R2 bigfile: không có offset/limit và size > big_lines×40 bytes và đếm dòng > big_lines (800)
               → deny "… has N lines (~T tokens). Run `tokopt outline <path>`, then Read the range with offset/limit."
   R3 reread:  key = (session, realpath, f"{offset}:{limit}"); nếu mtime không đổi thì n++, mtime đổi thì n=1
               n > guard_repeat_reads (2) → deny "already read this exact range N times; file unchanged; content is still in context."
 Grep/Glob(path):
   path nằm trong junk → deny kèm gợi ý tìm trong thư mục source
-Grep(output_mode = "content", không có head_limit) và grep_head_limit > 0:
+Grep(output_mode = "content", không có key head_limit, kể cả head_limit=0) và grep_head_limit > 0:
   → updatedInput: {...tool_input, head_limit: grep_head_limit}     # mặc định 200 [ASSUMPTION]
-mọi lần deny: ghi bảng guard(session, rule, path, est_tokens = size/4)
+mọi lần deny: ghi đúng 1 dòng vào bảng guard(session, rule, path, est_tokens = size/4; Grep/Glob junk: 0)
+đường dẫn tương đối (Claude Code thường gửi tuyệt đối) → ghép với `cwd` trong JSON của hook, không phải cwd của process
+file không tồn tại hoặc là thư mục → không ý kiến (Claude Code tự báo lỗi)
 ```
 
 - `[ASSUMPTION]` Giới hạn Grep cần kiểm chứng ở P2-T4: (1) `updatedInput` có được áp dụng khi không có `permissionDecision`; (2) khi `head_limit` cắt bớt, Claude Code có báo cho agent là kết quả đã bị cắt không. Nếu (2) không có thì đặt mặc định `grep_head_limit = 0`, vì cắt im lặng có thể làm agent kết luận sai ("chỉ có 200 chỗ gọi").

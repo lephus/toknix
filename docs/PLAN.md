@@ -106,7 +106,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Lệnh được wrap phải chạy ra kết quả giống lệnh gốc: test thật với lệnh có dấu nháy đơn, nháy kép, `$VAR`, pipe, `&&`.
 - JSON đầu vào lỗi → exit 0, không in gì.
 
-**P2-T2 `[ ]` Test `hook read` (A4)**
+**P2-T2 `[x]` Test `hook read` (A4)**
 - R1: `node_modules/x/index.js` và `package-lock.json` bị deny; `src/app.ts` được cho qua.
 - R2: file 2.000 dòng không có offset/limit bị deny, thông báo có lệnh `tokopt outline`; cùng file đó có `limit=100` thì được cho qua.
 - R3: đọc lần 3 cùng range thì deny; sau khi `touch` file thì cho qua; sau `session-start` với `source=compact` thì cho qua.
