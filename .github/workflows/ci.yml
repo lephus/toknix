@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.13"]
+    env:
+      # bench / map tests make git commits in temp repos
+      GIT_AUTHOR_NAME: ci
+      GIT_AUTHOR_EMAIL: ci@example.com
+      GIT_COMMITTER_NAME: ci
+      GIT_COMMITTER_EMAIL: ci@example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Python ${{ matrix.python }}
+        run: uv python install ${{ matrix.python }}
+      - name: Unit tests (stdlib only)
+        run: uv run --no-project --python ${{ matrix.python }} python -m unittest discover -s tests -v
+      - name: Benchmark symbol/refs on 2,000 files
+        run: uv run --no-project --python ${{ matrix.python }} python scripts/bench_codesearch.py 2000
+      - name: install.sh --dry-run
+        if: runner.os != 'Windows'
+        run: sh install.sh --dry-run
+
+  lint-scripts:
+    name: shellcheck and PSScriptAnalyzer
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck install.sh
+        if: runner.os == 'Linux'
+        run: shellcheck -s sh install.sh
+      - name: PSScriptAnalyzer install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $issues = Invoke-ScriptAnalyzer -Path install.ps1 -Severity Warning,Error -ExcludeRule PSAvoidUsingWriteHost
+          $issues | Format-Table -AutoSize
+          if ($issues) { exit 1 }
+
+  install:
+    # The real scripts from this checkout, in a clean HOME: Ubuntu 24.04 (PEP 668), macOS, Windows 11.
+    name: install script (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: "install.sh with the system Python (no uv, so the venv path)"
+        if: runner.os != 'Windows'
+        run: |
+          export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          env PATH=/usr/bin:/bin:/usr/local/bin HOME="$HOME" sh install.sh --from "$GITHUB_WORKSPACE"
+          "$HOME/.local/bin/tokopt" --version
+          "$HOME/.local/bin/tokopt" doctor
+          test -f "$HOME/.claude/settings.json"
+          env PATH="$HOME/.local/bin:/usr/bin:/bin:/usr/local/bin" HOME="$HOME" sh install.sh --uninstall
+          test ! -e "$HOME/.claude/settings.json"
+          test ! -e "$HOME/.local/bin/tokopt"
+      - name: install.ps1 (venv path)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "home"
+          $env:HOME = $env:USERPROFILE
+          New-Item -ItemType Directory -Force $env:HOME | Out-Null
+          ./install.ps1 -From $env:GITHUB_WORKSPACE
+          & (Join-Path $env:HOME ".tokopt\venv\Scripts\tokopt.exe") --version
+          if (-not (Test-Path (Join-Path $env:HOME ".claude\settings.json"))) { throw "settings.json missing" }
+          ./install.ps1 -Uninstall
+          if (Test-Path (Join-Path $env:HOME ".claude\settings.json")) { throw "settings.json left behind" }

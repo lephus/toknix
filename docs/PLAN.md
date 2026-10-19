@@ -197,9 +197,13 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Kiểm tra bằng shellcheck và PSScriptAnalyzer trong CI.
   - Kết quả (2026-10-19): macOS cài thật xong cả hai nhánh (uv, venv) với `--from`; shellcheck sạch. Lệnh `curl … | sh` thật chỉ chạy được sau khi code được push lên `lephus/toknix`. Ubuntu 24.04 (PEP 668), Windows 11 và PSScriptAnalyzer được kiểm trong CI (P5-T2).
 
-**P5-T2 `[ ]` CI GitHub Actions**
+**P5-T2 `[x]` CI GitHub Actions**
 - Ma trận ubuntu, macos, windows × Python 3.9, 3.13.
 - Chạy unittest, `install.sh --dry-run`, shellcheck.
+  - Kết quả (2026-10-19): `.github/workflows/ci.yml`, sạch actionlint.
+    - Python được cài bằng `uv`, vì `setup-python` có thể không có 3.9 cho macOS ARM.
+    - Thêm job PSScriptAnalyzer, benchmark `symbol`/`refs`, và job cài thật bằng script: Ubuntu 24.04 (PEP 668, nhánh venv), macOS, Windows. Job này đóng phần còn lại của P5-T1.
+    - **Chưa chạy lần nào**, vì repo chưa được push lên `lephus/toknix`. Test suite chưa từng chạy trên Windows, nên lần chạy đầu có thể lộ lỗi riêng của Windows.
 
 **P5-T3 `[ ]` README tiếng Việt và tiếng Anh, `docs/VERIFY.md`, CHANGELOG, LICENSE MIT**
 - README có:
