@@ -114,6 +114,20 @@ class TestBench(BenchCase):
         r = self.results("r")[0]
         self.assertEqual((r["rules"], r["global_rules"]), (str(rules), True))
 
+    def test_a_broken_agent_command_is_reported(self):  # not silently recorded as a free run
+        spec = json.loads(self.tasks(repeat=1, n_tasks=1).read_text())
+        spec["agent_cmd"] = [sys.executable, "-c", "import sys; sys.exit(3)"]
+        self.tasks_path = self.tmp / "broken.json"
+        self.tasks_path.write_text(json.dumps(spec))
+        code, out, _ = self.bench("broken")
+        self.assertEqual(code, 0)
+        self.assertIn("agent exited 3, no usage", out)
+        self.bench("broken2")
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            cli.main(["compare", "broken", "broken2"])
+        self.assertIn("warning: 1 + 1 runs have no usage", out.getvalue())
+
     def test_bad_tasks_file(self):
         bad = self.tmp / "bad.json"
         bad.write_text('{"tasks": []}')

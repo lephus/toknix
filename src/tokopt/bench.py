@@ -183,8 +183,11 @@ def run_bench(tasks_file: str, label: str, rules_file: str | None = None, repeat
                 row = _one(spec, task, rep, repo, agent, rules, rules_file, global_rules, timeout, w, label)
                 fh.write(json.dumps(row) + "\n")
                 fh.flush()
-                write_out(f"{label} {task['id']}#{rep}: {'pass' if row['passed'] else 'FAIL'}"
-                          f"{' (timeout)' if row['timeout'] else ''}, {row['etu']:,.0f} ETU, {row['wall']:.0f}s\n")
+                note = " (timeout)" if row["timeout"] else ""
+                if not row["timeout"] and not any(row["usage"].values()):  # the agent never really ran
+                    note = f" (agent exited {row['agent_exit']}, no usage: check the agent command)"
+                write_out(f"{label} {task['id']}#{rep}: {'pass' if row['passed'] else 'FAIL'}{note}, "
+                          f"{row['etu']:,.0f} ETU, {row['wall']:.0f}s\n")
     _git(repo, "worktree", "prune")
     return out_path
 
@@ -301,6 +304,8 @@ def compare_data(label_a: str, label_b: str, cfg: dict | None = None) -> dict:
         "output": {"median": {"a": statistics.median(oa), "b": statistics.median(ob)}, "change": out_change,
                    "ci": list(out_ci), "verdict": _verdict(pa, pb, out_change, out_ci[1], cfg)},
         "global_rules": any(r.get("global_rules") for r in a + b),
+        "no_usage": {"a": sum(1 for r in a if not any(r["usage"].values())),
+                     "b": sum(1 for r in b if not any(r["usage"].values()))},
         "tasks": tasks,
     }
 
@@ -311,13 +316,13 @@ def format_compare(d: dict) -> str:
 
     out = [f"tokopt compare {d['a']} → {d['b']} ({d['runs']['a']} vs {d['runs']['b']} runs, "
            f"{len(d['tasks'])} common tasks)", "",
-           f"  pass rate          {d['pass_rate']['a']:.0%} → {d['pass_rate']['b']:.0%}",
-           f"  median ETU         {d['median_etu']['a']:,.0f} → {d['median_etu']['b']:,.0f}  {pct(d['change'])} "
+           f"  {'pass rate':<22}{d['pass_rate']['a']:.0%} → {d['pass_rate']['b']:.0%}",
+           f"  {'median ETU':<22}{d['median_etu']['a']:,.0f} → {d['median_etu']['b']:,.0f}  {pct(d['change'])} "
            f"(95% CI {pct(d['ci'][0])} … {pct(d['ci'][1])})",
-           f"  median output tokens {d['output']['median']['a']:,.0f} → {d['output']['median']['b']:,.0f}  "
+           f"  {'median output tokens':<22}{d['output']['median']['a']:,.0f} → {d['output']['median']['b']:,.0f}  "
            f"{pct(d['output']['change'])} (95% CI {pct(d['output']['ci'][0])} … {pct(d['output']['ci'][1])})",
-           f"  mean cost          ${d['mean_cost']['a']:.3f} → ${d['mean_cost']['b']:.3f}",
-           f"  median wall time   {d['median_wall']['a']:.0f}s → {d['median_wall']['b']:.0f}s", "",
+           f"  {'mean cost':<22}${d['mean_cost']['a']:.3f} → ${d['mean_cost']['b']:.3f}",
+           f"  {'median wall time':<22}{d['median_wall']['a']:.0f}s → {d['median_wall']['b']:.0f}s", "",
            f"  {'task':<20}{'pass A→B':>12}{'ETU A':>12}{'ETU B':>12}{'out A':>10}{'out B':>10}"]
     for t in d["tasks"]:
         out.append(f"  {t['task'][:20]:<20}{t['pass']['a']:>5.0%} → {t['pass']['b']:<4.0%}"
@@ -326,6 +331,9 @@ def format_compare(d: dict) -> str:
     out += ["", f"verdict: {d['verdict']}", f"output verdict: {d['output']['verdict']}"]
     if d["global_rules"]:
         out.append("note: a global CLAUDE.md rules block was present during these runs")
+    if d["no_usage"]["a"] or d["no_usage"]["b"]:
+        out.append(f"warning: {d['no_usage']['a']} + {d['no_usage']['b']} runs have no usage (the agent did not "
+                   f"run or its output was not understood); the verdict means little until they are fixed")
     return "\n".join(out)
 
 
