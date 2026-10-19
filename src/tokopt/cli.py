@@ -48,6 +48,15 @@ def build_parser() -> argparse.ArgumentParser:
                            help='one quoted string (as hook bash writes it), or the words of the command')
         elif name == "outline":
             p.add_argument("file")
+        elif name == "bench":
+            p.add_argument("tasks", help="tasks.json (A6.3)")
+            p.add_argument("--label", required=True, help="name of this run, used by compare")
+            p.add_argument("--rules", metavar="FILE", help="rules block put into the worktree's CLAUDE.md")
+            p.add_argument("--repeat", type=positive_int, metavar="N", help="override tasks.json repeat")
+        elif name == "compare":
+            p.add_argument("a", help="label of the baseline")
+            p.add_argument("b", help="label to compare with it")
+            p.add_argument("--json", action="store_true", help="machine-readable output")
         elif name in ("report", "waste", "context", "snapshot"):
             p.add_argument("--days", type=positive_int, metavar="N",
                            help="transcripts of the last N days (default: 30 for context, else 7)")
@@ -115,6 +124,11 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from tokopt import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command in ("bench", "compare"):
+        from tokopt import bench
+        if ns.command == "bench":
+            return bench.bench_cmd(ns.tasks, ns.label, ns.rules, ns.repeat)
+        return bench.compare_cmd(ns.a, ns.b, ns.json)
     if ns.command in ("report", "waste", "context", "snapshot"):
         from tokopt import reports
         return reports.run(ns.command, ns.days, getattr(ns, "json", False), getattr(ns, "path", None),

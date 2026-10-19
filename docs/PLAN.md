@@ -176,7 +176,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - **(N1.5a)** `report` có tỉ trọng output; phân rã output theo A6.6, kể cả trường hợp thinking bị ẩn.
 - Request của subagent không bị tính vào số liệu theo phiên.
 
-**P4-T3 `[ ]` `bench` và `compare` (A6.3)**
+**P4-T3 `[x]` `bench` và `compare` (A6.3)**
 - Test với agent giả (script trong `tests/fake_agents/` in JSON giống `claude -p`):
   - verdict ACCEPT khi B rẻ hơn 30% và pass như nhau;
   - REJECT khi pass rate giảm;

@@ -43,13 +43,13 @@ class TestCli(unittest.TestCase):
         self.assertEqual(sorted(sub.choices), sorted(V01_COMMANDS))
 
     def test_stub_reports_not_implemented(self):
-        code, out, err = call(["bench"])
+        code, out, err = call(["init-project"])
         self.assertEqual(code, 2)
         self.assertEqual(out, "")
         self.assertIn("not implemented", err)
 
     def test_stub_accepts_extra_arguments(self):
-        code, _, err = call(["compare", "--", "foo"])
+        code, _, err = call(["init-project", "--", "foo"])
         self.assertEqual(code, 2)
         self.assertIn("not implemented", err)
 

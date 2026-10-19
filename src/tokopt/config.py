@@ -68,6 +68,8 @@ DEFAULTS: dict = {
     "waste_max_requests": 80,         # A6.2 waste (5)
     "waste_output_share": 0.35,       # A6.2 waste (7) [ASSUMPTION]
     "context_warn_tokens": 1500,      # A6.2 context
+    "bench_min_saving": 0.10,         # A6.3 ACCEPT needs B at least this much cheaper (median ETU)…
+    "bench_max_pass_drop": 0.0,       # …and its pass rate no lower than A's minus this
     "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU
     "reread_default": 20,         # R̄ for `gain` until transcripts are read (N1.1)
     "recall_warn_rate": 0.2,      # gain warns when a filter kind is recalled more often than this…

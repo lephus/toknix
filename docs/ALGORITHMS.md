@@ -534,6 +534,22 @@ compare A B:
     INCONCLUSIVE nếu các trường hợp còn lại
 ```
 
+- Chi tiết đã chốt khi implement (P4-T3, `src/tokopt/bench.py`):
+  - **Lệnh:** `tokopt bench TASKS.json --label L [--rules FILE] [--repeat N]`, kết quả ở `~/.tokopt/results/bench-L.jsonl`, mỗi lần chạy một dòng:
+    - `label`, `task`, `repeat`, `agent`, `passed`, `timeout`, `agent_exit`;
+    - `usage {input, cache_write, cache_read, output}`, `etu`, `cost`, `turns`, `wall`;
+    - `rules`, `global_rules`, `ts`.
+    Lệnh so sánh là `tokopt compare A B [--json]`.
+  - **`tasks.json`:** `check` và `setup` là một chuỗi (chạy bằng bash) hoặc một list argv. `agent_args` ở cấp file hoặc cấp task, ví dụ `["--permission-mode", "acceptEdits"]`. `agent_cmd` thay chương trình gọi agent (agent giả trong test, wrapper). Mặc định: `repeat` 1, `timeout` 900 s.
+  - **Môi trường của agent:** có thêm `TOKOPT_BENCH_LABEL`, `TOKOPT_BENCH_TASK`, `TOKOPT_BENCH_REPEAT`.
+  - **Mỗi lần chạy:** worktree tạo trong một thư mục tạm riêng. Agent và check chạy trong process group riêng, timeout thì cả nhóm bị kill. `finally` luôn chạy `git worktree remove --force` và xoá thư mục tạm; cuối bench chạy `git worktree prune`. Lần chạy bị timeout thì không chạy check và tính là fail.
+  - **`--rules`:** block nằm giữa `<!-- tokopt:begin bench -->` và `<!-- tokopt:end -->` trong `CLAUDE.md` (Codex: `AGENTS.md`, Gemini: `GEMINI.md`) của worktree; block có sẵn thì bị thay. CLAUDE.md toàn cục có block tokopt → cảnh báo ra stderr và ghi `global_rules: true`.
+  - **`compare`:**
+    - CI dùng bootstrap từng nhánh riêng: lấy mẫu có hoàn lại cho từng nhánh, tính `median(B)/median(A) − 1`, 2.000 lần, seed 42, phân vị 2,5% và 97,5%.
+    - Ngưỡng `min_saving` 10% và `max_drop` 0 nằm trong config (`bench_min_saving`, `bench_max_pass_drop`).
+    - Verdict output dùng cùng luật trên median output tokens. Vì vậy một biến thể giảm 5% ra INCONCLUSIVE: có giảm, nên không phải REJECT, nhưng không thắng.
+  - **Chưa kiểm với agent thật:** định dạng `claude -p` là `FACT`. Định dạng Codex (`turn.completed`) và Gemini (`stats.models.*.tokens`) vẫn là `[ASSUMPTION]`, và sẽ được kiểm khi người dùng chạy P6.
+
 **Chọn rules bằng bench:**
 
 - `bench --rules <file>`: chèn rules block vào CLAUDE.md / AGENTS.md của **worktree** (giữa marker như A8) trước khi chạy agent. Nếu CLAUDE.md global của người dùng đã có block tokopt thì cảnh báo và ghi trạng thái đó vào kết quả (bench không ghi ra ngoài `~/.tokopt/` và worktree, nên không tự cô lập).

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import re
-import statistics
 import sys
 import time
 from collections import Counter
