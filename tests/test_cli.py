@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 
 import support  # noqa: F401  (puts src/ on sys.path)
@@ -53,7 +54,8 @@ class TestCli(unittest.TestCase):
 
     def test_hook_stub_is_silent_and_exits_0(self):
         # A hook must never break the agent, even before it is implemented.
-        code, out, err = call(["hook", "bash"])
+        with mock.patch.object(sys, "stdin", io.StringIO("")):
+            code, out, err = call(["hook", "bash"])
         self.assertEqual((code, out, err), (0, "", ""))
 
     def test_no_command_prints_help(self):

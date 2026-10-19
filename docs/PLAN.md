@@ -100,7 +100,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 ## P2 — Hook Claude Code
 
-**P2-T1 `[ ]` Test `hook bash` (A3)**
+**P2-T1 `[x]` Test `hook bash` (A3)**
 - Test bảng: ≥ 20 lệnh, mỗi lệnh có kỳ vọng wrap hoặc không.
   - Bắt buộc có: `cd x && npm test` → không wrap; `npm test` → wrap; `git status` → wrap; `echo hi` → không wrap; lệnh đã có `tokopt run` → không wrap; `run_in_background` → không wrap; heredoc → không wrap.
 - Lệnh được wrap phải chạy ra kết quả giống lệnh gốc: test thật với lệnh có dấu nháy đơn, nháy kép, `$VAR`, pipe, `&&`.

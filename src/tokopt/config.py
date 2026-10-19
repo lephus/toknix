@@ -44,6 +44,7 @@ DEFAULTS: dict = {
         "docker", "make", "mvn", "gradle", "./gradlew", "dotnet", "composer", "bundle", "rspec",
         "flutter", "dart", "terraform", "kubectl", "ls", "find", "tree", "du",
     ],
+    "hook_permission": None,      # "allow" / "ask": also send a permissionDecision (A3; "allow" skips the user's prompts)
     # Read guard
     "guard_junk": True,
     "guard_big_file_lines": 800,  # Read without offset/limit on a larger file is denied with a hint

@@ -65,7 +65,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
     if ns.command == "hook":
-        return 0  # a hook must never break the agent; stays silent until implemented
+        try:
+            from tokopt import hooks
+            return hooks.main(ns.args[0] if ns.args else "")
+        except Exception:  # a hook must never break the agent, not even a broken install
+            return 0
     if ns.command == "run":
         words = ns.cmd[1:] if ns.cmd[:1] == ["--"] else ns.cmd
         if not words:

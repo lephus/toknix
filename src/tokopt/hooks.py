@@ -20,7 +20,9 @@ from tokopt import filters, store
 from tokopt.config import load
 from tokopt.textutil import est_tokens
 
-STATEFUL = re.compile(r"(^|[;&|]\s*)(cd|pushd|popd|export|unset|source|\.|alias|set|ulimit|exec)\s")
+# A command that changes the agent's own shell (cwd/env), at the start of any statement: after ; & | or a newline,
+# with or without arguments (`npm test; popd`).
+STATEFUL = re.compile(r"(?:^|[;&|\n])\s*(?:cd|pushd|popd|export|unset|source|\.|alias|set|ulimit|exec)(?=\s|$|[;&|])")
 
 
 def _emit(obj: dict | None):
@@ -46,10 +48,12 @@ def should_wrap(cmd: str, tool_input: dict, cfg: dict) -> bool:
 
 
 def hook_bash(data: dict) -> dict | None:
+    if data.get("tool_name", "Bash") != "Bash":
+        return None
     cfg = load()
     ti = data.get("tool_input") or {}
     cmd = ti.get("command", "")
-    if not should_wrap(cmd, ti, cfg):
+    if not isinstance(cmd, str) or not should_wrap(cmd, ti, cfg):
         return None
     new = dict(ti, command=f"tokopt run -- {shlex.quote(cmd)}")
     out = {"hookEventName": "PreToolUse", "updatedInput": new}
@@ -136,9 +140,15 @@ def hook_session_start(data: dict) -> dict | None:
 HOOKS = {"bash": hook_bash, "read": hook_read, "session-start": hook_session_start}
 
 
+def _read_stdin() -> str:
+    """Claude Code sends UTF-8 JSON; never decode it with the console's code page (cp1252 on Windows)."""
+    buf = getattr(sys.stdin, "buffer", None)
+    return buf.read().decode("utf-8") if buf is not None else sys.stdin.read()
+
+
 def main(name: str) -> int:
     try:
-        data = json.load(sys.stdin)
+        data = json.loads(_read_stdin())
         _emit(HOOKS[name](data))
     except Exception as e:  # never block the agent because of tokopt
         if os.environ.get("TOKOPT_DEBUG"):

@@ -220,13 +220,18 @@ should_wrap(cmd):
              | chứa heredoc "<<"
              | chứa lệnh có trạng thái ở đầu một câu lệnh: cd pushd popd export unset source . alias set ulimit exec
                (Claude Code giữ cwd/env giữa các lần gọi; bọc vào subshell sẽ làm mất trạng thái đó)
+               "đầu một câu lệnh" = đầu chuỗi, hoặc sau ; & | hay xuống dòng; có hoặc không có đối số (`npm test; popd`)
+             | tool_name khác "Bash" | command không phải chuỗi
   true nếu program_of(cmd) ∈ config.wrap_programs
 output nếu wrap:
   {"hookSpecificOutput":{"hookEventName":"PreToolUse",
      "updatedInput": {...tool_input, "command": "tokopt run -- " + shlex.quote(cmd)}}}
 ```
 
-- **Quyết định bảo mật:** mặc định KHÔNG gửi `permissionDecision`, để luật permission của người dùng vẫn áp dụng. Nếu gửi `"allow"` thì mọi lệnh được bọc (kể cả `git push --force`) sẽ bỏ qua bước hỏi quyền. Config `hook_permission` cho phép bật, kèm cảnh báo trong README.
+- **Input:** đọc stdin dưới dạng byte rồi giải mã UTF-8, không dùng code page của console (cp1252 trên Windows sẽ làm hỏng lệnh có tiếng Việt khi ghi lại vào `updatedInput`). Output là JSON ASCII.
+- **Lỗi:** JSON hỏng, field sai kiểu, tên hook lạ, kể cả lỗi import → exit 0, không in gì (`TOKOPT_DEBUG=1` in lý do ra stderr).
+- **Thời gian:** đo 2026-10-19 trên macOS, Python 3.14, trạng thái warm: trung vị 58 ms, bằng `python -c pass`. Phần tokopt thêm vào nằm trong sai số đo.
+- **Quyết định bảo mật:** mặc định KHÔNG gửi `permissionDecision`, để luật permission của người dùng vẫn áp dụng. Nếu gửi `"allow"` thì mọi lệnh được bọc (kể cả `git push --force`) sẽ bỏ qua bước hỏi quyền. Config `hook_permission` (mặc định `null`; nhận `"allow"` hoặc `"ask"`, giá trị khác bị bỏ qua) cho phép bật, kèm cảnh báo trong README.
 - `[ASSUMPTION]` Claude Code áp dụng `updatedInput` khi không có `permissionDecision`. Kiểm chứng ở task P2-T4: chạy một session thật, kiểm tra bảng `runs` có bản ghi. Nếu không áp dụng, phải chọn lại giữa hai phương án: (a) dùng `"ask"`, (b) chỉ cài rules để agent tự gõ `tokopt run --`. Đây là `[TBD]`.
 - `[ASSUMPTION]` Permission rule dạng `Bash(npm test:*)` có thể không khớp sau khi lệnh bị viết lại. Ghi vào README phần giới hạn.
 
