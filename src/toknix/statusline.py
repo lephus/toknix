@@ -3,8 +3,8 @@
     ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k
 
 Claude Code runs it after every turn with the session JSON on stdin, so it must be fast on a large
-transcript: the file is read incrementally from the offset kept in ~/.toknix/sl-<session>.json, and only
-lines holding a usage are parsed. Like a hook, it never fails loudly: any error prints nothing, exit 0.
+transcript: the file, and each subagent file of the session, is read incrementally from the offset kept in
+~/.toknix/sl-<session>.json, and only lines holding a usage are parsed. Like a hook, it never fails loudly: any error prints nothing, exit 0.
 """
 from __future__ import annotations
 
@@ -27,23 +27,53 @@ def _cache_file(session: str) -> Path:
 
 
 def _fresh(path: str) -> dict:
-    return {"path": path, "offset": 0, "etu": 0.0, "ctx": 0, "start_ts": None, "keys": [],
-            "req_ts": [], "compact_ts": []}  # main-chain request times and compactions: saved ETU (P7-T1)
+    return {"path": path, "offset": 0, "etu": 0.0, "ctx": 0, "start_ts": None, "keys": {},
+            "req_ts": [], "compact_ts": [],  # main-chain request times and compactions: saved ETU (P7-T1)
+            "subs": {}}  # P8-T1: subagent file name -> its own offset, keys and ETU
+
+
+def _fresh_sub() -> dict:
+    return {"offset": 0, "etu": 0.0, "keys": {}}
 
 
 def scan(path: Path, state: dict, weights: list[float]) -> dict:
-    """Add the requests in the complete lines after state["offset"]; reset when the file was rewritten."""
+    """Add the requests in the complete lines after the saved offsets of the session file and of its subagent
+    files (`<session>/subagents/*.jsonl`); a file shorter than its offset is read again from the start."""
     size = path.stat().st_size
-    if state.get("path") != str(path) or size < state.get("offset", 0) or "req_ts" not in state:
+    if state.get("path") != str(path) or size < state.get("offset", 0) or "subs" not in state:
         state = _fresh(str(path))
+    _scan_file(path, state, weights, state)
+    subs = {}
+    for sub in sorted((path.parent / path.stem / "subagents").glob("*.jsonl")):
+        sub_state = state["subs"].get(sub.name) or _fresh_sub()
+        try:
+            if sub.stat().st_size < sub_state["offset"]:
+                sub_state = _fresh_sub()
+            if sub.stat().st_size > sub_state["offset"]:
+                _scan_file(sub, sub_state, weights, None)
+        except OSError:
+            pass
+        subs[sub.name] = sub_state
+    state["subs"] = subs
+    return state
+
+
+def total_etu(state: dict) -> float:
+    return state["etu"] + sum(sub["etu"] for sub in state.get("subs", {}).values())
+
+
+def _scan_file(path: Path, fstate: dict, weights: list[float], main: dict | None):
+    """Read one file from fstate["offset"]; main: the session state for the session file (ctx, request times,
+    compactions), None for a subagent file, which only adds ETU."""
     with open(path, "rb") as fh:
-        fh.seek(state["offset"])
+        fh.seek(fstate["offset"])
         data = fh.read()
     end = data.rfind(b"\n") + 1  # a half-written last line waits for the next call
-    keys = list(state.get("keys", []))
-    seen = set(keys)
+    keys = dict(fstate.get("keys", {}))  # recent request key -> usage already counted
     for raw in data[:end].split(b"\n"):
         if b'"usage"' not in raw:
+            if main is None:
+                continue
             if b'"compact_boundary"' in raw:
                 try:
                     obj = json.loads(raw)
@@ -52,11 +82,11 @@ def scan(path: Path, state: dict, weights: list[float]) -> dict:
                 ts = _ts(obj.get("timestamp")) if isinstance(obj, dict) and obj.get("subtype") == "compact_boundary" \
                     else None
                 if ts is not None:
-                    state["compact_ts"].append(ts)
-            if state["start_ts"] is None and b'"timestamp"' in raw:
+                    main["compact_ts"].append(ts)
+            if main["start_ts"] is None and b'"timestamp"' in raw:
                 m = re.search(rb'"timestamp":\s*"([^"]+)"', raw)
                 if m:
-                    state["start_ts"] = _ts(m.group(1).decode())
+                    main["start_ts"] = _ts(m.group(1).decode())
             continue
         try:
             obj = json.loads(raw)
@@ -66,24 +96,25 @@ def scan(path: Path, state: dict, weights: list[float]) -> dict:
         usage = msg.get("usage") if isinstance(msg, dict) else None
         if obj.get("type") != "assistant" or not isinstance(usage, dict):
             continue
-        if state["start_ts"] is None:
-            state["start_ts"] = _ts(obj.get("timestamp"))
+        if main is not None and main["start_ts"] is None:
+            main["start_ts"] = _ts(obj.get("timestamp"))
         key = f"{msg.get('id')}|{obj.get('requestId')}"
-        if key in seen:  # another chunk of a request already counted
-            continue
-        seen.add(key)
-        keys.append(key)
         u = [usage.get(k) if isinstance(usage.get(k), int) else 0 for k in (
             "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")]
-        state["etu"] += sum(w * x for w, x in zip(weights, u))
-        if obj.get("isSidechain") is not True:
-            state["ctx"] = u[0] + u[1] + u[2]
+        if key in keys:  # another line of a request already counted: add only what grew (streamed usage)
+            before = keys.pop(key)
+            fstate["etu"] += sum(w * max(x - b, 0) for w, x, b in zip(weights, u, before))
+            keys[key] = [max(x, b) for x, b in zip(u, before)]
+            continue
+        keys[key] = u
+        fstate["etu"] += sum(w * x for w, x in zip(weights, u))
+        if main is not None and obj.get("isSidechain") is not True:
+            main["ctx"] = u[0] + u[1] + u[2]
             ts = _ts(obj.get("timestamp"))
             if ts is not None:
-                state["req_ts"].append(ts)
-    state["offset"] += end
-    state["keys"] = keys[-RECENT_KEYS:]
-    return state
+                main["req_ts"].append(ts)
+    fstate["offset"] += end
+    fstate["keys"] = dict(list(keys.items())[-RECENT_KEYS:])
 
 
 def _ts(value) -> float | None:
@@ -183,8 +214,9 @@ def render(state: dict, session: str, cfg: dict, model: dict | None = None) -> s
             head = f"\x1b[33m{head}\x1b[0m"
     saved = saved_etu(saved_events(session, state.get("start_ts")), state.get("req_ts", []),
                       state.get("compact_ts", []), [float(x) for x in cfg["weights"]])
-    share = saved / (state["etu"] + saved) if saved else 0.0
-    return (f"{head} · {fmt_num(state['etu'])} ETU · saved ~{fmt_num(saved)} ETU ({share:.1%}) · "
+    spent = total_etu(state)
+    share = saved / (spent + saved) if saved else 0.0
+    return (f"{head} · {fmt_num(spent)} ETU · saved ~{fmt_num(saved)} ETU ({share:.1%}) · "
             + ("/clear or /compact now" if pct >= 1 else f"/clear at {fmt_ctx(cfg['statusline_warn'] * budget)}"))
 
 

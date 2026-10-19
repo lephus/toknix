@@ -1,8 +1,9 @@
 """Agent transcripts (A6.1): Claude Code `~/.claude/projects/*/*.jsonl`, Codex `~/.codex/sessions/**/rollout-*.jsonl`.
 
 Real Claude Code files write one assistant line per content block, and every line of one API request
-repeats the same usage: requests are keyed by (message.id, requestId), their blocks merged, their usage
-counted once. Everything is read defensively: a broken line, a missing field or a field of the wrong
+repeats the usage: requests are keyed by (message.id, requestId), their blocks merged, their usage
+counted once. Each subagent has its own file, `<session>/subagents/agent-<id>.jsonl`, read into the same
+session as a chain of its own; there the usage grows while a request streams, so the largest one is kept. Everything is read defensively: a broken line, a missing field or a field of the wrong
 type is skipped, never fatal.
 """
 from __future__ import annotations
@@ -44,6 +45,7 @@ class Request:
     output: int = 0
     cache_write_1h: int = 0
     sidechain: bool = False
+    chain: str = ""                    # "" main, "agent-<id>" a subagent file, "sidechain" inline in the session file
     text_chars: int = 0
     thinking_chars: int = 0
     thinking_hidden: bool = False      # a thinking block whose text is not in the transcript
@@ -71,6 +73,14 @@ class Session:
     def main(self) -> list:
         """Requests of the session itself: subagent (sidechain) requests left out (A6.2)."""
         return [r for r in self.requests if not r.sidechain]
+
+    @property
+    def chains(self) -> list:
+        """Request lists, one per chain in order of appearance; the main chain first, even when empty."""
+        out: dict[str, list] = {"": []}
+        for r in self.requests:
+            out.setdefault(r.chain, []).append(r)
+        return list(out.values())
 
     def totals(self, main_only: bool = False) -> dict:
         rs = self.main if main_only else self.requests
@@ -128,20 +138,35 @@ def _result_text(content) -> str:
 
 
 # --------------------------------------------------------------------------- Claude Code
+USAGE_FIELDS = (("input", "input_tokens"), ("cache_write", "cache_creation_input_tokens"),
+                ("cache_read", "cache_read_input_tokens"), ("output", "output_tokens"))
+
+
 def parse_claude(path) -> Session:
+    """The session file, then its subagent files; request keys and tool uses are shared by all of them."""
     path = Path(path)
     session = Session("claude", path, path.stem)
     by_key: dict[tuple, Request] = {}
     uses: dict[str, ToolUse] = {}
+    _read_claude(path, session, by_key, uses, None)
+    for sub in sorted((path.parent / path.stem / "subagents").glob("*.jsonl")):
+        _read_claude(sub, session, by_key, uses, sub.stem)
+    return session
+
+
+def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: str | None):
+    """agent: the subagent file's name (`agent-<id>`), None for the session file."""
     pending = {False: [[], 0, False], True: [[], 0, False]}  # per chain: results, user text chars, compacted
+    mine: set = set()  # keys of the requests this file brought in
 
     for obj in _lines(path):
         kind = obj.get("type")
-        side = obj.get("isSidechain") is True
-        if isinstance(obj.get("sessionId"), str):
+        side = agent is not None or obj.get("isSidechain") is True
+        if agent is None and isinstance(obj.get("sessionId"), str):
             session.id = obj["sessionId"]
         if kind == "system" and obj.get("subtype") == "compact_boundary":
-            session.compactions += 1
+            if not side:
+                session.compactions += 1
             pending[side][2] = True
             continue
         msg = obj.get("message")
@@ -176,12 +201,19 @@ def parse_claude(path) -> Session:
             r = Request(key, parse_ts(obj.get("timestamp")), msg.get("model") if isinstance(msg.get("model"), str)
                         else "", _int(usage.get("input_tokens")), _int(usage.get("cache_creation_input_tokens")),
                         _int(usage.get("cache_read_input_tokens")), _int(usage.get("output_tokens")),
-                        _int(cache_creation.get("ephemeral_1h_input_tokens")), side)
+                        _int(cache_creation.get("ephemeral_1h_input_tokens")), side,
+                        agent or ("sidechain" if side else ""))
             results, user_text, compacted = pending[side]
             r.results_before, r.user_text_before, r.compacted_before = results, user_text, compacted
             pending[side] = [[], 0, False]
             by_key[key] = r
+            mine.add(key)
             session.requests.append(r)
+        elif key not in mine:
+            continue  # already read from the session file (older Claude Code): count it once
+        else:  # a later line of the same request: subagent files stream a growing usage
+            for name, k in USAGE_FIELDS:
+                setattr(r, name, max(getattr(r, name), _int(usage.get(k))))
         for b in content if isinstance(content, list) else []:
             if not isinstance(b, dict):
                 continue
@@ -202,7 +234,6 @@ def parse_claude(path) -> Session:
                     r.write_input_chars += size
                 else:
                     r.other_input_chars += size
-    return session
 
 
 # --------------------------------------------------------------------------- Codex

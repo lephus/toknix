@@ -269,6 +269,34 @@ Người dùng chọn thứ tự T1 → T2 → T3.
 
 ---
 
+## P8 — Subagent và chi phí thật (dữ liệu thật 2026-10-19)
+
+Claude Code ghi mỗi subagent vào `<session>/subagents/agent-<id>.jsonl`, không ghi vào file phiên, và toknix chỉ đọc `projects/*/*.jsonl`:
+- 7 ngày: 824 subagent, 38.640 request, 1.109M ETU, gấp 2,7 lần 407M ETU mà `report` thấy. Tính theo giá niêm yết, subagent là ~70% chi phí (Opus ~56%, Sonnet ~14%).
+- Trong file subagent, các dòng của một request có usage **tăng dần** (stream): lấy dòng đầu thì output chỉ còn 0,8M thay vì 3,5M token. File phiên thì mọi dòng mang cùng một usage.
+- Kết quả tool chỉ ~1–3% chi phí, nên đòn bẩy là subagent, context và overhead cố định, không phải thêm bộ lọc.
+
+Người dùng chọn làm T1 trước.
+
+**P8-T1 `[x]` Đọc transcript subagent (A6.1, A6.2, A7)**
+- Parser đọc thêm `<session>/subagents/*.jsonl` vào cùng session; mỗi file là một chuỗi riêng. Request trùng khoá lấy usage lớn nhất của từng trường.
+- `report`: ETU, token, cache hit, output share tính cả subagent; thêm dòng subagent (số agent, request, ETU, tỉ trọng) và cột tỉ trọng subagent ở top session.
+- `waste`: re-read cost, output lớn, junk, đọc lặp và cache vỡ tính trong từng chuỗi; ETU của session dài và tỉ trọng output tính cả subagent.
+- `context`: lượt gọi skill/MCP đếm cả trong subagent.
+- Statusline: ETU cộng cả file subagent, đọc tăng dần từng file; ctx vẫn lấy từ chuỗi chính.
+  - Kết quả (2026-10-19): 7 test parser, 5 test report/waste/context/gain, 3 test statusline. Dữ liệu thật 7 ngày: `report` thấy 1.523M ETU (trước 407M), subagent 73%; tool output ước lượng 48M token (trước 4,1M), vì subagent đọc phần lớn. `waste` (1) giờ đứng đầu là `Bash:cd …` trong subagent: 18M token, 122M ETU; (6) có 279 lần cache vỡ "idle", phần lớn trong subagent. Statusline trên phiên có 526 subagent (384 MB): lần đầu 1,08 s, các lần sau 50 ms. `report`/`waste` mất 22–25 s vì 2,6 GB file subagent.
+
+**P8-T2 `[ ]` Trọng số theo model và báo cáo ra $ (A1)**
+- `weights` mặc định là tỉ lệ giá của một model; Opus 5.5 có cache read / input = 0,05, không phải 0,1, nên ETU phóng đại chi phí context gấp đôi. Bảng giá theo model trong config, báo cáo kèm $.
+
+**P8-T3 `[ ]` `waste`: subagent theo loại và model**
+- Nhóm theo `agentType` / `model` trong `agent-<id>.meta.json`: số agent, request/agent, ETU, $; gợi ý model rẻ hơn cho việc đọc và tìm kiếm.
+
+**P8-T4 `[ ]` `context`: overhead cố định mỗi request**
+- Ước lượng token mà skill, plugin và MCP không dùng chiếm trong mỗi request (request đầu của phiên có context trung vị 54k, của subagent 44k).
+
+---
+
 ## Rủi ro đã biết
 
 | ID | Rủi ro | Xử lý |

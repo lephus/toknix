@@ -3,6 +3,10 @@
 Claude Code: one assistant line per content block; the lines of one API request share message.id,
 requestId and the same usage. Tool results come back in `user` lines. `system` lines with subtype
 `compact_boundary` mark a compaction. Subagent requests carry isSidechain=true.
+
+Since P8-T1 each subagent has its own file, `<session>/subagents/agent-<id>.jsonl` (`subagent_path`): every
+line carries isSidechain=true and agentId, and the usage of a request's lines grows while it streams (only the
+last line holds the full output_tokens).
 """
 from __future__ import annotations
 
@@ -16,12 +20,15 @@ def iso(t: float) -> str:
 
 
 class ClaudeTranscript:
-    def __init__(self, session: str = "s1", t0: float = 1_800_000_000.0, model: str = "claude-opus-5-5"):
-        self.session, self.t, self.model = session, t0, model
+    def __init__(self, session: str = "s1", t0: float = 1_800_000_000.0, model: str = "claude-opus-5-5",
+                 agent: str | None = None):
+        self.session, self.t, self.model, self.agent = session, t0, model, agent
         self.lines: list[str] = []
         self.n = 0
 
     def _line(self, obj: dict):
+        if self.agent:  # a subagent file: every line is a sidechain of the parent session
+            obj.update(isSidechain=True, agentId=self.agent)
         self.lines.append(json.dumps(obj, ensure_ascii=False))
 
     def user(self, text: str = "", tool_results: list[tuple[str, str]] = (), dt: float = 1.0, is_error=False):
@@ -34,19 +41,24 @@ class ClaudeTranscript:
                     "message": {"role": "user", "content": content}})
 
     def assistant(self, blocks: list[dict], input=10, cache_read=0, cache_write=0, output=50, dt: float = 1.0,
-                  sidechain=False, model: str | None = None, cache_write_1h: int = 0, repeat_usage: bool = True):
-        """One API request; each block becomes its own line, all with the same usage (like the real files)."""
+                  sidechain=False, model: str | None = None, cache_write_1h: int = 0, repeat_usage: bool = True,
+                  partial_output: int | None = None):
+        """One API request; each block becomes its own line, all with the same usage (like the real files).
+        partial_output: output_tokens of every line but the last, as in subagent files (streamed usage)."""
         self.t += dt
         self.n += 1
+        ident = f"{self.agent}_{self.n}" if self.agent else str(self.n)
         usage = {"input_tokens": input, "cache_creation_input_tokens": cache_write,
                  "cache_read_input_tokens": cache_read, "output_tokens": output,
                  "cache_creation": {"ephemeral_5m_input_tokens": cache_write - cache_write_1h,
                                     "ephemeral_1h_input_tokens": cache_write_1h}}
-        for b in blocks or [{"type": "text", "text": ""}]:
+        blocks = blocks or [{"type": "text", "text": ""}]
+        for i, b in enumerate(blocks):
+            u = usage if partial_output is None or i == len(blocks) - 1 else dict(usage, output_tokens=partial_output)
             self._line({"type": "assistant", "sessionId": self.session, "isSidechain": sidechain,
-                        "requestId": f"req_{self.n}", "timestamp": iso(self.t),
-                        "message": {"id": f"msg_{self.n}", "type": "message", "role": "assistant",
-                                    "model": model or self.model, "content": [b], "usage": usage}})
+                        "requestId": f"req_{ident}", "timestamp": iso(self.t),
+                        "message": {"id": f"msg_{ident}", "type": "message", "role": "assistant",
+                                    "model": model or self.model, "content": [b], "usage": u}})
             if not repeat_usage:
                 break
 
@@ -62,6 +74,11 @@ class ClaudeTranscript:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(self.lines) + "\n", encoding="utf-8")
         return path
+
+
+def subagent_path(session_file: Path, agent: str) -> Path:
+    """Where Claude Code writes a subagent of the session in `session_file`."""
+    return session_file.parent / session_file.stem / "subagents" / f"agent-{agent}.jsonl"
 
 
 def tool_use(tid: str, name: str, **inp) -> dict:

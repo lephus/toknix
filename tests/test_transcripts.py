@@ -12,7 +12,7 @@ from unittest import mock
 import support  # noqa: F401  (puts src/ on sys.path)
 
 from toknix import config, filters, measure, transcripts
-from transcript_factory import ClaudeTranscript, CodexRollout, text, thinking, tool_use
+from transcript_factory import ClaudeTranscript, CodexRollout, subagent_path, text, thinking, tool_use
 
 
 class Home(unittest.TestCase):
@@ -124,6 +124,88 @@ class TestClaudeParser(Home):
         with mock.patch.object(transcripts.time, "time", return_value=1_800_000_100.0):
             self.assertEqual(sorted(s.id for s in transcripts.sessions(days=7)), ["new"])
             self.assertEqual(sorted(s.id for s in transcripts.sessions()), ["new", "old"])
+
+
+class TestSubagentFiles(Home):  # P8-T1
+    def session_with_agent(self):
+        main = ClaudeTranscript()
+        main.assistant([tool_use("ag", "Agent", prompt="look")], output=10)
+        main.user(tool_results=[("ag", "found it")])
+        main.assistant([text("done")], output=20)
+        path = self.claude_file(main)
+        sub = ClaudeTranscript(agent="a1")
+        sub.user("look")
+        sub.assistant([tool_use("b1", "Bash", command="npm test")], cache_read=500, output=30)
+        sub.user(tool_results=[("b1", "3 failed")])
+        sub.assistant([text("found it")], cache_read=900, output=40)
+        sub.write(subagent_path(path, "a1"))
+        return path
+
+    def test_subagent_files_join_their_session(self):
+        s = transcripts.parse_claude(self.session_with_agent())
+        self.assertEqual([r.output for r in s.requests], [10, 20, 30, 40])
+        self.assertEqual([r.output for r in s.main], [10, 20])
+        self.assertEqual([r.chain for r in s.requests], ["", "", "agent-a1", "agent-a1"])
+        self.assertTrue(all(r.sidechain for r in s.requests[2:]))
+        self.assertEqual([[r.output for r in c] for c in s.chains], [[10, 20], [30, 40]])
+        self.assertEqual(s.totals()["output"], 100)
+        sub = s.chains[1]
+        self.assertEqual(sub[0].user_text_before, len("look"))  # what was sent, per chain
+        self.assertEqual([res.tool_use_id for res in sub[1].results_before], ["b1"])
+        self.assertEqual(sub[0].tool_uses[0].result.text, "3 failed")
+        self.assertEqual([res.tool_use_id for res in s.main[1].results_before], ["ag"])
+
+    def test_listing_does_not_make_a_session_of_a_subagent_file(self):
+        self.session_with_agent()
+        ss = transcripts.sessions()
+        self.assertEqual([(x.id, len(x.requests)) for x in ss], [("s1", 4)])
+
+    def test_streamed_usage_takes_the_largest(self):
+        main = ClaudeTranscript()
+        main.assistant([text("a")], output=10)
+        path = self.claude_file(main)
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([thinking(), text("b"), tool_use("x", "Read", file_path="/w/a")], output=4030, partial_output=8)
+        sub.write(subagent_path(path, "a1"))
+        s = transcripts.parse_claude(path)
+        self.assertEqual(s.chains[1][0].output, 4030)
+        self.assertEqual([u.name for u in s.chains[1][0].tool_uses], ["Read"])
+
+    def test_request_in_both_files_counts_once(self):  # older Claude Code kept sidechains in the session file
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([text("sub")], output=99)
+        main = ClaudeTranscript()
+        main.assistant([text("main")], output=10)
+        main.lines += sub.lines
+        path = self.claude_file(main)
+        sub.write(subagent_path(path, "a1"))
+        s = transcripts.parse_claude(path)
+        self.assertEqual([r.output for r in s.requests], [10, 99])
+        self.assertEqual([r.chain for r in s.requests], ["", "sidechain"])
+
+    def test_inline_sidechain_is_its_own_chain(self):
+        t = ClaudeTranscript()
+        t.assistant([text("main")], output=10)
+        t.assistant([text("sub")], output=99, sidechain=True)
+        t.assistant([text("main 2")], output=20)
+        s = transcripts.parse_claude(self.claude_file(t))
+        self.assertEqual([[r.output for r in c] for c in s.chains], [[10, 20], [99]])
+
+    def test_lines_of_an_inline_sidechain_request_are_merged(self):
+        t = ClaudeTranscript()
+        t.assistant([text("sub"), tool_use("x", "Bash", command="ls")], output=99, sidechain=True)
+        s = transcripts.parse_claude(self.claude_file(t))
+        self.assertEqual([u.name for u in s.requests[0].tool_uses], ["Bash"])
+
+    def test_session_without_main_requests_has_an_empty_main_chain(self):
+        main = ClaudeTranscript()
+        main.user("hi")
+        path = self.claude_file(main)
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([text("sub")], output=5)
+        sub.write(subagent_path(path, "a1"))
+        s = transcripts.parse_claude(path)
+        self.assertEqual([[r.output for r in c] for c in s.chains], [[], [5]])
 
 
 class TestCodexParser(Home):

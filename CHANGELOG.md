@@ -26,8 +26,10 @@ The tool was briefly published as `tokopt`. Everything is now named `toknix`; `t
 ### Measuring
 - `toknix gain`: direct savings, the re-read estimate, recall rates per filter, top commands.
 - `toknix report`, `waste` (7 groups with fixes), `context`, `snapshot`, from Claude Code and Codex transcripts.
+  - Subagent transcripts (`<session>/subagents/*.jsonl`) are read too: costs count every chain, re-reads
+    are counted within each chain, and the report shows the subagents' share.
 - Char/token calibration from transcripts, used only when it is good enough.
-- `toknix statusline`: context use, session ETU and savings, read incrementally.
+- `toknix statusline`: context use, session ETU (subagents included) and savings, read incrementally.
 - `toknix ui`: a read-only page on 127.0.0.1 with live activity, the original and filtered output of each
   cut run side by side, read-guard denials and savings per day. `toknix run` now also keeps the filtered
   output next to the raw one (`tee/<id>.out.log`).

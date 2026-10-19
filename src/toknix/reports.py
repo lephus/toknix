@@ -1,6 +1,6 @@
 """Transcript reports (A6.2): `report`, `waste`, `context`, `snapshot`, plus the transcript numbers `gain`
-uses (R̄ and the share of Bash calls toknix wrapped). Session numbers use the main chain only: requests
-of subagents (sidechains) are left out.
+uses (R̄ and the share of Bash calls toknix wrapped). Costs count every chain of a session, subagents
+included (P8-T1); request counts are those of the main chain, and re-reads are counted within each chain.
 """
 from __future__ import annotations
 
@@ -44,21 +44,24 @@ def _req_totals(r) -> dict:
     return {"input": r.input, "cache_write": r.cache_write, "cache_read": r.cache_read, "output": r.output}
 
 
-def remaining(main: list) -> list[int]:
+def remaining(chain: list) -> list[int]:
     """For each request index: how many later requests re-read what it carried, up to the next compaction."""
-    out, left = [0] * len(main), 0
-    for j in range(len(main) - 1, -1, -1):
+    out, left = [0] * len(chain), 0
+    for j in range(len(chain) - 1, -1, -1):
         out[j] = left
-        left = 0 if main[j].compacted_before else left + 1
+        left = 0 if chain[j].compacted_before else left + 1
     return out
 
 
 def results(s) -> list[tuple]:
-    """(tool_result, its tool_use or None, index of the main request that carried it, requests left after)."""
-    main = s.main
-    left = remaining(main)
-    uses = {u.id: u for r in main for u in r.tool_uses}
-    return [(res, uses.get(res.tool_use_id), j, left[j]) for j, r in enumerate(main) for res in r.results_before]
+    """(tool_result, its tool_use or None, index of the request that carried it in its chain, requests of that
+    chain left after), for every chain: a subagent re-reads its own context, not the session's."""
+    uses = {u.id: u for r in s.requests for u in r.tool_uses}
+    out = []
+    for chain in s.chains:
+        left = remaining(chain)
+        out += [(res, uses.get(res.tool_use_id), j, left[j]) for j, r in enumerate(chain) for res in r.results_before]
+    return out
 
 
 def family(use) -> str:
@@ -117,13 +120,20 @@ def report_data(days: int, cfg: dict | None = None, calibrate: bool = True) -> d
         ratios = measure.report_ratios(cfg)
     totals = Counter()
     rows = []
-    tool_out = 0
+    tool_out = sub_chains = sub_requests = all_requests = 0
+    sub_etu = 0.0
     for s in ss:
-        t = s.totals(main_only=True)
+        t = s.totals()
         totals.update(t)
         e = etu(t, w)
+        se = e - etu(s.totals(main_only=True), w)
+        sub_etu += se
+        sub_chains += len(s.chains) - 1
+        sub_requests += len(s.requests) - len(s.main)
+        all_requests += len(s.requests)
         rows.append({"id": s.id, "agent": s.agent, "project": _project(s), "requests": len(s.main), "etu": e,
-                     "output_share": (w[3] * t["output"] / e) if e else 0.0})
+                     "output_share": (w[3] * t["output"] / e) if e else 0.0,
+                     "subagent_share": se / e if e else 0.0})
         tool_out += sum(est_tokens(res.text, ratios) for res, *_ in results(s))
     tokens = {k: totals[k] for k in ("input", "cache_write", "cache_read", "output")}
     total_etu = etu(tokens, w)
@@ -131,11 +141,14 @@ def report_data(days: int, cfg: dict | None = None, calibrate: bool = True) -> d
     context_tokens = tokens["input"] + tokens["cache_write"] + tokens["cache_read"]
     return {
         "days": days, "sessions": len(ss), "requests": n_req, "tokens": tokens, "etu": total_etu,
-        "etu_per_session": total_etu / len(ss) if ss else 0.0, "etu_per_request": total_etu / n_req if n_req else 0.0,
+        "etu_per_session": total_etu / len(ss) if ss else 0.0,
+        "etu_per_request": total_etu / all_requests if all_requests else 0.0,
         "cache_hit": tokens["cache_read"] / context_tokens if context_tokens else 0.0,
         "output_share": w[3] * tokens["output"] / total_etu if total_etu else 0.0,
+        "subagents": {"chains": sub_chains, "requests": sub_requests, "etu": sub_etu,
+                      "share": sub_etu / total_etu if total_etu else 0.0},
         "tool_output_tokens": tool_out,
-        "output_breakdown": _sum_breakdowns([r for s in ss for r in s.main], ratios["default"]),
+        "output_breakdown": _sum_breakdowns([r for s in ss for r in s.requests], ratios["default"]),
         "top_sessions": sorted(rows, key=lambda r: -r["etu"])[:10],
         "calibration": cal,
     }
@@ -144,10 +157,12 @@ def report_data(days: int, cfg: dict | None = None, calibrate: bool = True) -> d
 def format_report(d: dict) -> str:
     if not d["sessions"]:
         return f"no transcripts in the last {d['days']} days"
-    t = d["tokens"]
+    t, sub = d["tokens"], d["subagents"]
     out = [f"toknix report (last {d['days']} days)", "",
            f"{d['sessions']} sessions, {d['requests']} requests; {fmt_num(d['etu'])} ETU "
            f"({fmt_num(d['etu_per_session'])}/session, {fmt_num(d['etu_per_request'])}/request)",
+           f"subagents: {sub['chains']} agents, {sub['requests']} requests, {fmt_num(sub['etu'])} ETU "
+           f"({sub['share']:.0%} of ETU)",
            f"tokens: input {fmt_num(t['input'])}, cache write {fmt_num(t['cache_write'])}, "
            f"cache read {fmt_num(t['cache_read'])}, output {fmt_num(t['output'])}",
            f"cache hit {d['cache_hit']:.0%}; output share {d['output_share']:.0%} of ETU; "
@@ -155,9 +170,9 @@ def format_report(d: dict) -> str:
     b = d["output_breakdown"]
     if sum(b.values()):
         out.append("output: " + ", ".join(f"{k.replace('_', ' ')} {fmt_num(v)}" for k, v in b.items()))
-    out += ["", "Top sessions", f"  {'ETU':>8}  {'requests':>8}  {'output':>6}  session"]
-    out += [f"  {fmt_num(r['etu']):>8}  {r['requests']:>8}  {r['output_share']:>6.0%}  {r['project']}/{r['id']}"
-            for r in d["top_sessions"]]
+    out += ["", "Top sessions", f"  {'ETU':>8}  {'requests':>8}  {'output':>6}  {'sub':>4}  session"]
+    out += [f"  {fmt_num(r['etu']):>8}  {r['requests']:>8}  {r['output_share']:>6.0%}  {r['subagent_share']:>4.0%}  "
+            f"{r['project']}/{r['id']}" for r in d["top_sessions"]]
     c = d["calibration"]
     if c is None:
         cal = "not run"
@@ -174,11 +189,18 @@ def format_report(d: dict) -> str:
 
 # --------------------------------------------------------------------------- waste
 def _cache_breaks(s, cfg: dict, w: list[float]) -> list[dict]:
-    """A6.5, with the cause by priority: compact, model, idle (gap over the cache TTL), unknown."""
+    """A6.5, with the cause by priority: compact, model, idle (gap over the cache TTL), unknown; each chain
+    has its own cache."""
     out = []
-    main = s.main
+    for chain in s.chains:
+        out += _chain_breaks(s, chain, cfg, w)
+    return out
+
+
+def _chain_breaks(s, chain: list, cfg: dict, w: list[float]) -> list[dict]:
+    out = []
     one_hour = False
-    for prev, cur in zip(main, main[1:]):
+    for prev, cur in zip(chain, chain[1:]):
         one_hour = one_hour or prev.cache_write_1h > 0
         if not measure.cache_break(prev, cur, cfg):
             continue
@@ -204,7 +226,7 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
     fams: dict[str, dict] = {}
     big, junk, repeated, long_sessions, breaks, heavy = [], [], [], [], [], []
     for s in ss:
-        reads = Counter()
+        reads = Counter()  # (chain, path): content read earlier in another chain is not in this one's context
         for res, use, _, left in results(s):
             t = est_tokens(res.text, ratios)
             cost = t * w[1] + t * w[2] * left  # reread_cost (A1)
@@ -215,12 +237,12 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
             agg["etu"] += cost
             if t >= cfg["waste_big_output_tokens"]:
                 big.append({"session": s.id, "family": f, "tokens": t, "remaining_requests": left, "etu": cost})
-        for r in s.main:
+        for r in s.requests:
             for use in r.tool_uses:
                 target = use.input.get("file_path") or use.input.get("path") if use.name in (
                     "Read", "Grep", "Glob") else None
                 if use.name == "Read" and isinstance(target, str):
-                    reads[target] += 1
+                    reads[r.chain, target] += 1
                 if isinstance(target, str) and is_junk(target.rstrip("/") + ("/" if use.name != "Read" else ""),
                                                        cfg["junk_patterns"]):
                     junk.append({"session": s.id, "tool": use.name, "path": target})
@@ -229,17 +251,16 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
                     hit = next((x for x in words if is_junk(x, cfg["junk_patterns"])), None)
                     if hit:
                         junk.append({"session": s.id, "tool": "Bash", "path": hit})
-        repeated += [{"session": s.id, "path": p, "reads": n} for p, n in sorted(reads.items())
+        repeated += [{"session": s.id, "path": p, "reads": n} for (_, p), n in sorted(reads.items())
                      if n >= cfg["waste_reads_per_session"]]
-        if len(s.main) > cfg["waste_max_requests"]:
-            long_sessions.append({"session": s.id, "requests": len(s.main),
-                                  "etu": etu(s.totals(main_only=True), w)})
-        breaks += _cache_breaks(s, cfg, w)
-        t = s.totals(main_only=True)
+        t = s.totals()
         e = etu(t, w)
+        if len(s.main) > cfg["waste_max_requests"]:
+            long_sessions.append({"session": s.id, "requests": len(s.main), "etu": e})
+        breaks += _cache_breaks(s, cfg, w)
         if e and w[3] * t["output"] / e > cfg["waste_output_share"]:
             heavy.append({"session": s.id, "output_share": w[3] * t["output"] / e,
-                          "breakdown": _sum_breakdowns(s.main, ratios["default"])})
+                          "breakdown": _sum_breakdowns(s.requests, ratios["default"])})
     groups = {
         "tool_families": {"items": sorted(fams.values(), key=lambda x: -x["etu"])[:10]},
         "big_outputs": {"items": sorted(big, key=lambda x: -x["etu"])[:10]},
@@ -346,7 +367,7 @@ def context_data(days: int, directory: str | None = None, cfg: dict | None = Non
 
     mcp_calls, skill_calls = Counter(), Counter()
     for s in transcripts.sessions(days, agents=("claude",)):
-        for r in s.main:
+        for r in s.requests:
             for use in r.tool_uses:
                 m = re.match(r"mcp__(.+?)__", use.name)
                 if m:
@@ -404,7 +425,7 @@ def bash_stats(days: int) -> dict:
         for res, use, _, left in results(s):
             if use is not None and use.name in ("Bash", "shell"):
                 rs.append(left)
-        for r in s.main:
+        for r in s.requests:
             for use in r.tool_uses:
                 if use.name not in ("Bash", "shell"):
                     continue

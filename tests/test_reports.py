@@ -14,7 +14,7 @@ from unittest import mock
 import support  # noqa: F401  (puts src/ on sys.path)
 
 from toknix import cli, reports, store
-from transcript_factory import ClaudeTranscript, text, thinking, tool_use
+from transcript_factory import ClaudeTranscript, subagent_path, text, thinking, tool_use
 
 NOW = 1_800_000_000.0
 W = [1.0, 1.25, 0.1, 5.0]
@@ -78,17 +78,22 @@ class TestReport(Home):
         self.make()
         d = self.json_of("report", "--days", "7")
         self.assertEqual(d["sessions"], 2)
-        self.assertEqual(d["requests"], 4)  # the subagent request is left out
-        self.assertEqual(d["tokens"], {"input": 170, "cache_write": 2200, "cache_read": 3300, "output": 170})
-        total = etu(170, 2200, 3300, 170)
+        self.assertEqual(d["requests"], 4)  # main-chain requests; the subagent's cost is counted (P8-T1)
+        self.assertEqual(d["tokens"], {"input": 1169, "cache_write": 3199, "cache_read": 4299, "output": 1169})
+        total = etu(1169, 3199, 4299, 1169)
+        sub = etu(999, 999, 999, 999)
         self.assertAlmostEqual(d["etu"], total)
         self.assertAlmostEqual(d["etu_per_session"], total / 2)
-        self.assertAlmostEqual(d["etu_per_request"], total / 4)
-        self.assertAlmostEqual(d["cache_hit"], 3300 / (170 + 2200 + 3300))
-        self.assertAlmostEqual(d["output_share"], 170 * 5 / total)
+        self.assertAlmostEqual(d["etu_per_request"], total / 5)
+        self.assertAlmostEqual(d["cache_hit"], 4299 / (1169 + 3199 + 4299))
+        self.assertAlmostEqual(d["output_share"], 1169 * 5 / total)
+        self.assertEqual(d["subagents"], {"chains": 1, "requests": 1, "etu": sub, "share": sub / total})
         self.assertEqual(d["tool_output_tokens"], 1000)  # 4000 chars / 4
-        self.assertEqual([s["id"] for s in d["top_sessions"]], sorted(("a", "b"), key=lambda i: -{
-            "a": etu(150, 200, 2300, 150), "b": etu(20, 2000, 1000, 20)}[i]))
+        top = {s["id"]: s for s in d["top_sessions"]}
+        self.assertEqual([s["id"] for s in d["top_sessions"]], ["a", "b"])
+        self.assertAlmostEqual(top["a"]["etu"], etu(150, 200, 2300, 150) + sub)
+        self.assertAlmostEqual(top["a"]["subagent_share"], sub / top["a"]["etu"])
+        self.assertEqual(top["b"]["subagent_share"], 0)
 
     def test_output_breakdown_with_hidden_thinking(self):  # A6.6
         t = ClaudeTranscript(session="h", t0=NOW)
@@ -222,6 +227,92 @@ class TestWaste(Home):
         items = self.json_of("waste")["groups"]["output_heavy"]["items"]
         self.assertEqual([i["session"] for i in items], ["heavy"])
         self.assertIn("breakdown", items[0])
+
+
+class TestSubagents(Home):  # P8-T1
+    def save_agent(self, session_file: Path, agent: ClaudeTranscript) -> Path:
+        return agent.write(subagent_path(session_file, agent.agent))
+
+    def test_report_counts_subagent_files(self):
+        main = ClaudeTranscript(session="m", t0=NOW)
+        main.assistant([tool_use("ag", "Agent", prompt="x")], input=10, cache_read=1000, output=10)
+        main.user(tool_results=[("ag", "done")])
+        main.assistant([text("ok")], input=10, cache_read=1000, output=10)
+        path = self.save(main)
+        sub = ClaudeTranscript(session="m", t0=NOW, agent="a1")
+        sub.assistant([text("a")], cache_write=5000, output=3000, partial_output=8)
+        sub.assistant([text("b")], cache_read=5000, output=100)
+        self.save_agent(path, sub)
+        d = self.json_of("report")
+        self.assertEqual(d["requests"], 2)
+        self.assertEqual(d["tokens"]["output"], 3120)  # streamed usage: the largest line counts
+        self.assertEqual(d["subagents"]["chains"], 1)
+        self.assertEqual(d["subagents"]["requests"], 2)
+        self.assertAlmostEqual(d["subagents"]["etu"], etu(20, 5000, 5000, 3100))  # input 10 per request
+        out = self.run_cli("report")[1]
+        self.assertIn("subagents: 1 agents, 2 requests", out)
+
+    def test_waste_rereads_are_counted_in_their_own_chain(self):
+        main = ClaudeTranscript(session="m", t0=NOW)
+        for _ in range(5):
+            main.assistant([text("main")], cache_read=1000)
+        path = self.save(main)
+        sub = ClaudeTranscript(session="m", t0=NOW, agent="a1")
+        sub.assistant([tool_use("b1", "Bash", command="npm test")], cache_read=100)
+        sub.user(tool_results=[("b1", "x" * 24000)])  # 6,000 tokens; one more request of the subagent after it
+        sub.assistant([tool_use("r1", "Read", file_path="/w/node_modules/x/a.js")], cache_read=0, cache_write=20000)
+        sub.user(tool_results=[("r1", "y")])
+        sub.assistant([text("done")], cache_read=20000)
+        self.save_agent(path, sub)
+        g = self.json_of("waste")["groups"]
+        big = g["big_outputs"]["items"]
+        self.assertEqual([(b["family"], b["tokens"], b["remaining_requests"]) for b in big], [("Bash:npm", 6000, 1)])
+        self.assertAlmostEqual(big[0]["etu"], 6000 * 1.25 + 6000 * 0.1 * 1)
+        self.assertEqual([j["path"] for j in g["junk"]["items"]], ["/w/node_modules/x/a.js"])
+        # the subagent's first request starts its own cache: not a break of the main chain
+        self.assertEqual([b["cause"] for b in g["cache_breaks"]["items"]], ["unknown"])
+
+    def test_repeated_reads_per_chain(self):
+        main = ClaudeTranscript(session="m", t0=NOW)
+        for i in range(2):
+            main.assistant([tool_use(f"r{i}", "Read", file_path="/w/a.py")])
+            main.user(tool_results=[(f"r{i}", "a")])
+        path = self.save(main)
+        for agent in ("a1", "a2"):
+            sub = ClaudeTranscript(session="m", t0=NOW, agent=agent)
+            sub.assistant([tool_use(f"{agent}r", "Read", file_path="/w/a.py")])
+            self.save_agent(path, sub)
+        self.assertEqual(self.json_of("waste")["groups"]["repeated_reads"]["items"], [])
+
+    def test_long_session_and_output_share_include_subagents(self):
+        main = ClaudeTranscript(session="m", t0=NOW)
+        for _ in range(81):
+            main.assistant([text("x")], input=0, cache_read=1000, output=0)
+        path = self.save(main)
+        sub = ClaudeTranscript(session="m", t0=NOW, agent="a1")
+        sub.assistant([text("w" * 4000)], input=0, output=10000)
+        self.save_agent(path, sub)
+        g = self.json_of("waste")["groups"]
+        self.assertEqual(g["long_sessions"]["items"][0]["requests"], 81)
+        self.assertAlmostEqual(g["long_sessions"]["items"][0]["etu"], 81 * 100 + 10000 * 5)
+        self.assertEqual([i["session"] for i in g["output_heavy"]["items"]], ["m"])
+
+    def test_context_and_gain_see_subagent_calls(self):
+        main = ClaudeTranscript(session="m", t0=NOW)
+        main.assistant([text("main")])
+        path = self.save(main)
+        sub = ClaudeTranscript(session="m", t0=NOW, agent="a1")
+        sub.assistant([tool_use("s1", "Skill", skill="pdf"), tool_use("b1", "Bash", command="npm test")])
+        sub.user(tool_results=[("b1", "ok")])
+        sub.assistant([text("end")])
+        self.save_agent(path, sub)
+        root = self.home / ".claude" / "skills" / "pdf"
+        root.mkdir(parents=True)
+        (root / "SKILL.md").write_text("---\nname: pdf\n---\n")
+        skills = {x["name"]: x["calls"] for x in self.json_of("context")["skills"]}
+        self.assertEqual(skills, {"pdf": 1})
+        stats = reports.bash_stats(7)
+        self.assertEqual((stats["r_values"], stats["bash_calls"]), ([0], 1))
 
 
 class TestContext(Home):

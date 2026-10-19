@@ -439,6 +439,10 @@ Chi tiết đã chốt khi implement (P3-T2, `src/toknix/langs.py`):
   - **Codex:** mỗi sự kiện `token_count` là một request (`last_token_usage`; input thực = `input_tokens − cached_input_tokens`, phần cached tính là cache_read). `function_call` gắn vào request kế tiếp, output nối theo `call_id`. Máy người dùng chưa có Codex nên phần này chỉ được test bằng fixture.
   - **Phòng thủ:** dòng JSON hỏng, dòng không phải object, file không đọc được hoặc không phải UTF-8, field thiếu hoặc sai kiểu đều bị bỏ qua. Request phải có `message.id` dạng chuỗi và ít nhất một số token hợp lệ.
   - **`sessions(days)`:** liệt kê `<claude>/projects/*/*.jsonl` và `<codex>/sessions/**/rollout-*.jsonl`; session có request cuối trong `days` ngày (bỏ qua nhanh theo mtime).
+  - **Subagent (P8-T1):** `FACT`, transcript thật 2026-10-19: Claude Code ghi mỗi subagent vào `<projects>/<project>/<session>/subagents/agent-<id>.jsonl` (kèm `agent-<id>.meta.json`), mọi dòng có `isSidechain=true`, `agentId`, `sessionId` của phiên cha. File phiên không chứa các dòng đó. 7 ngày: 824 subagent, 1.109M ETU, gấp 2,7 lần chuỗi chính.
+    - `parse_claude(<session>.jsonl)` đọc thêm mọi `<session>/subagents/*.jsonl` vào cùng session, request đánh dấu sidechain. Khoá `(message.id, requestId)` dùng chung cho mọi file, nên request vừa nằm trong file phiên (bản Claude Code cũ) vừa trong file subagent chỉ tính một lần.
+    - Mỗi request có `chain`: `""` cho chuỗi chính, `agent-<id>` cho từng file subagent, `"sidechain"` cho dòng sidechain nằm trong file phiên. `Session.chains` = các chuỗi theo thứ tự xuất hiện, chuỗi chính đầu tiên (rỗng nếu phiên chưa có request nào). Thông tin "gửi kèm request" (tool_result, chữ người dùng, compaction) tính theo chuỗi. `Session.compactions` chỉ đếm compaction của chuỗi chính.
+    - `FACT`: trong file subagent, các dòng của một request có usage tăng dần (stream), dòng đầu thiếu phần lớn output (0,8M so với 3,5M token trong 7 ngày). Vì vậy request trùng khoá lấy **giá trị lớn nhất của từng trường usage**. File phiên có usage giống nhau ở mọi dòng nên kết quả không đổi.
 
 ### A6.2 Các báo cáo
 
@@ -450,7 +454,11 @@ Chi tiết đã chốt khi implement (P3-T2, `src/toknix/langs.py`):
 | `context` | Token ước lượng của các instruction file sẽ được nạp (global/project CLAUDE.md, CLAUDE.local.md, .claude/rules/*.md, AGENTS.md, GEMINI.md) + số MCP server (~/.claude.json, .mcp.json); cảnh báo khi > 1.500. Thêm: MCP server đã cấu hình (`~/.claude.json`, `.mcp.json`, settings của project) và skill (người dùng, project, plugin), kèm số lần được gọi trong N ngày (đếm `tool_use` tên `mcp__<server>__*` và input `skill` của tool `Skill`); 0 lần → gợi ý tắt, không tự tắt. Chỉ báo token schema MCP khi đọc được schema `[ASSUMPTION]` |
 | `snapshot --label L` | Lưu bản tóm tắt report vào `~/.toknix/results/snapshot-L.json` |
 
-- Các phép tính theo phiên bỏ qua request của subagent.
+- (P8-T1) Chi phí tính cả subagent; số lượt gọi và ngưỡng "phiên dài" chỉ tính chuỗi chính. Trước P8-T1 mọi phép tính bỏ qua subagent.
+  - `report`: token, ETU, ETU/session, cache hit, output share, phân rã output và ETU của top session tính trên mọi chuỗi. ETU/lượt gọi = ETU / số request của mọi chuỗi. Thêm `subagents` = {số chuỗi subagent, request, ETU, tỉ trọng ETU} và cột `sub` (tỉ trọng ETU của subagent) ở top session. "requests" vẫn là request chuỗi chính.
+  - `waste`: R của một tool_result đếm trong chuỗi chứa nó (subagent không đọc lại context của chuỗi chính, và ngược lại); (1)(2)(3)(4)(6) duyệt mọi chuỗi, (4) đếm số lần Read trong từng chuỗi; (5) ngưỡng theo request chuỗi chính, ETU tính cả subagent; (7) tỉ trọng output tính cả subagent.
+  - `context`: lượt gọi MCP/skill đếm trên mọi chuỗi. R̄ của `gain` lấy từ tool_result Bash của mọi chuỗi (hook chạy cả trong subagent).
+  - Hiệu chỉnh A6.4 vẫn chỉ dùng chuỗi chính.
 - Chi tiết đã chốt khi implement (P4-T2, `src/toknix/reports.py`):
   - **Mặc định và tuỳ chọn:** `--days` mặc định là 7 (`context`: 30); mọi lệnh có `--json`; `context --path DIR`. Không có transcript → `no transcripts in the last N days`.
   - **Số liệu theo phiên:** chỉ tính chuỗi chính; "lượt gọi" là request.
@@ -476,6 +484,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/toknix/langs.py`):
     - R̄ là trung vị R của các tool_result Bash trong `gain_transcript_days` (30) ngày.
     - Lệnh bị bọc: command có `toknix run`, hoặc kết quả có footer `[toknix: `. P2-T4 sẽ cho biết transcript giữ lệnh gốc hay lệnh đã viết lại; footer chỉ có khi output bị cắt, nên số này có thể thấp hơn thật.
   - **Đo trên transcript thật** (2026-10-19, 56 session/7 ngày): `report` 4,8 s, `waste` 4,0 s, `context` 3,0 s.
+    - (P8-T1) Có thêm 2,6 GB file subagent (8 ngày): `report` 22 s, `waste` 25 s. Thời gian nằm ở parse JSON (~8 s) và `est_tokens` trên tool_result (~12 s), tỉ lệ với dữ liệu.
 - **Lưu số liệu cho `gain`:** mỗi bản ghi `runs` lưu số ký tự tiết kiệm theo lớp của A1 (`saved_default`, `saved_hex`, `saved_non_ascii` = ký tự của output gốc − ký tự của output agent nhận, kể cả footer). Token = Σ ký tự_lớp / tỉ lệ_lớp, tính lúc báo cáo, nên đổi tỉ lệ (config, hoặc hiệu chỉnh A6.4) thì áp được cho cả dữ liệu cũ. Bản ghi trước P1-T5 chỉ có tổng ký tự → (raw_chars − out_chars) / tỉ lệ `default`. Guard vẫn lưu `est_tokens = size // 4` (A1: giữ tốc độ hook).
 
 ### A6.4 Hiệu chỉnh tỉ lệ ký tự/token (chỉ Claude Code, chỉ cho báo cáo)
@@ -619,6 +628,8 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
     - File ngắn hơn offset, hoặc đổi đường dẫn → đọc lại từ đầu.
     - Chỉ dòng có `"usage"` mới được parse JSON.
   - **ETU:** cộng mọi request của transcript, kể cả subagent, vì đó là chi phí thật. **ctx:** lấy từ request cuối của chuỗi chính.
+    - (P8-T1) Subagent nằm ở `<transcript không đuôi>/subagents/*.jsonl` (A6.1). Mỗi file được đọc tăng dần với `offset` và khoá riêng (`subs` trong cache); file nhỏ hơn offset thì đọc lại từ đầu. Chúng chỉ cộng vào ETU, không đổi ctx, `req_ts`, `compact_ts`.
+    - Mỗi khoá gần đây nhớ usage đã cộng; dòng sau của cùng request có usage lớn hơn (stream, A6.1) thì cộng phần chênh. Cache cũ (không có `subs`) được đọc lại từ đầu.
   - **Context window:** `context_window` trong config (200k). Model id có `[1m]` hoặc tên có `1M` → 1.000.000. ctx lớn hơn window đã cấu hình → window chuẩn nhỏ nhất (200k, 1M) chứa được ctx. Một phiên thật 69 MB từng hiện `ctx 467%` với 200k.
   - **Ngân sách (P7-T2):** cửa sổ 1M khiến `pct` theo cửa sổ gần như không bao giờ tới 60%, trong khi mỗi request đọc lại cả context: dữ liệu thật 7 ngày có context trung vị 280k, và phần vượt 200k chiếm 38% ETU. Vì vậy thanh và ngưỡng tính theo `budget`, không theo cửa sổ. Người dùng chốt 200k ngày 2026-10-19. ctx ghi gọn: `92k`, `1.2M`.
   - **Thanh:** 10 ô, làm tròn xuống, tối đa 10 ô khi vượt ngân sách. Vàng từ `statusline_warn` (0,6), đỏ từ `statusline_alert` (0,8); `NO_COLOR` tắt màu.

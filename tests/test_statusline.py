@@ -17,7 +17,7 @@ from unittest import mock
 import support
 
 from toknix import statusline, store
-from transcript_factory import ClaudeTranscript, text, tool_use
+from transcript_factory import ClaudeTranscript, subagent_path, text, tool_use
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 W = [1.0, 1.25, 0.1, 5.0]
@@ -218,6 +218,53 @@ class TestIncremental(Home):
         small.write(self.path)
         self.assertTrue(self.line().startswith("ctx 2.0k/200k ▯"))
         self.assertIn(f"{statusline.fmt_num(10 + 1990 * 0.1 + 5)} ETU", self.line())
+
+
+class TestSubagentFiles(Home):  # P8-T1
+    def test_subagent_files_add_to_etu_not_to_ctx(self):
+        t = ClaudeTranscript()
+        t.assistant([text("a")], input=0, cache_read=92000, cache_write=0, output=0)
+        t.write(self.path)
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([text("b")], input=0, cache_read=500000, cache_write=0, output=100)
+        sub.write(subagent_path(self.path, "a1"))
+        line = self.line()
+        self.assertTrue(line.startswith("ctx 92k/200k"), line)
+        self.assertIn(f"· {statusline.fmt_num(9200 + 50000 + 500)} ETU ·", line)
+
+    def test_appends_and_streamed_usage_are_counted_once(self):
+        t = ClaudeTranscript()
+        t.assistant([text("a")], input=0, cache_read=1000, output=0)
+        t.write(self.path)
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([text("b"), tool_use("x", "Bash", command="ls")], input=0, cache_read=1000, output=4000,
+                      partial_output=8)
+        last = sub.lines.pop()  # the line with the full output arrives later
+        path = subagent_path(self.path, "a1")
+        sub.write(path)
+        self.assertIn(f"· {statusline.fmt_num(100 + 100 + 40)} ETU ·", self.line())
+        sub.lines.append(last)
+        sub.write(path)
+        full = 100 + 100 + 20000
+        self.assertIn(f"· {statusline.fmt_num(full)} ETU ·", self.line())
+        self.assertIn(f"· {statusline.fmt_num(full)} ETU ·", self.line())  # read once
+        for f in (self.home / ".toknix").glob("sl-*.json"):
+            f.unlink()
+        self.assertIn(f"· {statusline.fmt_num(full)} ETU ·", self.line())  # same from scratch
+
+    def test_cache_without_subagents_is_rebuilt(self):
+        t = ClaudeTranscript()
+        t.assistant([text("a")], input=0, cache_read=1000, output=0)
+        t.write(self.path)
+        self.line()
+        cache = next((self.home / ".toknix").glob("sl-*.json"))
+        state = json.loads(cache.read_text())
+        state.pop("subs")
+        cache.write_text(json.dumps(state))
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([text("b")], input=0, cache_read=10000, output=0)
+        sub.write(subagent_path(self.path, "a1"))
+        self.assertIn(f"· {statusline.fmt_num(100 + 1000)} ETU ·", self.line())
 
 
 class TestSpeed(Home):
