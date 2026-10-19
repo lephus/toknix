@@ -221,8 +221,8 @@ know you want that. `"ask"` always asks.
   - whether Claude Code already skips repeated Reads;
   - whether a Grep cut by `head_limit` tells the agent it was cut;
   - whether the `init-project` deny rules match.
-- **Windows** is supported through Git Bash, as Claude Code itself is, but the test suite has not run on
-  Windows yet.
+- **Windows** is supported through Git Bash, as Claude Code itself is. CI runs the tests and the installer
+  on Windows, but no one has used tokopt with Claude Code on Windows yet.
 - **Outline:**
   - For languages other than Python it is regex-based. Minified code can confuse it.
   - Swift, C and C++ are not supported; `outline` prints the first 200 lines of those files.

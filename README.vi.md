@@ -219,8 +219,8 @@ khi bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
   - Claude Code có tự bỏ qua các lần Read lặp lại không;
   - khi Grep bị `head_limit` cắt bớt, agent có được báo không;
   - các rule deny do `init-project` thêm có khớp không.
-- **Windows** được hỗ trợ qua Git Bash, giống cách Claude Code chạy trên Windows, nhưng bộ test chưa từng
-  chạy trên Windows.
+- **Windows** được hỗ trợ qua Git Bash, giống cách Claude Code chạy trên Windows. CI chạy bộ test và script
+  cài trên Windows, nhưng chưa ai dùng tokopt với Claude Code trên Windows.
 - **Outline:**
   - Với các ngôn ngữ ngoài Python, outline dựa trên regex. Code đã minify có thể làm nó nhầm.
   - Swift, C và C++ chưa được hỗ trợ; với các file đó, `outline` in 200 dòng đầu.

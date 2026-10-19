@@ -195,7 +195,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - `irm …/install.ps1 | iex` cài xong trên Windows 11.
 - Script có `--uninstall` và `--dry-run`.
 - Kiểm tra bằng shellcheck và PSScriptAnalyzer trong CI.
-  - Kết quả (2026-10-19): macOS cài thật xong cả hai nhánh (uv, venv) với `--from`; shellcheck sạch. Lệnh `curl … | sh` thật chỉ chạy được sau khi code được push lên `lephus/toknix`. Ubuntu 24.04 (PEP 668), Windows 11 và PSScriptAnalyzer được kiểm trong CI (P5-T2).
+  - Kết quả (2026-10-19): macOS cài thật xong cả hai nhánh (uv, venv) với `--from`; shellcheck sạch. Lệnh `curl … | sh` thật chỉ chạy được sau khi code được push lên `lephus/toknix`. Ubuntu 24.04 (PEP 668), Windows và PSScriptAnalyzer được kiểm trong CI (P5-T2) và đã xanh ngày 2026-10-19. Script dùng chính bản checkout, vì repo đã có trên GitHub nên lệnh `curl … | sh` thật cũng chạy được.
 
 **P5-T2 `[x]` CI GitHub Actions**
 - Ma trận ubuntu, macos, windows × Python 3.9, 3.13.
@@ -203,7 +203,10 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
   - Kết quả (2026-10-19): `.github/workflows/ci.yml`, sạch actionlint.
     - Python được cài bằng `uv`, vì `setup-python` có thể không có 3.9 cho macOS ARM.
     - Thêm job PSScriptAnalyzer, benchmark `symbol`/`refs`, và job cài thật bằng script: Ubuntu 24.04 (PEP 668, nhánh venv), macOS, Windows. Job này đóng phần còn lại của P5-T1.
-    - **Chưa chạy lần nào**, vì repo chưa được push lên `lephus/toknix`. Test suite chưa từng chạy trên Windows, nên lần chạy đầu có thể lộ lỗi riêng của Windows.
+    - 2026-10-19, sau khi push lên `lephus/toknix`:
+      - Lần chạy đầu: Linux và macOS xanh. Windows lộ 6 test fail và lỗi của `install.ps1`; nguyên nhân gồm `$HOME` của PowerShell, thiếu `.exe` trong `argv[0]`, và `shlex` nuốt dấu `\`. Đã sửa ở commit f67bad6.
+      - Lần chạy thứ hai: một race condition của git gc nền trong benchmark (sửa ở 120680f).
+      - Lần chạy thứ ba (run 39218765033): **xanh cả 11 job**, gồm test trên ubuntu/macos/windows × 3.9/3.13, shellcheck, PSScriptAnalyzer, và cài thật trên Ubuntu 24.04, macOS, Windows.
 
 **P5-T3 `[x]` README tiếng Việt và tiếng Anh, `docs/VERIFY.md`, CHANGELOG, LICENSE MIT**
 - README có:
