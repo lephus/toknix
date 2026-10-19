@@ -163,7 +163,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 
 ## P4 — Đo lường
 
-**P4-T1 `[ ]` Parser transcript Claude Code và Codex (A6.1)**
+**P4-T1 `[x]` Parser transcript Claude Code và Codex (A6.1)**
 - Fixture transcript giả lập có chunk trùng lặp: tổng usage phải đếm mỗi request 1 lần.
 - Dòng JSON hỏng bị bỏ qua, không crash.
 - **(N2.2)** Hiệu chỉnh tỉ lệ ký tự/token theo A6.4: fixture transcript tổng hợp với tỉ lệ biết trước → hồi quy tìm lại đúng tỉ lệ (sai ≤ 5%); < 200 mẫu hoặc sai số trung vị ≥ 15% → không ghi `calibration.json`. Bộ lọc không đọc file này.

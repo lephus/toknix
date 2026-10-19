@@ -58,6 +58,9 @@ DEFAULTS: dict = {
     "map_recent_days": 90,
     # statusline / measurement
     "context_window": 200000,
+    "calibration_min_samples": 200,   # A6.4: fewer request pairs → no calibration
+    "calibration_max_error": 0.15,    # A6.4: median relative error on held-out pairs must stay below
+    "cache_break_min_write": 10000,   # A6.5: a cache break also writes at least this much
     "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU
     "reread_default": 20,         # R̄ for `gain` until transcripts are read (N1.1)
     "recall_warn_rate": 0.2,      # gain warns when a filter kind is recalled more often than this…

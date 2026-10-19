@@ -425,6 +425,15 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   - `function_call` nối với `function_call_output` theo `call_id`.
   - `[ASSUMPTION]` Schema có thể đổi theo phiên bản, nên parser phải phòng thủ: field thiếu thì bỏ qua, không crash.
 - **Gemini:** ngoài phạm vi v0.1. Hướng dẫn dùng `npx ccusage gemini`.
+- Chi tiết đã chốt khi implement (P4-T1, `src/tokopt/transcripts.py`):
+  - **Claude Code:**
+    - `FACT`, đếm trên transcript thật của người dùng ngày 2026-10-19: mỗi dòng `assistant` chứa đúng 1 block; một request trải trên 1–6 dòng, mọi dòng mang cùng một usage. Vậy parser khử trùng lặp theo `(message.id, requestId)` và gộp các block. Đếm mọi dòng sẽ thổi output token lên 2,59 lần (209 session).
+    - `type=system`, `subtype=compact_boundary` là ranh giới compaction; `isSidechain=true` là request của subagent; `usage.cache_creation.ephemeral_1h_input_tokens` cho biết TTL 1 giờ.
+    - Phần lớn block `thinking` không có nội dung (1.488/1.708), tức thinking bị ẩn là trường hợp thường gặp (A6.6).
+  - **Mỗi request mang** usage, model, thời điểm, số ký tự text/thinking, input của tool ghi file và tool khác, các `tool_use` (nối với `tool_result` theo id), và những gì được gửi kèm request đó: các tool_result, số ký tự chữ của người dùng, cờ "có compaction trước đó". Thông tin này tính riêng cho chuỗi chính và chuỗi subagent.
+  - **Codex:** mỗi sự kiện `token_count` là một request (`last_token_usage`; input thực = `input_tokens − cached_input_tokens`, phần cached tính là cache_read). `function_call` gắn vào request kế tiếp, output nối theo `call_id`. Máy người dùng chưa có Codex nên phần này chỉ được test bằng fixture.
+  - **Phòng thủ:** dòng JSON hỏng, dòng không phải object, file không đọc được hoặc không phải UTF-8, field thiếu hoặc sai kiểu đều bị bỏ qua. Request phải có `message.id` dạng chuỗi và ít nhất một số token hợp lệ.
+  - **`sessions(days)`:** liệt kê `<claude>/projects/*/*.jsonl` và `<codex>/sessions/**/rollout-*.jsonl`; session có request cuối trong `days` ngày (bỏ qua nhanh theo mtime).
 
 ### A6.2 Các báo cáo
 
@@ -453,7 +462,12 @@ lưu ~/.tokopt/calibration.json theo agent; chỉ dùng khi sai số trung vị 
 ```
 
 - Rủi ro: output_k chứa thinking, mà thinking có thể không còn trong context ở request sau. Lọc mẫu và ngưỡng chất lượng ở trên xử lý việc này.
-- Tên lệnh (lệnh riêng hay chạy trong `report`) do người làm chọn.
+- Tên lệnh: chạy trong `report` (P4-T2), và `report` in kết quả hiệu chỉnh.
+- Chi tiết đã chốt khi implement (P4-T1, `measure.calibrate`):
+  - **Chọn mẫu:** chỉ dùng cặp request liên tiếp của chuỗi chính mà giữa chúng chỉ có tool_result. Không có chữ người dùng (vì nó làm `y` tăng thêm), không có compaction, không có cache vỡ.
+  - **Fit:** dùng 4/5 số mẫu để fit. Mẫu có phần dư > 3 × trung vị phần dư là ngoại lai, bị bỏ rồi fit lại. Sai số trung vị đo trên 1/5 còn lại. Lớp ký tự không xuất hiện trong mẫu thì giữ tỉ lệ của config; hệ số ≤ 0 thì loại kết quả.
+  - **Ngưỡng:** 200 mẫu và 15% là `[ASSUMPTION]`, nằm trong config (`calibration_min_samples`, `calibration_max_error`). Không đạt thì không ghi file (file cũ, nếu có, được giữ). Chỉ `measure.report_ratios` đọc file này; `filters` không bao giờ đọc.
+  - **Trên transcript thật của người dùng** (2026-10-19, 29.448 mẫu): fit ra 2,42 / 0,89 / 0,62 ký tự/token, sai số trung vị 24,6%, nên không đạt và không ghi. Context tăng giữa hai request có lẽ còn gồm phần Claude Code tự chèn kèm tool_result. Cần xem lại khi có thêm dữ liệu; ngưỡng không được nới tự động.
 
 ### A6.5 Cache vỡ giữa phiên (chỉ Claude Code)
 

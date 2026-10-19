@@ -1,15 +1,20 @@
-"""Reports (A6). v0.1 so far: `gain`, read from tokopt's own SQLite store."""
+"""Reports (A6): `gain` from tokopt's own SQLite store, the char/token calibration (A6.4), and the
+transcript reports built on src/tokopt/transcripts.py."""
 from __future__ import annotations
 
 import json
 import sqlite3
+import statistics
 import sys
 import time
+from dataclasses import dataclass
 
 from tokopt import store
 from tokopt.config import load, tokopt_home
 from tokopt.runner import write_out
-from tokopt.textutil import DEFAULT_RATIOS, fmt_num
+from tokopt.textutil import DEFAULT_RATIOS, char_classes, fmt_num
+
+CLASSES = ("default", "hex", "non_ascii")
 
 
 def _saved_tokens(row: tuple, ratios: dict) -> float:
@@ -23,7 +28,7 @@ def _saved_tokens(row: tuple, ratios: dict) -> float:
 def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
     """Direct savings (filters + read guard), the re-read estimate (N1.1) and recall rates (N2.1)."""
     cfg = cfg or load()
-    ratios = {**DEFAULT_RATIOS, **(cfg.get("token_ratios") or {})}
+    ratios = report_ratios(cfg)
     since = time.time() - days * 86400 if days else 0.0
     runs, guard, recalled = [], [], set()
     if (tokopt_home() / "tokopt.db").exists():  # never create the db just to report on it
@@ -126,3 +131,116 @@ def gain(days: int | None = None, as_json: bool = False) -> int:
         return 1
     write_out((json.dumps(d, indent=2) if as_json else format_gain(d, cfg)) + "\n")
     return 0
+
+
+# --------------------------------------------------------------------------- calibration (A6.4)
+@dataclass
+class Calibration:
+    ratios: dict
+    samples: int
+    median_error: float
+
+
+def calibration_path():
+    return tokopt_home() / "calibration.json"
+
+
+def report_ratios(cfg: dict) -> dict:
+    """Ratios for reports: config, overridden by a calibration that passed its quality bar. The filters
+    never call this; they always use the config (A1), so what the agent sees never shifts on its own."""
+    ratios = {**DEFAULT_RATIOS, **(cfg.get("token_ratios") or {})}
+    try:
+        cal = json.loads(calibration_path().read_text(encoding="utf-8")).get("claude") or {}
+        if cal.get("median_error", 1) < cfg["calibration_max_error"]:
+            ratios.update({k: float(v) for k, v in (cal.get("ratios") or {}).items() if k in CLASSES and v > 0})
+    except (OSError, ValueError, AttributeError, TypeError):
+        pass
+    return ratios
+
+
+def cache_break(prev, cur, cfg: dict) -> bool:
+    """A6.5: the cache read collapses while a big cache write happens."""
+    return cur.cache_read < 0.5 * (prev.cache_read + prev.cache_write) and cur.cache_write >= cfg["cache_break_min_write"]
+
+
+def calibration_samples(sessions, cfg: dict) -> tuple[list, list]:
+    """x = chars per class of the tool results between two requests, y = context growth they caused.
+    Only pairs with nothing else in between: no compaction, no cache break, no user text."""
+    xs, ys = [], []
+    for s in sessions:
+        if s.agent != "claude":
+            continue
+        main = s.main
+        for prev, cur in zip(main, main[1:]):
+            if cur.compacted_before or cur.user_text_before or not cur.results_before or cache_break(prev, cur, cfg):
+                continue
+            y = cur.context - prev.context - prev.output
+            if y <= 0:
+                continue
+            cc = [0, 0, 0]
+            for res in cur.results_before:
+                c = char_classes(res.text)
+                cc = [cc[j] + c[k] for j, k in enumerate(CLASSES)]
+            xs.append(cc)
+            ys.append(y)
+    return xs, ys
+
+
+def _solve(xs, ys, cols) -> list[float] | None:
+    """Least squares without intercept on the given columns: the normal equations by Gauss elimination."""
+    n = len(cols)
+    a = [[float(sum(x[i] * x[j] for x in xs)) for j in cols] + [float(sum(x[i] * y for x, y in zip(xs, ys)))]
+         for i in cols]
+    for c in range(n):
+        piv = max(range(c, n), key=lambda r: abs(a[r][c]))
+        if abs(a[piv][c]) < 1e-12:
+            return None
+        a[c], a[piv] = a[piv], a[c]
+        for r in range(n):
+            if r != c:
+                f = a[r][c] / a[c][c]
+                a[r] = [v - f * w for v, w in zip(a[r], a[c])]
+    return [a[i][n] / a[i][i] for i in range(n)]
+
+
+def calibrate(sessions, cfg: dict | None = None) -> Calibration | None:
+    """Fit tokens = Σ chars_class · coef_class on 4/5 of the samples, drop outliers, refit, and measure the
+    median relative error on the other 1/5. None below calibration_min_samples or when the fit fails."""
+    cfg = cfg or load()
+    xs, ys = calibration_samples(sessions, cfg)
+    if len(xs) < cfg["calibration_min_samples"]:
+        return None
+    test = [k for k in range(len(xs)) if k % 5 == 4]
+    train = [k for k in range(len(xs)) if k % 5 != 4]
+    cols = [j for j in range(3) if any(xs[k][j] for k in train)]
+    coef = _solve([xs[k] for k in train], [ys[k] for k in train], cols)
+    if coef is None:
+        return None
+
+    def predict(x, c):
+        return sum(x[j] * c[i] for i, j in enumerate(cols))
+
+    resid = [abs(predict(xs[k], coef) - ys[k]) for k in train]
+    cut = 3 * statistics.median(resid) or float("inf")
+    kept = [k for k, r in zip(train, resid) if r <= cut]
+    coef = _solve([xs[k] for k in kept], [ys[k] for k in kept], cols) or coef
+    errors = [abs(predict(xs[k], coef) - ys[k]) / ys[k] for k in test]
+    if any(c <= 0 for c in coef):
+        return Calibration({}, len(xs), float("inf"))
+    base = {**DEFAULT_RATIOS, **(cfg.get("token_ratios") or {})}
+    ratios = {k: (1 / coef[cols.index(j)] if j in cols else base[k]) for j, k in enumerate(CLASSES)}
+    return Calibration(ratios, len(xs), statistics.median(errors) if errors else float("inf"))
+
+
+def update_calibration(sessions, cfg: dict | None = None) -> bool:
+    """Write calibration.json only when the fit is good enough; otherwise leave things as they are."""
+    cfg = cfg or load()
+    cal = calibrate(sessions, cfg)
+    if cal is None or cal.median_error >= cfg["calibration_max_error"]:
+        return False
+    path = calibration_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"claude": {"ratios": {k: round(v, 4) for k, v in cal.ratios.items()},
+                                           "samples": cal.samples, "median_error": round(cal.median_error, 4),
+                                           "ts": time.time()}}, indent=2) + "\n", encoding="utf-8")
+    return True
