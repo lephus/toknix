@@ -103,6 +103,49 @@ class TestShouldWrap(TempHome):
         self.assertIsNone(hook({"command": "npm test"}))
 
 
+# (command, rewritten command or None): P7-T3, only the part after one leading `cd X &&` is wrapped
+CD_CASES = [
+    ("cd x && npm test", "cd x && toknix run -- 'npm test'"),
+    ('cd "my dir" && pytest -q', "cd \"my dir\" && toknix run -- 'pytest -q'"),
+    ("cd 'a b'&&git status", "cd 'a b'&&toknix run -- 'git status'"),
+    ("  cd /w/app  &&  npm test | tail -5", "  cd /w/app  &&  toknix run -- 'npm test | tail -5'"),
+    ("cd x && echo hi", None),               # not a noisy program
+    ("cd x; npm test", None),                # npm would run even when cd fails
+    ("cd && npm test", None),
+    ("cd a && cd b && npm test", None),      # one cd only
+    ("cd x && npm test && cd ..", None),     # the rest changes the shell too
+    ("cd x && npm test &", None),
+    ("cd $(git rev-parse --show-toplevel) && npm test", None),
+]
+
+
+class TestCd(TempHome):
+    def test_table(self):
+        for cmd, new in CD_CASES:
+            with self.subTest(cmd=cmd):
+                reply = hook({"command": cmd, "description": "d"})
+                self.assertEqual(reply and reply["hookSpecificOutput"]["updatedInput"], new and {"command": new, "description": "d"})
+
+    def test_background_is_not_wrapped(self):
+        self.assertIsNone(hook({"command": "cd x && npm test", "run_in_background": True}))
+
+    @unittest.skipIf(os.name == "nt", "a shell-script stand-in for toknix on PATH")
+    def test_rewritten_command_runs_in_the_directory(self):
+        sub = self.home / "sub dir"
+        sub.mkdir()
+        (sub / "marker.txt").write_text("x")
+        new = hook({"command": f"cd {shlex.quote(str(sub))} && ls"})["hookSpecificOutput"]["updatedInput"]["command"]
+        env = dict(os.environ, PYTHONPATH=str(support.SRC))
+        bin_dir = self.home / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "toknix").write_text(f"#!/bin/sh\nexec {shlex.quote(sys.executable)} -m toknix \"$@\"\n")
+        (bin_dir / "toknix").chmod(0o755)
+        env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+        p = subprocess.run(["bash", "-c", new], capture_output=True, text=True, env=env, timeout=60)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("marker.txt", p.stdout)
+
+
 class TestReply(TempHome):
     def test_rewrites_command_and_keeps_other_fields(self):
         ti = {"command": "npm test -- --grep 'cart total'", "description": "Run tests", "timeout": 120000}

@@ -24,6 +24,8 @@ from toknix.textutil import est_tokens
 # A command that changes the agent's own shell (cwd/env), at the start of any statement: after ; & | or a newline,
 # with or without arguments (`npm test; popd`).
 STATEFUL = re.compile(r"(?:^|[;&|\n])\s*(?:cd|pushd|popd|export|unset|source|\.|alias|set|ulimit|exec)(?=\s|$|[;&|])")
+# One leading `cd <dir> &&` (P7-T3): the cd stays in the agent's shell, only what follows is wrapped.
+CD_PREFIX = re.compile(r"""^\s*cd\s+(?:"[^"]*"|'[^']*'|[^\s;&|'"]+)\s*&&\s*""")
 
 
 def _emit(obj: dict | None):
@@ -54,9 +56,16 @@ def hook_bash(data: dict) -> dict | None:
     cfg = load()
     ti = data.get("tool_input") or {}
     cmd = ti.get("command", "")
-    if not isinstance(cmd, str) or not should_wrap(cmd, ti, cfg):
+    if not isinstance(cmd, str):
         return None
-    new = dict(ti, command=f"toknix run -- {shlex.quote(cmd)}")
+    if should_wrap(cmd, ti, cfg):
+        new = dict(ti, command=f"toknix run -- {shlex.quote(cmd)}")
+    else:
+        m = CD_PREFIX.match(cmd)
+        rest = cmd[m.end():] if m else ""
+        if not rest or not should_wrap(rest, ti, cfg):
+            return None
+        new = dict(ti, command=f"{m.group(0)}toknix run -- {shlex.quote(rest)}")
     out = {"hookEventName": "PreToolUse", "updatedInput": new}
     if cfg.get("hook_permission") in ("allow", "ask"):
         out["permissionDecision"] = cfg["hook_permission"]

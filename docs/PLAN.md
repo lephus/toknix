@@ -261,9 +261,11 @@ Người dùng chọn thứ tự T1 → T2 → T3.
 - `install`/`uninstall`/`doctor` có hook thứ 4. Thêm check I vào `docs/VERIFY.md`.
   - Kết quả (2026-10-19): `tests/test_hook_prompt.py` (7 test), statusline 3 test mới. Transcript thật 69 MB: hook chạy 36 ms và báo `context 935k is over the 200k budget (~93.5k ETU each)`. Check I của VERIFY.md chờ người dùng chạy.
 
-**P7-T3 `[ ]` Bash: đọc file bằng `cat`/`sed`/`grep`, và lệnh sau `cd X &&` (A3, A4)**
+**P7-T3 `[x]` Bash: đọc file bằng `cat`/`sed`/`grep`, và lệnh sau `cd X &&` (A3, A4)**
 - `cd X && <lệnh bọc được>` → chỉ bọc phần sau, `cd` vẫn chạy trong shell của agent.
 - `cat`/`head`/`grep` đọc cả file junk hoặc file lớn thì xử lý như Read guard.
+  - **Đo trước khi làm (2026-10-19), không làm phần này:** trên dữ liệu thật, không output `cat`/`sed`/`grep` nào ≥ 8k token (file > 800 dòng ≈ 10k token; Claude Code cũng tự cắt output Bash dài). Không có lần đọc lặp y hệt nào trong cùng phiên. Phần lớn là đọc tài liệu và code 1–3k token có chủ đích; chúng đắt vì phiên dài (R̄ = 81), và P7-T2 đã nhắm vào chỗ đó. Người dùng có thể mở lại nếu dữ liệu khác.
+  - Kết quả (2026-10-19): phần `cd X &&` xong, bảng 11 trường hợp trong `tests/test_hook_bash.py` cộng một test chạy thật lệnh đã viết lại trong bash. Giả lập trên dữ liệu 7 ngày: thêm 188 lệnh được bọc, cắt ~14k token (~0,07M ETU).
 
 ---
 

@@ -226,7 +226,12 @@ should_wrap(cmd):
 output nếu wrap:
   {"hookSpecificOutput":{"hookEventName":"PreToolUse",
      "updatedInput": {...tool_input, "command": "toknix run -- " + shlex.quote(cmd)}}}
+(P7-T3) không wrap được, nhưng cmd = "cd <đối số> && <rest>" và should_wrap(rest):
+  command = "cd <đối số> && " + "toknix run -- " + shlex.quote(rest)    # cd vẫn chạy trong shell của agent
+  <đối số> = một từ không có khoảng trắng, ; & |, hoặc một chuỗi trong nháy đơn/kép; giữ nguyên văn
 ```
+
+- **`cd X &&` (P7-T3):** trên dữ liệu thật 7 ngày, 188 lệnh dạng `cd X && <lệnh bọc được>` bị bỏ qua hoàn toàn vì có `cd`. Chỉ xử lý đúng một `cd` ở đầu, nối bằng `&&`: `cd X; npm test` (npm vẫn chạy khi cd lỗi), `cd a && cd b && …`, hay `rest` còn lệnh có trạng thái thì vẫn không bọc.
 
 - **Input:** đọc stdin dưới dạng byte rồi giải mã UTF-8, không dùng code page của console (cp1252 trên Windows sẽ làm hỏng lệnh có tiếng Việt khi ghi lại vào `updatedInput`). Output là JSON ASCII.
 - **Lỗi:** JSON hỏng, field sai kiểu, tên hook lạ, kể cả lỗi import → exit 0, không in gì (`TOKNIX_DEBUG=1` in lý do ra stderr).
