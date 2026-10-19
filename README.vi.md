@@ -40,6 +40,30 @@ Script cài:
 Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKOPT_DRY_RUN = "1"` hoặc
 `$env:TOKOPT_UNINSTALL = "1"` trước khi chạy.
 
+### Gỡ cài đặt
+
+Chạy lại đúng script đã dùng để cài, thêm `--uninstall`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh -s -- --uninstall
+```
+
+Lệnh này làm ba việc:
+
+1. Chạy `tokopt uninstall`: bỏ 3 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
+   `~/.claude/CLAUDE.md` (cùng `AGENTS.md` / `GEMINI.md` nếu có). Các file này trở về đúng như trước khi cài.
+2. Gỡ chính lệnh `tokopt`: `uv tool uninstall tokopt`, hoặc xoá venv `~/.tokopt/venv` và link
+   `~/.local/bin/tokopt`.
+3. Giữ lại dữ liệu trong `~/.tokopt` (thống kê, output đã lưu). Muốn xoá luôn thì chạy `rm -rf ~/.tokopt`.
+
+Sau đó **khởi động lại Claude Code** để nó không còn nạp các hook cũ.
+
+| Muốn | Chạy |
+|---|---|
+| xem trước sẽ gỡ những gì | `curl -fsSL …/install.sh \| sh -s -- --uninstall --dry-run` |
+| tắt tokopt trong Claude Code nhưng giữ lệnh | `tokopt uninstall` (bật lại bằng `tokopt install`) |
+| gỡ trên Windows (PowerShell) | `$env:TOKOPT_UNINSTALL = "1"; irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 \| iex` |
+
 ### `tokopt install` thay đổi những gì
 
 `~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`):

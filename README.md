@@ -40,6 +40,31 @@ The installer:
 On Windows, `irm | iex` cannot pass options. Set `$env:TOKOPT_DRY_RUN = "1"` or
 `$env:TOKOPT_UNINSTALL = "1"` first.
 
+### Uninstall
+
+Run the same script with `--uninstall`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh -s -- --uninstall
+```
+
+It does three things:
+
+1. Runs `tokopt uninstall`. This removes the 3 hooks and the statusLine from `~/.claude/settings.json`, and
+   the rules block from `~/.claude/CLAUDE.md` (and from `AGENTS.md` / `GEMINI.md` if they have one). Those
+   files go back to exactly what they were before the install.
+2. Removes the `tokopt` command itself: `uv tool uninstall tokopt`, or the `~/.tokopt/venv` venv and the
+   `~/.local/bin/tokopt` link.
+3. Keeps your data in `~/.tokopt` (stats, saved outputs). To delete it too: `rm -rf ~/.tokopt`.
+
+Then **restart Claude Code** so it stops loading the old hooks.
+
+| Want to | Run |
+|---|---|
+| see what would be removed | `curl -fsSL …/install.sh \| sh -s -- --uninstall --dry-run` |
+| turn tokopt off in Claude Code but keep the command | `tokopt uninstall` (turn it back on with `tokopt install`) |
+| uninstall on Windows (PowerShell) | `$env:TOKOPT_UNINSTALL = "1"; irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 \| iex` |
+
 ### What `tokopt install` changes
 
 `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`):
