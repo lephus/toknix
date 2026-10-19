@@ -56,7 +56,7 @@ class TestLine(Home):
         expected_etu = sum(W[0] * i + W[1] * cw + W[2] * cr + W[3] * o
                            for i, cr, cw, o in ((10, 50000, 10000, 200), (20, 60000, 31980, 300)))
         self.assertEqual(self.line(),
-                         f"ctx 46% ▮▮▮▮▯▯▯▯▯▯ · {statusline.fmt_num(expected_etu)} ETU · saved ~0 ETU (0.0%) · /clear at 60%\n")  # A7
+                         f"ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · {statusline.fmt_num(expected_etu)} ETU · saved ~0 ETU (0.0%) · /clear at 120k\n")  # A7
 
     def saved_at(self, ts: float, chars: int = 0, guard: int = 0):
         with mock.patch.object(store.time, "time", return_value=ts):
@@ -133,23 +133,33 @@ class TestLine(Home):
         with mock.patch.dict(os.environ, {"NO_COLOR": "1"}):
             self.assertNotIn("\x1b[", self.line(plain=False))
 
-    def test_context_window_from_config(self):
-        (self.home / ".toknix").mkdir()
-        (self.home / ".toknix" / "config.json").write_text('{"context_window": 1000000}')
+    def ctx_line(self, ctx: int, model: dict | None = None, **config) -> str:
+        if config:
+            (self.home / ".toknix").mkdir(exist_ok=True)
+            (self.home / ".toknix" / "config.json").write_text(json.dumps(config))
+        for f in (self.home / ".toknix").glob("sl-*.json"):
+            f.unlink()
         t = ClaudeTranscript()
-        t.assistant([text("a")], cache_read=100000, output=1)
+        t.assistant([text("a")], input=0, cache_read=ctx, output=1)
         t.write(self.path)
-        self.assertTrue(self.line().startswith("ctx 10% "))
+        return self.line(self.payload(model=model) if model else None)
 
-    def test_one_million_context_models(self):  # a real session showed "ctx 467%" with the 200k default
-        t = ClaudeTranscript()
-        t.assistant([text("a")], cache_read=300000, output=1)
-        t.write(self.path)
+    def test_budget_not_window_on_one_million_models(self):  # P7-T2: a 1M window never reached 60 %
+        line = self.ctx_line(300000, {"id": "claude-opus-5-5[1m]", "display_name": "Opus"})
+        self.assertTrue(line.startswith("ctx 300k/200k ▮▮▮▮▮▮▮▮▮▮ "), line)
+        self.assertTrue(line.endswith(" · /clear or /compact now\n"), line)
+
+    def test_context_window_smaller_than_budget(self):
+        self.assertTrue(self.ctx_line(50000, context_window=100000).startswith("ctx 50k/100k ▮▮▮▮▮▯▯▯▯▯ "))
+
+    def test_bigger_budget_follows_the_window(self):  # a budget above 200k needs a window that holds it
         for model in ({"id": "claude-opus-5-5[1m]", "display_name": "Opus"},
                       {"id": "claude-opus-5-5", "display_name": "Opus (1M context)"},
                       {"id": "claude-opus-5-5", "display_name": "Opus"}):  # ctx above 200k: it must be 1M
             with self.subTest(model=model):
-                self.assertTrue(self.line(self.payload(model=model)).startswith("ctx 30% "))
+                line = self.ctx_line(300000, model, context_budget=1000000)
+                self.assertTrue(line.startswith("ctx 300k/1.0M ▮▮▮▯▯▯▯▯▯▯ "), line)
+                self.assertTrue(line.endswith(" · /clear at 600k\n"), line)
 
     def test_bad_input_never_errors(self):
         for payload in ("", "nope", "[]", json.dumps({"transcript_path": str(self.home / "missing.jsonl")}),
@@ -206,7 +216,7 @@ class TestIncremental(Home):
         small = ClaudeTranscript()
         small.assistant([text("b")], cache_read=1990, output=1)  # ctx 2,000 = 1 %
         small.write(self.path)
-        self.assertTrue(self.line().startswith("ctx 1% "))
+        self.assertTrue(self.line().startswith("ctx 2.0k/200k ▯"))
         self.assertIn(f"{statusline.fmt_num(10 + 1990 * 0.1 + 5)} ETU", self.line())
 
 

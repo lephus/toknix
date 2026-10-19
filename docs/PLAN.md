@@ -254,9 +254,12 @@ Người dùng chọn thứ tự T1 → T2 → T3.
 - Cache cũ (không có `req_ts`) được đọc lại từ đầu, không crash.
   - Kết quả (2026-10-19): 4 test mới trong `tests/test_statusline.py`. Transcript thật 69 MB: lần đầu 170 ms, các lần sau 30 ms.
 
-**P7-T2 `[ ]` Ngân sách context tuyệt đối thay cho % cửa sổ (A7)**
-- Ngưỡng `/clear` tính theo số token (`context_budget`), không theo % của cửa sổ 1M.
-- Nhắc người dùng `/clear` hoặc `/compact` khi vượt ngân sách.
+**P7-T2 `[x]` Ngân sách context tuyệt đối thay cho % cửa sổ (A7)**
+- Người dùng chốt (2026-10-19): ngân sách mặc định 200k; nhắc bằng statusline cộng hook UserPromptSubmit.
+- Thanh ctx và ngưỡng `/clear` tính theo `min(context_window, context_budget)`, kể cả với model 1M.
+- `toknix hook prompt`: ctx ≥ ngân sách → `systemMessage` cho người dùng; dưới ngân sách, `/clear`, `/compact` → im lặng; transcript hỏng → im lặng.
+- `install`/`uninstall`/`doctor` có hook thứ 4. Thêm check I vào `docs/VERIFY.md`.
+  - Kết quả (2026-10-19): `tests/test_hook_prompt.py` (7 test), statusline 3 test mới. Transcript thật 69 MB: hook chạy 36 ms và báo `context 935k is over the 200k budget (~93.5k ETU each)`. Check I của VERIFY.md chờ người dùng chạy.
 
 **P7-T3 `[ ]` Bash: đọc file bằng `cat`/`sed`/`grep`, và lệnh sau `cd X &&` (A3, A4)**
 - `cd X && <lệnh bọc được>` → chỉ bọc phần sau, `cd` vẫn chạy trong shell của agent.

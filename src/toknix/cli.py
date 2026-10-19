@@ -11,7 +11,7 @@ COMMANDS = [
     ("run", "run a command and print filtered output (A2)"),
     ("recall", "print the full output of a filtered run (A2.7)"),
     ("gain", "tokens saved by filters and guards (A6.2)"),
-    ("hook", "Claude Code hook entry point: bash | read | session-start (A3, A4)"),
+    ("hook", "Claude Code hook entry point: bash | read | session-start | prompt (A3, A4, A7)"),
     ("outline", "symbols of a file with line ranges (A5)"),
     ("symbol", "print the code of a symbol (A5)"),
     ("refs", "list references to a name (A5)"),

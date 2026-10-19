@@ -59,6 +59,7 @@ DEFAULTS: dict = {
     "map_recent_days": 90,
     # statusline / measurement
     "context_window": 200000,
+    "context_budget": 200000,         # A7 (P7-T2): the bar and the /clear hint count against min(window, this)
     "statusline_warn": 0.6,           # A7: yellow from here, and the "/clear at" hint
     "statusline_alert": 0.8,          # A7: red from here
     "calibration_min_samples": 200,   # A6.4: fewer request pairs → no calibration

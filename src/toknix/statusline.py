@@ -1,6 +1,6 @@
 """`toknix statusline` (A7): one line for Claude Code's status bar, e.g.
 
-    ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%
+    ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k
 
 Claude Code runs it after every turn with the session JSON on stdin, so it must be fast on a large
 transcript: the file is read incrementally from the offset kept in ~/.toknix/sl-<session>.json, and only
@@ -142,11 +142,40 @@ def context_window(model: dict, ctx: int, configured: int) -> int:
     return configured
 
 
+def fmt_ctx(n: float) -> str:
+    """A context size, short: 2.0k, 92k, 1.2M."""
+    if abs(n) >= 1e6:
+        return f"{n / 1e6:.1f}M"
+    return f"{n / 1e3:.0f}k" if abs(n) >= 1e4 else fmt_num(n)
+
+
+def last_context(path: Path, tail: int = 1 << 20) -> int | None:
+    """Context of the last main-chain request, from the last `tail` bytes of the transcript (A7, hook prompt)."""
+    with open(path, "rb") as fh:
+        fh.seek(max(0, fh.seek(0, os.SEEK_END) - tail))
+        data = fh.read()
+    for raw in reversed(data.split(b"\n")):
+        if b'"usage"' not in raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except ValueError:
+            continue
+        msg = obj.get("message") if isinstance(obj, dict) else None
+        usage = msg.get("usage") if isinstance(msg, dict) else None
+        if obj.get("type") != "assistant" or not isinstance(usage, dict) or obj.get("isSidechain") is True:
+            continue
+        return sum(usage.get(k) if isinstance(usage.get(k), int) else 0 for k in (
+            "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+    return None
+
+
 def render(state: dict, session: str, cfg: dict, model: dict | None = None) -> str:
     window = context_window(model or {}, state["ctx"], cfg["context_window"])
-    pct = state["ctx"] / window if window else 0.0
+    budget = min(window, cfg["context_budget"])  # P7-T2: a 1M window is not a reason to re-read 1M per request
+    pct = state["ctx"] / budget if budget else 0.0
     filled = min(int(pct * 10), 10)
-    head = f"ctx {pct:.0%} {'▮' * filled}{'▯' * (10 - filled)}"
+    head = f"ctx {fmt_ctx(state['ctx'])}/{fmt_ctx(budget)} {'▮' * filled}{'▯' * (10 - filled)}"
     if not os.environ.get("NO_COLOR"):
         if pct >= cfg["statusline_alert"]:
             head = f"\x1b[31m{head}\x1b[0m"
@@ -156,7 +185,7 @@ def render(state: dict, session: str, cfg: dict, model: dict | None = None) -> s
                       state.get("compact_ts", []), [float(x) for x in cfg["weights"]])
     share = saved / (state["etu"] + saved) if saved else 0.0
     return (f"{head} · {fmt_num(state['etu'])} ETU · saved ~{fmt_num(saved)} ETU ({share:.1%}) · "
-            f"/clear at {cfg['statusline_warn']:.0%}")
+            + ("/clear or /compact now" if pct >= 1 else f"/clear at {fmt_ctx(cfg['statusline_warn'] * budget)}"))
 
 
 def main() -> int:

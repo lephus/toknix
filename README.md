@@ -72,7 +72,7 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh 
 
 It does three things:
 
-1. Runs `toknix uninstall`. This removes the 3 hooks and the statusLine from `~/.claude/settings.json`, and
+1. Runs `toknix uninstall`. This removes the 4 hooks and the statusLine from `~/.claude/settings.json`, and
    the rules block from `~/.claude/CLAUDE.md` (and from `AGENTS.md` / `GEMINI.md` if they have one). Those
    files go back to exactly what they were before the install.
 2. Removes the `toknix` command itself: `uv tool uninstall toknix`, or the `~/.toknix/venv` venv and the
@@ -96,6 +96,7 @@ Then **restart Claude Code** so it stops loading the old hooks.
 | PreToolUse `Bash` | `toknix hook bash` |
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
+| UserPromptSubmit | `toknix hook prompt`: warns you (not the model) when the context is over 200k |
 
 It also adds `statusLine` → `toknix statusline`, but only if you have no status line yet. All your other
 settings stay as they are.
@@ -149,7 +150,7 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix snapshot --label L [--days 7]` | save a report summary to compare later |
 | `toknix bench tasks.json --label L [--rules FILE]` | A/B runs of a real agent in throwaway git worktrees |
 | `toknix compare A B [--json]` | compare two bench labels and give a verdict |
-| `toknix statusline` | Claude Code status line: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%` |
+| `toknix statusline` | Claude Code status line: `ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k` |
 | `toknix install` / `uninstall` / `doctor` | set up, remove, and check the hooks and rules |
 | `toknix init-project [--path DIR]` | deny Read of junk directories in the project's `.claude/settings.json`; write `.geminiignore` |
 

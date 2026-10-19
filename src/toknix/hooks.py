@@ -4,6 +4,7 @@
   toknix hook read           PreToolUse(Read|Grep|Glob)  block junk paths, whole-file reads of huge
                                                          files, and repeated reads of unchanged files
   toknix hook session-start  SessionStart(compact|clear) forget the read ledger (context was reset)
+  toknix hook prompt         UserPromptSubmit            tell the user when the context is over its budget (A7)
 
 A hook must never break the agent: any internal error results in "no opinion" (exit 0, no output).
 """
@@ -134,7 +135,25 @@ def hook_session_start(data: dict) -> dict | None:
     return None
 
 
-HOOKS = {"bash": hook_bash, "read": hook_read, "session-start": hook_session_start}
+def hook_prompt(data: dict) -> dict | None:
+    prompt, path = data.get("prompt"), data.get("transcript_path")
+    if isinstance(prompt, str) and prompt.lstrip().startswith(("/clear", "/compact")):
+        return None
+    if not isinstance(path, str):
+        return None
+    from toknix import statusline
+    ctx = statusline.last_context(Path(path).expanduser())
+    cfg = load()
+    budget = cfg["context_budget"]
+    if ctx is None or ctx < budget:
+        return None
+    each = ctx * float(cfg["weights"][2])
+    return {"systemMessage": f"toknix: context {statusline.fmt_ctx(ctx)} is over the {statusline.fmt_ctx(budget)} "
+                             f"budget; every request re-reads it (~{statusline.fmt_num(each)} ETU each). "
+                             "Start the next task with /clear, or /compact."}
+
+
+HOOKS = {"bash": hook_bash, "read": hook_read, "session-start": hook_session_start, "prompt": hook_prompt}
 
 
 def _read_stdin() -> str:

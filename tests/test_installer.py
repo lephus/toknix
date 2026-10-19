@@ -36,6 +36,7 @@ TOKNIX_ENTRIES = {
     ("PreToolUse", "Bash"): f"{EXE} hook bash",
     ("PreToolUse", "Read|Grep|Glob"): f"{EXE} hook read",
     ("SessionStart", "compact|clear"): f"{EXE} hook session-start",
+    ("UserPromptSubmit", ""): f"{EXE} hook prompt",  # P7-T2: no matcher
 }
 
 
@@ -86,7 +87,7 @@ class TestPathsFollowHome(TempHome):
 
 
 class TestInstall(TempHome):
-    def test_keeps_user_settings_and_adds_three_hooks_and_statusline(self):
+    def test_keeps_user_settings_and_adds_four_hooks_and_statusline(self):
         self.write_settings(USER_SETTINGS)
         installer.install(exe=EXE)
         s = self.read_settings()
@@ -116,20 +117,20 @@ class TestInstall(TempHome):
         once = self.read_settings()
         installer.install(exe=EXE)
         self.assertEqual(self.read_settings(), once)
-        self.assertEqual(len(toknix_hooks(once)), 3)
+        self.assertEqual(len(toknix_hooks(once)), len(TOKNIX_ENTRIES))
 
     def test_reinstall_from_a_new_path_updates_in_place(self):
         installer.install(exe=EXE)
         installer.install(exe="/new/place/toknix")
         s = self.read_settings()
         self.assertEqual(sorted(c for _, _, c in toknix_hooks(s)),
-                         ["/new/place/toknix hook bash", "/new/place/toknix hook read",
+                         ["/new/place/toknix hook bash", "/new/place/toknix hook prompt", "/new/place/toknix hook read",
                           "/new/place/toknix hook session-start"])
         self.assertEqual(s["statusLine"]["command"], "/new/place/toknix statusline")
 
     def test_creates_settings_when_missing(self):
         installer.install(exe=EXE)
-        self.assertEqual(len(toknix_hooks(self.read_settings())), 3)
+        self.assertEqual(len(toknix_hooks(self.read_settings())), len(TOKNIX_ENTRIES))
 
     def test_backup_of_previous_settings(self):
         self.write_settings(USER_SETTINGS)
@@ -335,7 +336,7 @@ class TestDoctor(TempHome):
         with mock.patch("toknix.installer.time.time", return_value=1_000.0 + 10 * 86400):
             code, out, err = self.main("doctor")
         self.assertEqual((code, err), (0, ""))
-        for name in ("bash", "read", "session-start"):
+        for name in ("bash", "read", "session-start", "prompt"):
             self.assertRegex(out, rf"hook {name}\s+installed: {re.escape(exe)} hook {name}")
         self.assertIn(f"statusLine", out)
         self.assertIn(f"Python {sys.version.split()[0]}", out)
@@ -374,7 +375,7 @@ class TestProcess(TempHome):
         self.write_settings(USER_SETTINGS)
         p = self.run_cli("install")
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(len(toknix_hooks(self.read_settings())), 3)
+        self.assertEqual(len(toknix_hooks(self.read_settings())), len(TOKNIX_ENTRIES))
         self.assertEqual(self.run_cli("doctor").returncode, 0)
         self.assertEqual(self.run_cli("uninstall").returncode, 0)
         self.assertEqual(self.read_settings(), USER_SETTINGS)

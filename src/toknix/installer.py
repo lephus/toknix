@@ -24,10 +24,10 @@ from toknix import __version__, runner, store
 from toknix.config import claude_dir, codex_dir, gemini_dir, toknix_home
 
 HOOKS = [("PreToolUse", "Bash", "bash"), ("PreToolUse", "Read|Grep|Glob", "read"),
-         ("SessionStart", "compact|clear", "session-start")]
+         ("SessionStart", "compact|clear", "session-start"), ("UserPromptSubmit", "", "prompt")]  # "" = no matcher
 # Also matches a quoted path (`'/my dir/toknix' hook bash`) and `python -m toknix hook bash`.
 # `tokopt` is the name toknix was published under for its first day: its entries are taken over too.
-HOOK_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start)\b")
+HOOK_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start|prompt)\b")
 STATUS_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+statusline\b")
 
 
@@ -152,7 +152,8 @@ def install(exe: str | None = None) -> list[str]:
         command = f"{exe} hook {name}"
         entry = _find_hook(s["hooks"][event], name)
         if entry is None:
-            s["hooks"][event].append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+            group = {"matcher": matcher} if matcher else {}
+            s["hooks"][event].append(dict(group, hooks=[{"type": "command", "command": command}]))
             msgs.append(f"added {event} [{matcher}] → {command}")
         elif entry["command"] != command:
             msgs.append(f"updated {event} [{matcher}]: {entry['command']} → {command}")

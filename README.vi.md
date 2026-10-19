@@ -72,7 +72,7 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh 
 
 Lệnh này làm ba việc:
 
-1. Chạy `toknix uninstall`: bỏ 3 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
+1. Chạy `toknix uninstall`: bỏ 4 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
    `~/.claude/CLAUDE.md` (cùng `AGENTS.md` / `GEMINI.md` nếu có). Các file này trở về đúng như trước khi cài.
 2. Gỡ chính lệnh `toknix`: `uv tool uninstall toknix`, hoặc xoá venv `~/.toknix/venv` và link
    `~/.local/bin/toknix`.
@@ -95,6 +95,7 @@ Sau đó **khởi động lại Claude Code** để nó không còn nạp các h
 | PreToolUse `Bash` | `toknix hook bash` |
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
+| UserPromptSubmit | `toknix hook prompt`: nhắc bạn (không phải model) khi context vượt 200k |
 
 Lệnh cũng thêm `statusLine` → `toknix statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
 khác của bạn giữ nguyên.
@@ -146,7 +147,7 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
 | `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
 | `toknix compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
-| `toknix statusline` | status line của Claude Code: `ctx 46% ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 60%` |
+| `toknix statusline` | status line của Claude Code: `ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k` |
 | `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
 | `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
 

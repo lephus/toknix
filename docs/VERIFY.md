@@ -14,6 +14,7 @@ Mất khoảng 30 phút và tốn một ít token Claude Code thật (vài lư�
 | D | `updatedInput` của Grep (thêm `head_limit`) có được áp dụng? Khi bị cắt, agent có được báo không? | N1.4 `[ASSUMPTION]` | Không được báo → đổi mặc định `grep_head_limit` thành 0 |
 | E | Matcher `compact\|clear` của SessionStart có chạy hook sau `/compact`? | P2-T3 | Sửa matcher trong `installer.py` |
 | F | Hook chạy được khi Claude Code khởi động từ môi trường bình thường (không có `PYTHONPATH`)? | P2-T3 | Sửa cách cài (P5-T1) |
+| I | Hook UserPromptSubmit trả `systemMessage`: người dùng có thấy dòng nhắc, và model có **không** thấy nó? | A7 `[ASSUMPTION]` (P7-T2) | Model thấy → đổi sang chỉ statusline; không ai thấy → sửa cách trả |
 | H | Rule `Read(./**/node_modules/**)` do `toknix init-project` thêm có chặn Read (và Grep) trong `node_modules/` không? | A8 `[ASSUMPTION]` | Đổi cú pháp rule trong `installer.init_project` |
 
 Ba điều kiện đạt của P2-T4 nằm trong bước 4 (check A và G):
@@ -160,7 +161,7 @@ EOF
 
 ## 4. Hook Bash (check A, B, G)
 
-Trong `~/toknix-verify/shop`, chạy `claude` (chế độ permission mặc định). Gõ `/hooks` và kiểm tra có 3 hook của toknix: PreToolUse `Bash`, PreToolUse `Read|Grep|Glob`, SessionStart `compact|clear`. Không thấy thì thoát Claude Code, mở lại rồi kiểm tra lại.
+Trong `~/toknix-verify/shop`, chạy `claude` (chế độ permission mặc định). Gõ `/hooks` và kiểm tra có 4 hook của toknix: PreToolUse `Bash`, PreToolUse `Read|Grep|Glob`, SessionStart `compact|clear`, UserPromptSubmit. Không thấy thì thoát Claude Code, mở lại rồi kiểm tra lại.
 
 Gửi prompt:
 
@@ -254,6 +255,23 @@ toknix init-project
 
 Trong một phiên `claude` mới, gửi: *"Dùng tool Read đọc dòng 1 của `node_modules/pkg/index.js` (offset 1, limit 1)."* Read guard của toknix cho phép đọc lát cắt, nên nếu bị chặn thì chính rule deny đã có tác dụng. Ghi lại thông báo chặn.
 
+## 6c. Nhắc ngân sách context (check I)
+
+Đặt ngân sách thật nhỏ để không phải chờ context lớn:
+
+```bash
+echo '{"context_budget": 5000}' > ~/.toknix/config.json   # đã có config thì thêm khoá này vào
+```
+
+Mở lại `claude` trong repo mẫu, gửi hai prompt ngắn (ví dụ *"Đọc shop.py"* rồi *"Có bao nhiêu hàm?"*).
+
+**Check I** đạt khi cả hai điều sau đúng:
+
+- Ở prompt thứ hai, giao diện hiện dòng `toknix: context … is over the 5.0k budget …` (chép nguyên văn).
+- Hỏi tiếp *"Tin nhắn hệ thống cuối cùng bạn thấy có chữ toknix không? Chép nguyên văn."*: model trả lời là **không** thấy.
+
+Xong thì xoá khoá `context_budget` khỏi `~/.toknix/config.json`.
+
 ## 7. Dọn dẹp
 
 ```bash
@@ -297,6 +315,8 @@ Nếu trước khi cài bạn chưa có `~/.claude/settings.json` thì không c�
 | E — sau `/compact`, đọc lại được | | |
 | D — Grep nhận bao nhiêu dòng (200 hay 600) | | |
 | D — có báo bị cắt / phân trang không (chép nguyên văn) | | |
+| I — dòng nhắc hiện cho người dùng (chép nguyên văn) | | |
+| I — model không thấy dòng nhắc | | |
 | R2 — agent xử lý thế nào khi bị chặn đọc `big/catalog.py` | | |
 | H — rule của `init-project` chặn Read một lát cắt trong `node_modules/` | | |
 | `settings.json` sau `uninstall` giống hệt bản trước khi cài | | |
