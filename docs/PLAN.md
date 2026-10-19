@@ -145,7 +145,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - `tokopt refs classify` liệt kê đủ chỗ gọi, không lẫn dòng định nghĩa.
 - Repo 2.000 file: chạy < 2 giây (benchmark bằng script trong `scripts/`).
 
-**P3-T4 `[ ]` `tokopt map`**
+**P3-T4 `[x]` `tokopt map`**
 - Output không vượt `--budget` quá 5%.
 - File có nhiều symbol được tham chiếu nhiều đứng đầu (test với một repo fixture nhỏ có thứ hạng biết trước).
 

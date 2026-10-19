@@ -1,21 +1,26 @@
-"""`tokopt symbol` and `tokopt refs` (A5.2): find code by name without reading whole files.
+"""`tokopt symbol`, `tokopt refs` and `tokopt map` (A5.2): find code by name without reading whole files.
 
-Both list the repo's source files once (git ls-files when possible), keep only the files whose
-bytes contain the name, and only then parse them, so a large repo stays fast.
+symbol and refs list the repo's source files once (git ls-files when possible), keep only the files
+whose bytes can hold a result, and only then parse them, so a large repo stays fast. map parses every
+file and ranks them by how often their top-level symbols are used elsewhere.
 """
 from __future__ import annotations
 
 import io
+import math
 import os
 import re
 import subprocess
 import sys
 import tokenize
+from collections import Counter
 from pathlib import Path
+from typing import NamedTuple
 
 from tokopt import langs, outline
 from tokopt.config import is_junk, load
 from tokopt.runner import write_out
+from tokopt.textutil import est_tokens
 
 SOURCE_EXT = set(langs.LANG_BY_EXT) | outline.PYTHON_EXT
 MAX_BYTES = 1_000_000
@@ -266,4 +271,99 @@ def refs(name: str, path: str | None = None) -> int:
     tail = f"; definition not listed: {', '.join(defs)}" if defs else ""
     out.append(f"[{len(found)} references in {files_with} files{shown}{tail}]")
     write_out("\n".join(out) + "\n")
+    return 0
+
+
+# --------------------------------------------------------------------------- map
+IDENT = re.compile(r"[A-Za-z_$][\w$]*")
+
+
+class Ranked(NamedTuple):
+    path: Path
+    score: float
+    symbols: list  # top-level symbols, in source order
+
+
+def rank_files(files: list[Path]) -> list[Ranked]:
+    """score(file) = Σ log(1 + ref_count[s]) / definers[s] over its top-level symbols. ref_count is the
+    number of other files holding the name as a word; definers the number of files defining it at top
+    level (a use of a name defined in several files cannot be told apart, so they share it). Each file
+    is split into its set of words once, so counting is a set lookup, not a scan per symbol and file."""
+    words: dict[Path, set] = {}
+    tops: dict[Path, list] = {}
+    for p in files:
+        try:
+            words[p] = set(IDENT.findall(_text(p)))
+            symbols = outline.extract(p) or []
+        except (outline.CannotOutline, OSError):
+            continue
+        top = [s for s in symbols if s.parent is None]
+        if top:
+            tops[p] = top
+    files_with = Counter(w for ws in words.values() for w in ws)
+    definers = Counter(name for top in tops.values() for name in {s.name for s in top})
+    ranked = [Ranked(p, sum(math.log(1 + files_with[s.name] - (s.name in words[p])) / definers[s.name]
+                            for s in top), top)
+              for p, top in tops.items()]
+    return sorted(ranked, key=lambda r: (-r.score, r.path.as_posix()))
+
+
+def _recent_files(root: Path, days: int) -> set[Path] | None:
+    try:
+        r = subprocess.run(["git", "-C", str(root), "log", f"--since={days}.days.ago", "--name-only",
+                            "--pretty=format:", "--relative"], capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r.returncode != 0:
+        return None
+    return {(root / n).resolve() for n in r.stdout.decode("utf-8", errors="surrogateescape").splitlines() if n}
+
+
+def _short(signature: str, width: int = 120) -> str:
+    return signature if len(signature) <= width else signature[:width - 1] + "…"
+
+
+def repo_map(directory: str | None = None, budget: int = 1500) -> int:
+    """Top-level symbols of the most used files first, line by line, never over the token budget."""
+    cfg = load()
+    ratios = cfg.get("token_ratios")
+    root = Path(directory or ".")
+    files = source_files(root, cfg)
+    note = ""
+    if len(files) > cfg["map_max_files"]:
+        recent = _recent_files(root, cfg["map_recent_days"])
+        if recent is not None:
+            kept = [p for p in files if p.resolve() in recent]
+            note = f"only files changed in the last {cfg['map_recent_days']} days: {len(kept)} of {len(files)}"
+            files = kept
+    ranked = rank_files(files)
+
+    def footer(shown: int, tokens: int, cut: bool) -> str:
+        more = f"; more with --budget {budget * 2}" if cut else ""
+        return f"[map: {shown} of {len(ranked)} files, ~{tokens} tokens{more}{'; ' + note if note else ''}]"
+
+    room = budget - est_tokens(footer(len(ranked), budget * 10, True) + "\n", ratios)  # worst-case footer
+    out: list[str] = []
+    used = shown = 0
+    cut = False
+    for r in ranked:
+        block = [display(r.path)] + [f"  L{s.start}  {_short(s.signature)}" for s in r.symbols]
+        taken = 0
+        for line in block:
+            cost = est_tokens(line + "\n", ratios)  # per line: never under the estimate of the whole text
+            if used + cost > room:
+                cut = True
+                break
+            out.append(line)
+            used += cost
+            taken += 1
+        if taken == 1:  # a file name without any of its symbols says nothing
+            out.pop()
+            used -= est_tokens(block[0] + "\n", ratios)
+        elif taken:
+            shown += 1
+        if cut:
+            break
+    body = "".join(line + "\n" for line in out)
+    write_out(body + footer(shown, est_tokens(body, ratios), cut) + "\n")
     return 0

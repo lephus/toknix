@@ -384,11 +384,19 @@ Chi tiết đã chốt khi implement (P3-T2, `src/tokopt/langs.py`):
   ```
   defs = extract mọi file
   ref_count[name] = số file khác (không phải file định nghĩa) chứa \bname\b   # tiền lọc bằng `in`
-  score(file) = Σ log(1 + ref_count[s]) với s là top-level symbol của file
-  xếp file theo score giảm dần; với mỗi file in "path" + các symbol top-level (signature 1 dòng)
-  dừng khi est_tokens(output) ≥ budget
+  score(file) = Σ log(1 + ref_count[s]) / definers[s] với s là top-level symbol của file
+                definers[s] = số file định nghĩa tên s ở top-level (thường là 1)
+  xếp file theo score giảm dần (bằng nhau thì theo đường dẫn); với mỗi file in "path" + các symbol top-level (signature 1 dòng)
+  thêm từng dòng, không dòng nào làm output (kể cả dòng cuối) vượt budget
   ```
   Repo > 5.000 file: chỉ quét các file đã thay đổi trong 90 ngày (`git log --since`) cộng các thư mục người dùng chỉ định. `[ASSUMPTION]`
+  - Chi tiết đã chốt khi implement (P3-T4, `codesearch.repo_map`):
+    - **Chia cho `definers`** (khác bản đầu của A5.2). Khi một tên được định nghĩa ở nhiều file, không thể biết một tham chiếu trỏ về file nào, nên các file đó chia nhau phần điểm. Trên chính repo tokopt, thiếu phép chia thì 5 file mẫu `tests/fixtures/code/sample.*` (cùng định nghĩa `Item`, `Cart`, `Store`, `parse`) đứng đầu map; có phép chia thì `filters.py`, `codesearch.py`, `outline.py` đứng đầu. Tên chỉ có một định nghĩa thì công thức không đổi.
+    - **`ref_count`:** mỗi file được tách thành tập identifier đúng một lần (`[A-Za-z_$][\w$]*` trên văn bản gốc, nên tên trong chuỗi và comment cũng được tính, như "tiền lọc bằng `in`"). Như vậy đếm chỉ là tra tập, không phải quét số symbol × số file.
+    - **Một dòng symbol:** `  L{start}  {signature}`, signature cắt ở 120 ký tự kèm `…`. File không có symbol top-level thì không in. Một file chỉ còn chỗ cho tên mà không cho symbol nào thì bỏ cả tên.
+    - **Ngân sách:** mỗi dòng được tính bằng `est_tokens` riêng. Tổng các phần không bao giờ nhỏ hơn ước lượng của cả văn bản, nên output luôn ≤ `--budget`. Phần cho dòng cuối được giữ trước theo trường hợp xấu nhất.
+    - **Dòng cuối:** `[map: shown of N files, ~T tokens; more with --budget 2×B; only files changed in the last D days: k of M]`, trong đó hai phần sau chỉ có khi đúng.
+    - **Repo lớn:** ngưỡng 5.000 file và 90 ngày nằm trong config (`map_max_files`, `map_recent_days`). Phần "cộng các thư mục người dùng chỉ định" là đối số `DIR` (map của một thư mục con thì không bị giới hạn nếu thư mục đó ≤ ngưỡng).
 
 ### Kiểm chứng A5
 

@@ -566,6 +566,8 @@ class _Source:
         text = self.nc[a:max(header_end, a)]
         sig = re.sub(r"\s+", " ", text).strip()
         sig = re.sub(r"\s*[{;]$|\s*=$", "", sig).strip()
+        sig = re.sub(r"([(\[]) ", r"\1", sig)  # a header split over lines: `f( a, b, )` → `f(a, b)`
+        sig = re.sub(r",? ([)\]])", r"\1", sig)
         return sig if len(sig) <= 200 else sig[:199] + "…"
 
 

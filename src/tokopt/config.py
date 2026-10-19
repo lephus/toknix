@@ -53,6 +53,9 @@ DEFAULTS: dict = {
         "/.git/", "/__pycache__/", ".min.js", ".min.css", ".map", "package-lock.json",
         "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "Cargo.lock", "composer.lock", "go.sum",
     ],
+    # tokopt map (A5.2): a bigger repo maps only the files changed in the last map_recent_days days
+    "map_max_files": 5000,
+    "map_recent_days": 90,
     # statusline / measurement
     "context_window": 200000,
     "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU

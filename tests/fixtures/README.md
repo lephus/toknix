@@ -47,3 +47,12 @@ Không phải output chụp; viết tay theo đúng format của công cụ ở 
 - C#: `@"…"` với `""`, `$"{{…"`, local function, `where`.
 
 Kỳ vọng của các file này nằm trong cùng `expected_outline.json`, chỉ gồm `name`/`start`/`end`/`parent`, và cũng được viết tay từ `cat -n`.
+
+## Repo nhỏ `map_repo/` (P3-T4)
+
+Viết tay để `tokopt map` có thứ hạng biết trước:
+- `app/core.py` định nghĩa `Config` và `parse`, được 4 file dùng (`cli`, `jobs`, `report`, `web/server.ts`). Riêng `server.ts` chỉ nhắc hai tên này trong code, như một client của API.
+- `app/util.py` định nghĩa `slugify`, được 2 file dùng.
+- Các file còn lại định nghĩa tên không ai dùng.
+
+Điểm tính tay (log 5 + log 5 ≈ 3,22; log 3 ≈ 1,10; 0) ghi trong `tests/test_map.py`.

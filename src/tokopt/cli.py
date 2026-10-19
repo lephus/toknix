@@ -48,6 +48,10 @@ def build_parser() -> argparse.ArgumentParser:
                            help='one quoted string (as hook bash writes it), or the words of the command')
         elif name == "outline":
             p.add_argument("file")
+        elif name == "map":
+            p.add_argument("dir", nargs="?", help="repo directory (default: the current directory)")
+            p.add_argument("--budget", type=positive_int, default=1500, metavar="TOKENS",
+                           help="token budget of the map (default: 1500)")
         elif name in ("symbol", "refs"):
             p.add_argument("name", help="a name, or Class.method")
             p.add_argument("--path", metavar="DIR", help="search under DIR (default: the current directory)")
@@ -102,6 +106,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from tokopt import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command == "map":
+        from tokopt import codesearch
+        return codesearch.repo_map(ns.dir, ns.budget)
     if ns.command in ("symbol", "refs"):
         from tokopt import codesearch
         if ns.command == "symbol":

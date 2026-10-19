@@ -189,6 +189,11 @@ class TestOutlineOtherLanguages(unittest.TestCase):
         self.assertIn("  L59-61  format := func(sku string, qty int) string", lines)
         self.assertTrue(lines[-1].startswith("[95 lines, ~"))
 
+    def test_multiline_signature_is_tidied(self):  # like Python's: no blank inside brackets, no trailing comma
+        lines = self.outline(CODE / "sample.ts")
+        self.assertIn("L33-42  export async function loadAll(urls: string[], retries = 2): Promise<Map<string, Item[]>>",
+                      lines)
+
     def test_signature_is_the_header_without_body(self):
         lines = self.outline(CODE / "sample.java")
         self.assertIn("  L23-29  public synchronized void add(String sku, int qty) throws IllegalArgumentException",
