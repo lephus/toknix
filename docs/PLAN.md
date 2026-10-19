@@ -91,7 +91,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Chạy được trên Windows qua Git Bash (CI xanh trên `windows-latest`).
   - Kết quả (2026-10-19): code đã xử lý Windows (tìm Git Bash, không lấy bash của WSL, output UTF-8 dạng byte, tee nhị phân), có unit test cho việc chọn shell. Chưa có CI nên tiêu chí `windows-latest` được kiểm ở P5-T2.
 
-**P1-T5 `[ ]` `tokopt gain`**
+**P1-T5 `[x]` `tokopt gain`**
 - Đọc bảng `runs` và `guard`, in tổng token tiết kiệm ước lượng theo kind và theo rule, cùng top 10 lệnh.
 - Có `--json`.
 - DB chưa tồn tại thì in "no data yet", không crash.
@@ -169,7 +169,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 **P4-T2 `[ ]` `report`, `waste`, `context`, `snapshot` (A6.2)**
 - Mỗi lệnh có `--json`.
 - `waste` in đủ 7 nhóm, mỗi nhóm kèm dòng gợi ý sửa; nhóm (1), (2) xếp theo `reread_cost`.
-- **(N1.1)** R̄ tính từ transcript, thay giá trị mặc định 20 trong `gain`.
+- **(N1.1)** R̄ tính từ transcript, thay giá trị mặc định 20 trong `gain`. `gain` thêm tỉ lệ lệnh bị bọc trên tổng lệnh Bash (A6.2; cần transcript nên không làm ở P1-T5).
 - **(N1.3)** Cache vỡ theo A6.5: fixture có đủ 4 loại nguyên nhân, phân loại đúng; lần vỡ do compact không tính vào ETU mất. `context` liệt kê MCP server và skill kèm số lần gọi, gợi ý tắt cái 0 lần.
 - **(N1.5a)** `report` có tỉ trọng output; phân rã output theo A6.6, kể cả trường hợp thinking bị ẩn.
 - Request của subagent không bị tính vào số liệu theo phiên.

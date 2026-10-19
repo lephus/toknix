@@ -14,7 +14,7 @@ from pathlib import Path, PureWindowsPath
 
 from tokopt import filters, store
 from tokopt.config import load, tokopt_home
-from tokopt.textutil import normalize
+from tokopt.textutil import char_classes, normalize
 
 QUIET_ENV = {"NO_COLOR": "1", "FORCE_COLOR": "0", "TERM": "dumb", "PAGER": "cat", "GIT_PAGER": "cat",
              "PIP_PROGRESS_BAR": "off", "npm_config_progress": "false", "npm_config_fund": "false"}
@@ -125,7 +125,9 @@ def filter_output(cmd: str, raw: bytes, code: int) -> str:
         if tee_id:
             body += (f"\n[tokopt: {len(lines)} → {len(out)} lines; full output: tokopt recall {tee_id};"
                      f" exit {code}]")
-    store.record_run(kind, cmd, code, len(text), len(body), len(lines), len(out), tee_id, overflow)
+    raw_cc, out_cc = char_classes(text), char_classes(body)
+    store.record_run(kind, cmd, code, len(text), len(body), len(lines), len(out), tee_id, overflow,
+                     {k: raw_cc[k] - out_cc[k] for k in raw_cc})
     return body + ("\n" if body and not body.endswith("\n") else "")
 
 

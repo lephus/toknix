@@ -38,9 +38,8 @@ def _is_hexlike(run: str) -> bool:
             and any(c.isdigit() for c in run))
 
 
-def est_tokens(text: str, ratios: dict | None = None) -> int:
-    """Σ ceil(chars_class / ratio_class) over the hex, non_ascii and default classes (A1)."""
-    r = DEFAULT_RATIOS if not ratios else {**DEFAULT_RATIOS, **ratios}
+def char_classes(text: str) -> dict:
+    """Characters per class (A1), in one regex pass."""
     hex_chars = non_ascii = 0
     for m in TOKEN_CLASS_RE.finditer(text):
         run = m.group()
@@ -48,9 +47,13 @@ def est_tokens(text: str, ratios: dict | None = None) -> int:
             non_ascii += len(run)
         elif _is_hexlike(run.rstrip("=")):
             hex_chars += len(run)
-    default = len(text) - hex_chars - non_ascii
-    return sum(math.ceil(n / r[k]) for k, n in
-               (("default", default), ("hex", hex_chars), ("non_ascii", non_ascii)) if n)
+    return {"default": len(text) - hex_chars - non_ascii, "hex": hex_chars, "non_ascii": non_ascii}
+
+
+def est_tokens(text: str, ratios: dict | None = None) -> int:
+    """Σ ceil(chars_class / ratio_class) over the hex, non_ascii and default classes (A1)."""
+    r = DEFAULT_RATIOS if not ratios else {**DEFAULT_RATIOS, **ratios}
+    return sum(math.ceil(n / r[k]) for k, n in char_classes(text).items() if n)
 
 
 def fmt_num(n: float) -> str:

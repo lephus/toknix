@@ -41,7 +41,7 @@ class TestCli(unittest.TestCase):
         self.assertEqual(sorted(sub.choices), sorted(V01_COMMANDS))
 
     def test_stub_reports_not_implemented(self):
-        code, out, err = call(["gain"])
+        code, out, err = call(["report"])
         self.assertEqual(code, 2)
         self.assertEqual(out, "")
         self.assertIn("not implemented", err)

@@ -30,6 +30,13 @@ COMMANDS = [
 ]
 
 
+def positive_int(text: str) -> int:
+    n = int(text)
+    if n < 1:
+        raise ValueError(text)
+    return n
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tokopt", description="Cut the tokens AI coding agents waste, and prove it.")
     parser.add_argument("--version", action="version", version=f"tokopt {__version__}")
@@ -39,6 +46,9 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "run":
             p.add_argument("cmd", nargs=argparse.REMAINDER, metavar="-- <command>",
                            help='one quoted string (as hook bash writes it), or the words of the command')
+        elif name == "gain":
+            p.add_argument("--json", action="store_true", help="machine-readable output")
+            p.add_argument("--days", type=positive_int, metavar="N", help="only the last N days (default: all)")
         elif name == "recall":
             p.add_argument("id")
             p.add_argument("--grep", metavar="REGEX", help="only lines matching REGEX, with line numbers")
@@ -63,6 +73,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from tokopt import runner
         return runner.run(words[0] if len(words) == 1 else shlex.join(words))
+    if ns.command == "gain":
+        from tokopt import measure
+        return measure.gain(ns.days, ns.json)
     if ns.command == "recall":
         from tokopt import runner
         return runner.recall(ns.id, ns.grep, ns.lines)

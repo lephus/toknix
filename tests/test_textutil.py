@@ -8,7 +8,7 @@ from unittest import mock
 import support  # noqa: F401  (puts src/ on sys.path)
 
 from tokopt import config
-from tokopt.textutil import est_tokens, normalize, resolve_cr, strip_ansi
+from tokopt.textutil import char_classes, est_tokens, normalize, resolve_cr, strip_ansi
 
 
 class TestNormalize(unittest.TestCase):
@@ -94,6 +94,18 @@ class TestEstTokens(unittest.TestCase):
             with mock.patch.dict(os.environ, {"TOKOPT_HOME": d}):
                 cfg = config.load()
         self.assertEqual(est_tokens("abcdefgh", cfg["token_ratios"]), 4)
+
+
+class TestCharClasses(unittest.TestCase):
+    """Chars per class: what `runs` stores so reports can apply any ratio later (P1-T5, A6.4)."""
+
+    def test_counts_each_class(self):
+        sha = "0123456789abcdef" * 2
+        self.assertEqual(char_classes(f"commit {sha} ✓ đã"),
+                         {"default": len("commit ") + 2, "hex": 32, "non_ascii": 3})
+
+    def test_empty(self):
+        self.assertEqual(char_classes(""), {"default": 0, "hex": 0, "non_ascii": 0})
 
 
 if __name__ == "__main__":

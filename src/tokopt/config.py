@@ -56,6 +56,9 @@ DEFAULTS: dict = {
     # statusline / measurement
     "context_window": 200000,
     "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU
+    "reread_default": 20,         # R̄ for `gain` until transcripts are read (N1.1)
+    "recall_warn_rate": 0.2,      # gain warns when a filter kind is recalled more often than this…
+    "recall_warn_min_cuts": 10,   # …over at least this many cut outputs (N2.1)
 }
 
 
