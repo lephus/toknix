@@ -590,6 +590,36 @@ class TestOverhead(Home):  # P8-T4
         parts = {p["part"]: p["main"] for p in o["parts"]}
         self.assertEqual(parts, {"system": 2000, "skill": 2000, "mcp": 2 * (500 + len(self.DEFERRED)), "agent": 600})
 
+    def test_cost_of_every_part(self):  # P9-T2
+        self.make()
+        o = self.json_of("context")["overhead"]
+        per_token = (1.25 + 0.05 * 2, (5 + 0.2 * 2) / 1e6)  # written once, read by the 2 later requests
+        parts = {p["part"]: p for p in o["parts"]}
+        self.assertAlmostEqual(parts["system"]["etu"], 2000 * per_token[0])
+        self.assertAlmostEqual(parts["system"]["usd"], 2000 * per_token[1])
+        tokens = 2 * (self.CHARS - 100)  # everything but the user's words
+        self.assertAlmostEqual(o["total"]["etu"], tokens * per_token[0])
+        self.assertAlmostEqual(o["total"]["usd"], tokens * per_token[1])
+        chain_etu = 2 * self.CHARS * (1.25 + 0.05 * 2)  # the 3 requests: one write, two reads of that context
+        self.assertAlmostEqual(o["total"]["share"], tokens * per_token[0] / chain_etu)
+        out = self.run_cli("context")[1]
+        self.assertIn(f"all of it: {fmt_num(tokens * per_token[0])} ETU", out)
+
+    def test_biggest_tools(self):
+        big = {"name": "Artifact", "description": "a" * 1000, "input_schema": {}}
+        small = {"name": "Bash", "description": "b" * 100, "input_schema": {}}
+        t = ClaudeTranscript(session="tools", t0=NOW)
+        t.shape(["s" * 100], [small, big])
+        chars = 100 + len(json.dumps(big)) + len(json.dumps(small))
+        t.assistant([text("x")], input=0, cache_write=2 * chars, output=0)
+        t.assistant([text("y")], input=0, cache_read=2 * chars, output=0)
+        self.save(t)
+        tools = self.json_of("context")["overhead"]["tools"]
+        self.assertEqual([x["tool"] for x in tools], ["Artifact", "Bash"])
+        self.assertAlmostEqual(tools[0]["tokens"], 2 * len(json.dumps(big)))
+        self.assertAlmostEqual(tools[0]["usd"], 2 * len(json.dumps(big)) * (5 + 0.2) / 1e6)
+        self.assertIn("biggest tool definitions: Artifact", self.run_cli("context")[1])
+
     def test_unused_plugins_mcp_servers_and_their_cost(self):
         self.make()
         u = self.json_of("context")["overhead"]["unused"]

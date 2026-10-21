@@ -580,6 +580,9 @@ def overhead_data(ss, own_skills: set, pr: pricing.Pricer) -> dict:
     names: dict[str, str] = {}  # MCP server, normalized -> as first seen
     sources: dict[str, dict] = {}
     chains = {"main": [], "sub": []}  # (context, tokens by part, unused tokens)
+    part_cost: dict[str, Cost] = {}
+    tools: dict[str, dict] = {}
+    chains_etu = 0.0
     for s in ss:
         for key, o in s.overheads.items():
             reqs = [r for r in s.requests if r.chain == key]
@@ -587,10 +590,12 @@ def overhead_data(ss, own_skills: set, pr: pricing.Pricer) -> dict:
             if not (o.shape and o.context and reqs and total):
                 continue
             scale = o.context / total
-            by_part, unused = Counter(), Counter()
+            by_part, unused, by_tool = Counter(), Counter(), Counter()
             for kind, name, chars in o.parts:
                 if kind != "user":
                     by_part[kind] += chars * scale
+                if kind == "tool" and name:
+                    by_tool[name] += chars * scale
                 if not name or kind not in ("skill", "agent", "mcp"):
                     continue
                 if kind == "mcp":
@@ -618,6 +623,15 @@ def overhead_data(ss, own_skills: set, pr: pricing.Pricer) -> dict:
                 src["etu"] += pr.reread(reqs[0], t, len(reqs) - 1)  # written once, read by every later request
                 src["usd"] = _add(src["usd"], pr.reread_usd(reqs[0], t, len(reqs) - 1))
             chains["main" if key == "" else "sub"].append((o.context, by_part, sum(unused.values())))
+            chains_etu += sum(pr.cost(r)[0] for r in reqs)
+            for kind, t in by_part.items():  # P9-T2: every part costs the same way as the unused ones
+                part_cost.setdefault(kind, Cost()).add(pr.reread(reqs[0], t, len(reqs) - 1),
+                                                       pr.reread_usd(reqs[0], t, len(reqs) - 1))
+            for name, t in by_tool.items():
+                x = tools.setdefault(name, {"tool": name, "chains": 0, "tokens": 0.0, "cost": Cost()})
+                x["chains"] += 1
+                x["tokens"] += t
+                x["cost"].add(pr.reread(reqs[0], t, len(reqs) - 1), pr.reread_usd(reqs[0], t, len(reqs) - 1))
 
     def mean(kind: str, f) -> float | None:
         return sum(f(c) for c in chains[kind]) / len(chains[kind]) if chains[kind] else None
@@ -628,11 +642,18 @@ def overhead_data(ss, own_skills: set, pr: pricing.Pricer) -> dict:
     usd = None
     for x in rows:
         usd = _add(usd, x["usd"])
+    total = Cost()
+    for c in part_cost.values():
+        total.add(c.etu, c.usd)
     return {
         "chains": {k: len(v) for k, v in chains.items()},
         "first_context": {k: statistics.median(c[0] for c in v) if v else None for k, v in chains.items()},
-        "parts": [{"part": p, "main": mean("main", lambda c: c[1][p]), "sub": mean("sub", lambda c: c[1][p])}
+        "parts": [{"part": p, "main": mean("main", lambda c: c[1][p]), "sub": mean("sub", lambda c: c[1][p]),
+                   "etu": part_cost[p].etu, "usd": part_cost[p].usd}
                   for p in PARTS if any(c[1][p] for v in chains.values() for c in v)],
+        "total": {"etu": total.etu, "usd": total.usd, "share": total.etu / chains_etu if chains_etu else 0.0},
+        "tools": [{"tool": x["tool"], "tokens": x["tokens"] / x["chains"], "etu": x["cost"].etu, "usd": x["cost"].usd}
+                  for x in sorted(tools.values(), key=lambda x: (-x["cost"].etu, x["tool"]))[:10]],
         "unused": {"main": mean("main", lambda c: c[2]), "sub": mean("sub", lambda c: c[2]),
                    "etu": sum(x["etu"] for x in rows), "usd": usd,
                    "sources": sorted(rows, key=lambda x: (-x["etu"], x["source"]))},
@@ -651,8 +672,15 @@ def _format_overhead(o: dict, days: int) -> list[str]:
 
     def cell(x) -> str:
         return fmt_num(x) if x is not None else "—"
-    out.append(f"  {'sessions':>9}  {'subagents':>9}  part")
-    out += [f"  {cell(p['main']):>9}  {cell(p['sub']):>9}  {PARTS[p['part']]}" for p in o["parts"]]
+    out.append(f"  {'sessions':>9}  {'subagents':>9}  {'ETU':>8}  {'$':>8}  part")
+    out += [f"  {cell(p['main']):>9}  {cell(p['sub']):>9}  {fmt_num(p['etu']):>8}  {fmt_usd(p['usd']):>8}  "
+            f"{PARTS[p['part']]}" for p in o["parts"]]
+    t = o["total"]
+    out.append(f"  all of it: {fmt_num(t['etu'])} ETU" + (f" ≈ {fmt_usd(t['usd'])}" if t["usd"] is not None else "")
+               + f", {t['share']:.0%} of the ETU of these {n['main'] + n['sub']} chains")
+    if o["tools"]:
+        out.append("  biggest tool definitions: " + ", ".join(
+            f"{x['tool']} {fmt_num(x['tokens'])} tokens/request ({fmt_usd(x['usd'])})" for x in o["tools"][:5]))
     u = o["unused"]
     per = ", ".join(f"{fmt_num(u[k])} tokens per {label} request" for k, label in (("main", "session"),
                                                                                    ("sub", "subagent")) if n[k])

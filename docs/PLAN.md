@@ -317,8 +317,9 @@ Người dùng chọn T1 và T2 (2026-10-21). Gợi ý bỏ tool lớn không d�
   - Thêm khi làm: phép gán đứng riêng ở đầu (`S=/tmp/x; sed …`) cũng được bỏ qua, vì đó là toàn bộ họ `Bash:?` ($91).
   - Kết quả (2026-10-21): 2 test mới. Dữ liệu thật 7 ngày: nhóm (1) giờ là `Bash:sed` $191, `Bash:cat` $165, `Bash:grep` $93 (không còn `Bash:cd`, `Bash:?`). Nhóm (9): subagent đọc và tìm 39,6M token, $599; phiên chính 2,6M token, $92.
 
-**P9-T2 `[ ]` `context`: $ của toàn bộ overhead cố định (A6.2)**
+**P9-T2 `[x]` `context`: $ của toàn bộ overhead cố định (A6.2)**
 - Ngoài phần không dùng, báo ETU và $ của từng phần overhead trên mọi request trong khoảng thời gian, và các tool tốn nhất.
+  - Kết quả (2026-10-21): 2 test mới. Dữ liệu thật 7 ngày: overhead 163,5M ETU ≈ $654, 17% ETU của 899 chuỗi có shape. Tool $278, danh sách skill $152, file chỉ dẫn $130, MCP $40, system prompt $25. Tool tốn nhất: Artifact 14,6k token/request ($181), Agent 1,6k ($18), Bash 1,1k ($14).
 
 ---
 

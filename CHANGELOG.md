@@ -38,7 +38,8 @@ The tool was briefly published as `tokopt`. Everything is now named `toknix`; `t
     of file reads and searches (Read, Grep, cat, sed, grep…) in sessions and in subagents.
   - `context` measures the fixed overhead of every request from the transcripts: tool definitions, skill
     listing, instructions, system prompt, MCP servers, agent types. It also shows what plugins, MCP servers,
-    skills and agent types that were never used cost.
+    skills and agent types that were never used cost, what each part of it costs in all, and the biggest
+    tool definitions.
 - Char/token calibration from transcripts, used only when it is good enough.
 - `toknix statusline`: context use, session ETU (subagents included) and savings, read incrementally.
 - `toknix ui`: a read-only page on 127.0.0.1 with live activity, the original and filtered output of each
