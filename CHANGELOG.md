@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 (2026-10-21)
 
 ### Fixed
 - `install.sh`: on a fresh macOS the install succeeded but `toknix` was "command not found", because

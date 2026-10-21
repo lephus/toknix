@@ -59,12 +59,12 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
   the installed toknix.
 
 To stay on a given release instead of `main`:
-`curl -fsSL …/install.sh | TOKNIX_REF=v0.2.0 sh`.
+`curl -fsSL …/install.sh | TOKNIX_REF=v0.2.1 sh`.
 
 **Publishing a new version**:
 1. Raise `__version__` in `src/toknix/__init__.py` and add an entry to `CHANGELOG.md`.
 2. Push to `main`.
-3. Tag the release (`git tag v0.2.1 && git push origin v0.2.1`) so that it can be pinned.
+3. Tag the release (`git tag v0.2.2 && git push origin v0.2.2`) so that it can be pinned.
 
 ### Uninstall
 

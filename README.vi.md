@@ -59,12 +59,12 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
   đang cài.
 
 Muốn đứng yên ở một bản phát hành thay vì `main`:
-`curl -fsSL …/install.sh | TOKNIX_REF=v0.2.0 sh`.
+`curl -fsSL …/install.sh | TOKNIX_REF=v0.2.1 sh`.
 
 **Khi phát hành bản mới**:
 1. Tăng `__version__` trong `src/toknix/__init__.py` và thêm một mục vào `CHANGELOG.md`.
 2. Push lên `main`.
-3. Gắn tag cho bản phát hành (`git tag v0.2.1 && git push origin v0.2.1`) để người dùng có thể ghim bản đó.
+3. Gắn tag cho bản phát hành (`git tag v0.2.2 && git push origin v0.2.2`) để người dùng có thể ghim bản đó.
 
 ### Gỡ cài đặt
 
