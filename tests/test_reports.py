@@ -147,16 +147,16 @@ class TestWaste(Home):
         t.assistant([text("done")], cache_read=600)
         return t
 
-    def test_seven_groups_each_with_a_hint(self):
+    def test_eight_groups_each_with_a_hint(self):
         self.save(self.session_with_tools())
         d = self.json_of("waste")
         self.assertEqual(list(d["groups"]), ["tool_families", "big_outputs", "junk", "repeated_reads",
-                                             "long_sessions", "cache_breaks", "output_heavy"])
+                                             "long_sessions", "cache_breaks", "output_heavy", "subagents"])
         for name, g in d["groups"].items():
             with self.subTest(group=name):
                 self.assertTrue(g["hint"])
         out = self.run_cli("waste")[1]
-        for n in range(1, 8):
+        for n in range(1, 9):
             self.assertIn(f"({n})", out)
 
     def test_tool_families_and_big_outputs_by_reread_cost(self):
@@ -379,6 +379,88 @@ class TestPrices(Home):  # P8-T2: each request at its model's price (A1)
         self.assertAlmostEqual(g["etu_lost"], 40000 * 2 - 40000 * 0.05)
         self.assertAlmostEqual(g["usd_lost"], (40000 * 8 - 40000 * 0.2) / 1e6)
         self.assertIn("$0.312 lost", self.run_cli("waste")[1])
+
+
+class TestSubagentGroups(Home):  # P8-T3
+    def agent(self, session_file: Path, agent: str, meta: dict | None, model: str = "claude-opus-5-5"):
+        t = ClaudeTranscript(session="m", t0=NOW, agent=agent, model=model)
+        path = subagent_path(session_file, agent)
+        if meta is not None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.with_name(f"agent-{agent}.meta.json").write_text(json.dumps(meta))
+        return t, path
+
+    def make(self):
+        main = ClaudeTranscript(session="m", t0=NOW)
+        main.assistant([text("main")], input=0, cache_read=20000, output=100)
+        session = self.save(main)
+        t, path = self.agent(session, "a1", {"agentType": "general-purpose", "model": "opus"})
+        t.assistant([tool_use("r1", "Read", file_path="/w/a.py")], input=0, cache_write=10000, output=1000)
+        t.user(tool_results=[("r1", "x")])
+        t.assistant([text("found")], input=0, cache_read=10000, output=1000)     # only read: $0.092
+        t.write(path)
+        t, path = self.agent(session, "a2", {"agentType": "general-purpose"})    # meta without a model
+        t.assistant([tool_use("e1", "Edit", file_path="/w/a.py")], input=0, cache_write=10000, output=1000)
+        t.write(path)                                                            # edits: $0.07
+        t, path = self.agent(session, "a3", {"agentType": "Explore", "model": "sonnet"}, "claude-sonnet-5-5")
+        t.assistant([text("x")], input=0, cache_write=4000, output=0)
+        t.write(path)
+        t, path = self.agent(session, "a4", {"agentType": "fork", "model": "inherit"})
+        t.assistant([text("x")], input=0, cache_read=100000, output=100)        # reads the parent's cache
+        t.write(path)
+        t, path = self.agent(session, "a5", None, "claude-haiku-5-5")            # no meta file
+        t.assistant([text("x")], input=0, cache_write=1000, output=10)
+        t.write(path)
+        (path.parent / "agent-a6.meta.json").write_text("{broken")
+        t, path = self.agent(session, "a6", None)
+        t.assistant([text("x")], input=0, cache_write=1000, output=10)
+        t.write(path)
+
+    def test_groups_by_type_and_model(self):
+        self.make()
+        g = self.json_of("waste")["groups"]["subagents"]
+        rows = {(x["agent_type"], x["model"]): x for x in g["items"]}
+        self.assertEqual(list(rows), [("general-purpose", "claude-opus-5-5"), ("fork", "claude-opus-5-5"),
+                                      ("Explore", "claude-sonnet-5-5"), ("?", "claude-opus-5-5"),
+                                      ("?", "claude-haiku-5-5")])  # by ETU
+        gp = rows["general-purpose", "claude-opus-5-5"]
+        self.assertEqual((gp["agents"], gp["requests"], gp["requests_per_agent"]), (2, 3, 1.5))
+        self.assertAlmostEqual(gp["usd"], 0.092 + 0.07)
+        self.assertAlmostEqual(gp["etu"], (0.092 + 0.07) * 1e6 / 4)
+        self.assertEqual(gp["no_edit_agents"], 1)
+        self.assertAlmostEqual(gp["no_edit_usd"], 0.092)
+        # the read-only agent's tokens at Sonnet 5.5 prices: (10000·2.5 + 1000·10 + 10000·0.1 + 1000·10) / 1e6
+        self.assertEqual(gp["cheaper_model"], "claude-sonnet-5-5")
+        self.assertAlmostEqual(gp["saving_usd"], 0.092 - 0.046)
+        total = sum(x["etu"] for x in g["items"]) + (20000 * 0.05 + 100 * 5)  # + the main chain
+        self.assertAlmostEqual(gp["share"], gp["etu"] / total)
+        self.assertIsNone(rows["fork", "claude-opus-5-5"]["saving_usd"])       # keeps the parent's cache
+        self.assertIsNone(rows["Explore", "claude-sonnet-5-5"]["saving_usd"])  # already the cheaper model
+        self.assertIsNone(rows["?", "claude-haiku-5-5"]["saving_usd"])
+        self.assertAlmostEqual(rows["?", "claude-opus-5-5"]["saving_usd"],
+                               (1000 * 5 + 10 * 20 - 1000 * 2.5 - 10 * 10) / 1e6)
+        self.assertEqual(g["agents"], 6)
+        self.assertAlmostEqual(g["saving_usd"], 0.046 + (1000 * 5 + 10 * 20 - 1000 * 2.5 - 10 * 10) / 1e6)
+
+    def test_text_and_cheaper_model_from_config(self):
+        self.make()
+        out = self.run_cli("waste")[1].split("(8)")[1]
+        self.assertIn("subagents by type and model (6 agents", out)
+        self.assertIn("general-purpose / claude-opus-5-5", out)
+        self.assertIn("claude-sonnet-5-5 would cost ~$0.046 less", out)
+        (self.home / ".toknix").mkdir(exist_ok=True)
+        (self.home / ".toknix" / "config.json").write_text(json.dumps({"waste_subagent_model": "claude-haiku-5-5"}))
+        rows = {(x["agent_type"], x["model"]): x for x in self.json_of("waste")["groups"]["subagents"]["items"]}
+        self.assertEqual(rows["Explore", "claude-sonnet-5-5"]["cheaper_model"], "claude-haiku-5-5")
+        self.assertAlmostEqual(rows["Explore", "claude-sonnet-5-5"]["saving_usd"], 4000 * (2.5 - 0.125) / 1e6)
+
+    def test_no_subagents(self):
+        t = ClaudeTranscript(session="solo", t0=NOW)
+        t.assistant([text("x")])
+        self.save(t)
+        g = self.json_of("waste")["groups"]["subagents"]
+        self.assertEqual((g["items"], g["agents"], g["saving_usd"]), ([], 0, None))
+        self.assertIn("(8) subagents by type and model (0 agents", self.run_cli("waste")[1])
 
 
 class TestContext(Home):

@@ -71,6 +71,7 @@ DEFAULTS: dict = {
     "waste_reads_per_session": 3,     # A6.2 waste (4)
     "waste_max_requests": 80,         # A6.2 waste (5)
     "waste_output_share": 0.35,       # A6.2 waste (7) [ASSUMPTION]
+    "waste_subagent_model": "claude-sonnet-5-5",  # A6.2 waste (8): suggested for subagents that edit no file
     "context_warn_tokens": 1500,      # A6.2 context
     "bench_min_saving": 0.10,         # A6.3 ACCEPT needs B at least this much cheaper (median ETU)…
     "bench_max_pass_drop": 0.0,       # …and its pass rate no lower than A's minus this

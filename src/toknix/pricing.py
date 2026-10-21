@@ -97,6 +97,11 @@ class Pricer:
     def output_etu(self, r) -> float:
         return self.cost(r)[2]
 
+    def usd_as(self, r, model: str) -> float | None:
+        """$ of r's tokens at another model's prices: what r would have cost there (P8-T3)."""
+        p = self.rates(model, r.context, r.speed, r.geo)
+        return sum(x * t for x, t in zip(p, tokens(r))) / 1e6 if p else None
+
     def reread(self, r, t: float, left: int) -> float:
         """reread_cost (A1): t tokens written to the cache by r, at r's TTL, then read by `left` requests."""
         w = self.weights(r.model, r.context, r.speed, r.geo)

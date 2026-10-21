@@ -142,7 +142,7 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
 | `toknix map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
 | `toknix report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU và $, chi phí theo model, cache hit, tỉ trọng output, các session tốn nhất |
-| `toknix waste [--days 7] [--json]` | 7 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ…), kèm cách sửa |
+| `toknix waste [--days 7] [--json]` | 8 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ, subagent theo loại và model…), kèm cách sửa |
 | `toknix context [--days 30] [--path DIR] [--json]` | file chỉ dẫn được nạp mỗi session, MCP server và skill, kèm số lần chúng được dùng |
 | `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
 | `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |

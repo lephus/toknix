@@ -291,8 +291,10 @@ Người dùng chọn làm T1 trước.
 - Người dùng chốt (2026-10-21): ETU tỉ lệ với $. Mỗi request tính theo giá model của nó (cache write 5 phút / 1 giờ, fast mode, `inference_geo`, Haiku 5.5 hai bậc giá), quy về token input của `etu_model` (Opus 5.5). Model không có giá dùng `weights`. bench vẫn dùng `weights`.
   - Kết quả (2026-10-21): `src/toknix/pricing.py`; 15 test giá, 2 test parser, 3 test report/waste, 3 test statusline, 1 test hook prompt; các test cũ chuyển sang trọng số của Opus 5.5. Dữ liệu thật 7 ngày: `report` 1.049M ETU ≈ $4.197 (trước 1.523M ETU theo trọng số cố định), subagent 71% ($2.993); Opus 5.5 88%, Sonnet 5.5 8%, Fable 5 3%. `waste` (6): 104,6M ETU ≈ $418 mất vì cache vỡ, 321/388 lần là idle. Hook nhắc trên phiên 912k: `~45.6k ETU, $0.182 each`. Phần tính giá tốn 0,19 s trên 53.728 request.
 
-**P8-T3 `[ ]` `waste`: subagent theo loại và model**
+**P8-T3 `[x]` `waste`: subagent theo loại và model**
 - Nhóm theo `agentType` / `model` trong `agent-<id>.meta.json`: số agent, request/agent, ETU, $; gợi ý model rẻ hơn cho việc đọc và tìm kiếm.
+  - `model` trong meta chỉ là alias và thiếu ở 187/928 file, nên model lấy từ transcript. "Đọc và tìm kiếm" = agent không gọi Write/Edit/MultiEdit/NotebookEdit. Không gợi ý cho `fork`, vì fork đọc lại cache của phiên cha (request đầu cache_read trung vị 150k). Model gợi ý là `waste_subagent_model` (Sonnet 5.5).
+  - Kết quả (2026-10-21): nhóm (8) của `waste`, 3 test mới. Dữ liệu thật 7 ngày (920 agent, 71% ETU): `general-purpose` trên Opus 5.5 có 457 agent, 70 request/agent, $2.416; 210 agent không sửa file ($614), nếu chạy Sonnet 5.5 thì rẻ hơn ~$307 (ước lượng). `Explore` chạy Opus 5.5 (30 agent, $66, không agent nào sửa file): rẻ hơn ~$33. Tổng gợi ý ~$354/7 ngày.
 
 **P8-T4 `[ ]` `context`: overhead cố định mỗi request**
 - Ước lượng token mà skill, plugin và MCP không dùng chiếm trong mỗi request (request đầu của phiên có context trung vị 54k, của subagent 44k).

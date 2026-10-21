@@ -18,7 +18,8 @@ from toknix.pricing import fmt_usd
 from toknix.runner import write_out
 from toknix.textutil import est_tokens, fmt_num
 
-GROUPS = ["tool_families", "big_outputs", "junk", "repeated_reads", "long_sessions", "cache_breaks", "output_heavy"]
+GROUPS = ["tool_families", "big_outputs", "junk", "repeated_reads", "long_sessions", "cache_breaks", "output_heavy",
+          "subagents"]
 HINTS = {
     "tool_families": "biggest re-read cost first: filter these commands with `toknix run`, or read a range "
                      "(`toknix outline` / `toknix symbol`) instead of whole files",
@@ -31,6 +32,9 @@ HINTS = {
                     "unknown → check MCP servers or instruction files changed during the session",
     "output_heavy": "see the breakdown: Write → edit existing files with Edit; text → shorter answers "
                     "(rules block); thinking → lower effort for simple tasks (toknix never changes it)",
+    "subagents": "agents that edited no file only read, searched or ran commands: give them a cheaper model "
+                 "(`model: sonnet` in the agent definition or the Agent call); forks keep the parent's model "
+                 "to reuse its cache",
 }
 
 
@@ -254,12 +258,61 @@ def _chain_breaks(s, chain: list, cfg: dict, pr: pricing.Pricer) -> list[dict]:
     return out
 
 
+def _subagent(s, chain: list, pr: pricing.Pricer, cheap: str) -> dict:
+    """One subagent file (P8-T3): its type from `agent-<id>.meta.json`, the model it spent most ETU on, its cost,
+    whether it edited a file, and what its tokens would have cost on `cheap`."""
+    meta = _json(s.path.parent / s.path.stem / "subagents" / f"{chain[0].chain}.meta.json")
+    kind = meta.get("agentType")
+    by_model, cost = Counter(), Cost()
+    for r in chain:
+        c = pr.cost(r)
+        cost.add(*c)
+        by_model[r.model or UNKNOWN_MODEL] += c[0]
+    return {"type": kind if isinstance(kind, str) and kind else "?", "model": by_model.most_common(1)[0][0],
+            "requests": len(chain), "etu": cost.etu, "usd": cost.usd,
+            "cheap_usd": sum(pr.usd_as(r, cheap) or 0.0 for r in chain),
+            "edited": any(u.name in transcripts.WRITE_TOOLS for r in chain for u in r.tool_uses)}
+
+
+def _subagent_groups(agents: list[dict], pr: pricing.Pricer, cheap: str, all_etu: float) -> dict:
+    """waste (8): subagents by (type, model); a cheaper model is suggested for the agents that edited no file,
+    unless they are forks (a fork reads its parent's cache, and a cache belongs to one model)."""
+    cheap_price = (pr.rates(cheap) or [None])[0]
+    rows: dict[tuple, dict] = {}
+    for a in agents:
+        g = rows.setdefault((a["type"], a["model"]), {
+            "agent_type": a["type"], "model": a["model"], "agents": 0, "requests": 0, "etu": 0.0, "usd": None,
+            "no_edit_agents": 0, "no_edit_usd": None, "cheaper_model": None, "saving_usd": None})
+        g["agents"] += 1
+        g["requests"] += a["requests"]
+        g["etu"] += a["etu"]
+        g["usd"] = _add(g["usd"], a["usd"])
+        if a["edited"]:
+            continue
+        g["no_edit_agents"] += 1
+        g["no_edit_usd"] = _add(g["no_edit_usd"], a["usd"])
+        price = (pr.rates(a["model"]) or [None])[0]
+        if a["type"] != "fork" and price is not None and cheap_price is not None and price > cheap_price:
+            g["cheaper_model"] = cheap
+            g["saving_usd"] = _add(g["saving_usd"], a["usd"] - a["cheap_usd"])
+    items = sorted(rows.values(), key=lambda g: (-g["etu"], g["agent_type"], g["model"]))
+    saving = None
+    for g in items:
+        g["requests_per_agent"] = g["requests"] / g["agents"]
+        g["share"] = g["etu"] / all_etu if all_etu else 0.0
+        saving = _add(saving, g["saving_usd"])
+    etu = sum(g["etu"] for g in items)
+    return {"items": items, "agents": len(agents), "etu": etu, "share": etu / all_etu if all_etu else 0.0,
+            "saving_usd": saving}
+
+
 def waste_data(days: int, cfg: dict | None = None) -> dict:
     cfg = cfg or load()
     pr, ratios = pricing.Pricer(cfg), measure.report_ratios(cfg)
     ss = transcripts.sessions(days)
     fams: dict[str, dict] = {}
-    big, junk, repeated, long_sessions, breaks, heavy = [], [], [], [], [], []
+    big, junk, repeated, long_sessions, breaks, heavy, agents = [], [], [], [], [], [], []
+    cheap, all_etu = cfg["waste_subagent_model"], 0.0
     for s in ss:
         reads = Counter()  # (chain, path): content read earlier in another chain is not in this one's context
         for res, use, req, left in results(s):
@@ -293,6 +346,8 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
         cost = Cost()
         for r in s.requests:
             cost.add(*pr.cost(r))
+        all_etu += cost.etu
+        agents += [_subagent(s, chain, pr, cheap) for chain in s.chains[1:] if chain[0].chain.startswith("agent-")]
         if len(s.main) > cfg["waste_max_requests"]:
             long_sessions.append({"session": s.id, "requests": len(s.main), "etu": cost.etu, "usd": cost.usd})
         breaks += _cache_breaks(s, cfg, pr)
@@ -310,6 +365,7 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
         "long_sessions": {"items": sorted(long_sessions, key=lambda x: -x["requests"])},
         "cache_breaks": {"items": breaks, "etu_lost": sum(b["etu_lost"] for b in breaks), "usd_lost": lost_usd},
         "output_heavy": {"items": sorted(heavy, key=lambda x: -x["output_share"])},
+        "subagents": _subagent_groups(agents, pr, cheap, all_etu),
     }
     for name, g in groups.items():
         g["hint"] = HINTS[name]
@@ -348,6 +404,16 @@ def format_waste(d: dict) -> str:
             [f"  {x['output_share']:>4.0%}  {x['session']}  "
              + ", ".join(f"{k.replace('_', ' ')} {fmt_num(v)}" for k, v in x["breakdown"].items())
              for x in g["output_heavy"]["items"][:10]])
+    sub = g["subagents"]
+    lines = []
+    for x in sub["items"][:10]:
+        lines.append(f"  {fmt_num(x['etu']):>8} ETU  {fmt_usd(x['usd']):>8}  {x['agents']:>4} agents  "
+                     f"{x['requests_per_agent']:>5.1f} req/agent  {x['no_edit_agents']:>4} edited no file "
+                     f"({fmt_usd(x['no_edit_usd'])})  {x['agent_type']} / {x['model']}")
+        if x["saving_usd"]:
+            lines.append(f"  {'':>8}     → {x['cheaper_model']} would cost ~{fmt_usd(x['saving_usd'])} less for its "
+                         f"{x['no_edit_agents']} agents that edited no file (estimate)")
+    section(8, f"subagents by type and model ({sub['agents']} agents, {sub['share']:.0%} of ETU)", "subagents", lines)
     return "\n".join(out)
 
 
