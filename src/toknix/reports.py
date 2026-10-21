@@ -20,7 +20,11 @@ from toknix.runner import write_out
 from toknix.textutil import est_tokens, fmt_num
 
 GROUPS = ["tool_families", "big_outputs", "junk", "repeated_reads", "long_sessions", "cache_breaks", "output_heavy",
-          "subagents"]
+          "subagents", "file_reads"]
+# A leading `cd <dir>` or `NAME=value` statement only sets up where and with what the real command runs (P9-T1)
+LEAD = re.compile(r"""^\s*(?:cd\s+|[A-Za-z_]\w*=)(?:"[^"]*"|'[^']*'|[^\s;&|'"]+)?[ \t]*(?:&&|;|\n)\s*""")
+READ_TOOLS = {"Read", "Grep"}
+READ_PROGRAMS = {"cat", "sed", "head", "tail", "nl", "bat", "less", "more", "grep", "rg", "ag", "awk"}
 HINTS = {
     "tool_families": "biggest re-read cost first: filter these commands with `toknix run`, or read a range "
                      "(`toknix outline` / `toknix symbol`) instead of whole files",
@@ -36,6 +40,9 @@ HINTS = {
     "subagents": "agents that edited no file only read, searched or ran commands: give them a cheaper model "
                  "(`model: sonnet` in the agent definition or the Agent call); forks keep the parent's model "
                  "to reuse its cache",
+    "file_reads": "what is read stays in context for every later request: read the range you need "
+                  "(`toknix outline` / `toknix symbol`, `sed -n` by lines), give subagents the paths and lines to "
+                  "read, split long subagent work, or give read-only agents a cheaper model (8)",
 }
 
 
@@ -84,6 +91,8 @@ def family(use) -> str:
     if use.name in ("Bash", "shell"):
         cmd = inp.get("command")
         cmd = " ".join(cmd) if isinstance(cmd, list) else cmd if isinstance(cmd, str) else ""
+        while (m := LEAD.match(cmd)) and m.end() < len(cmd):
+            cmd = cmd[m.end():]
         prog = filters.program_of(cmd)[0] or "?"
         if prog == "bash" and isinstance(inp.get("command"), list):  # codex: ["bash", "-lc", "npm test"]
             prog = filters.program_of(inp["command"][-1])[0] or "?"
@@ -312,15 +321,29 @@ def _subagent_groups(agents: list[dict], pr: pricing.Pricer, cheap: str, all_etu
             "saving_usd": saving}
 
 
+def _file_reads(reads: dict) -> dict:
+    """waste (9): reads and searches by family and chain, with a total for the main chains and the subagents."""
+    out = {"items": sorted(reads.values(), key=lambda x: (-x["etu"], x["family"], x["chain"]))}
+    for chain in ("main", "sub"):
+        rows = [x for x in reads.values() if x["chain"] == chain]
+        usd = None
+        for x in rows:
+            usd = _add(usd, x["usd"])
+        out[chain] = {"calls": sum(x["calls"] for x in rows), "tokens": sum(x["tokens"] for x in rows),
+                      "etu": sum(x["etu"] for x in rows), "usd": usd}
+    return out
+
+
 def waste_data(days: int, cfg: dict | None = None) -> dict:
     cfg = cfg or load()
     pr, ratios = pricing.Pricer(cfg), measure.report_ratios(cfg)
     ss = transcripts.sessions(days)
     fams: dict[str, dict] = {}
+    reads: dict[tuple, dict] = {}  # (family, "main" / "sub") -> file reads and searches (9)
     big, junk, repeated, long_sessions, breaks, heavy, agents = [], [], [], [], [], [], []
     cheap, all_etu = cfg["waste_subagent_model"], 0.0
     for s in ss:
-        reads = Counter()  # (chain, path): content read earlier in another chain is not in this one's context
+        read_counts = Counter()  # (chain, path): content read earlier in another chain is not in this one's context
         for res, use, req, left in results(s):
             t = est_tokens(res.text, ratios)
             cost, usd = pr.reread(req, t, left), pr.reread_usd(req, t, left)  # reread_cost (A1)
@@ -333,12 +356,21 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
             if t >= cfg["waste_big_output_tokens"]:
                 big.append({"session": s.id, "family": f, "tokens": t, "remaining_requests": left, "etu": cost,
                             "usd": usd})
+            bash_read = f.startswith("Bash:") and f[len("Bash:"):] in READ_PROGRAMS
+            if bash_read or (use is not None and use.name in READ_TOOLS):
+                key = (f if bash_read else use.name, "sub" if req.sidechain else "main")
+                r = reads.setdefault(key, {"family": key[0], "chain": key[1], "calls": 0, "tokens": 0, "etu": 0.0,
+                                           "usd": None})
+                r["calls"] += 1
+                r["tokens"] += t
+                r["etu"] += cost
+                r["usd"] = _add(r["usd"], usd)
         for r in s.requests:
             for use in r.tool_uses:
                 target = use.input.get("file_path") or use.input.get("path") if use.name in (
                     "Read", "Grep", "Glob") else None
                 if use.name == "Read" and isinstance(target, str):
-                    reads[r.chain, target] += 1
+                    read_counts[r.chain, target] += 1
                 if isinstance(target, str) and is_junk(target.rstrip("/") + ("/" if use.name != "Read" else ""),
                                                        cfg["junk_patterns"]):
                     junk.append({"session": s.id, "tool": use.name, "path": target})
@@ -347,7 +379,7 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
                     hit = next((x for x in words if is_junk(x, cfg["junk_patterns"])), None)
                     if hit:
                         junk.append({"session": s.id, "tool": "Bash", "path": hit})
-        repeated += [{"session": s.id, "path": p, "reads": n} for (_, p), n in sorted(reads.items())
+        repeated += [{"session": s.id, "path": p, "reads": n} for (_, p), n in sorted(read_counts.items())
                      if n >= cfg["waste_reads_per_session"]]
         cost = Cost()
         for r in s.requests:
@@ -372,6 +404,7 @@ def waste_data(days: int, cfg: dict | None = None) -> dict:
         "cache_breaks": {"items": breaks, "etu_lost": sum(b["etu_lost"] for b in breaks), "usd_lost": lost_usd},
         "output_heavy": {"items": sorted(heavy, key=lambda x: -x["output_share"])},
         "subagents": _subagent_groups(agents, pr, cheap, all_etu),
+        "file_reads": _file_reads(reads),
     }
     for name, g in groups.items():
         g["hint"] = HINTS[name]
@@ -420,6 +453,12 @@ def format_waste(d: dict) -> str:
             lines.append(f"  {'':>8}     → {x['cheaper_model']} would cost ~{fmt_usd(x['saving_usd'])} less for its "
                          f"{x['no_edit_agents']} agents that edited no file (estimate)")
     section(8, f"subagents by type and model ({sub['agents']} agents, {sub['share']:.0%} of ETU)", "subagents", lines)
+    fr = g["file_reads"]
+    totals = "; ".join(f"{label} {fmt_num(fr[k]['tokens'])} tokens, {fmt_num(fr[k]['etu'])} ETU, {fmt_usd(fr[k]['usd'])}"
+                       for k, label in (("main", "sessions"), ("sub", "subagents")))
+    section(9, f"file reads and searches ({totals})", "file_reads",
+            [f"  {fmt_num(x['etu']):>8} ETU  {fmt_usd(x['usd']):>8}  {fmt_num(x['tokens']):>7} tokens  {x['calls']:>5}×  "
+             f"{'subagents' if x['chain'] == 'sub' else 'sessions ':<9}  {x['family']}" for x in fr["items"][:12]])
     return "\n".join(out)
 
 

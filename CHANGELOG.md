@@ -34,6 +34,8 @@ The tool was briefly published as `tokopt`. Everything is now named `toknix`; `t
     reminder show $ too.
   - `waste` groups subagents by type and model. For agents that edited no file it estimates what a cheaper
     model (`waste_subagent_model`, Sonnet 5.5) would have cost.
+  - `waste` names a Bash command after any leading `cd <dir>` or `NAME=value` statement, and shows the cost
+    of file reads and searches (Read, Grep, cat, sed, grep…) in sessions and in subagents.
   - `context` measures the fixed overhead of every request from the transcripts: tool definitions, skill
     listing, instructions, system prompt, MCP servers, agent types. It also shows what plugins, MCP servers,
     skills and agent types that were never used cost.

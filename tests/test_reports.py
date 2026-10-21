@@ -148,16 +148,17 @@ class TestWaste(Home):
         t.assistant([text("done")], cache_read=600)
         return t
 
-    def test_eight_groups_each_with_a_hint(self):
+    def test_nine_groups_each_with_a_hint(self):
         self.save(self.session_with_tools())
         d = self.json_of("waste")
         self.assertEqual(list(d["groups"]), ["tool_families", "big_outputs", "junk", "repeated_reads",
-                                             "long_sessions", "cache_breaks", "output_heavy", "subagents"])
+                                             "long_sessions", "cache_breaks", "output_heavy", "subagents",
+                                             "file_reads"])
         for name, g in d["groups"].items():
             with self.subTest(group=name):
                 self.assertTrue(g["hint"])
         out = self.run_cli("waste")[1]
-        for n in range(1, 9):
+        for n in range(1, 10):
             self.assertIn(f"({n})", out)
 
     def test_tool_families_and_big_outputs_by_reread_cost(self):
@@ -380,6 +381,51 @@ class TestPrices(Home):  # P8-T2: each request at its model's price (A1)
         self.assertAlmostEqual(g["etu_lost"], 40000 * 2 - 40000 * 0.05)
         self.assertAlmostEqual(g["usd_lost"], (40000 * 8 - 40000 * 0.2) / 1e6)
         self.assertIn("$0.312 lost", self.run_cli("waste")[1])
+
+
+class TestFileReads(Home):  # P9-T1
+    def test_families_look_past_a_leading_cd(self):
+        t = ClaudeTranscript(session="cd", t0=NOW)
+        for i, cmd in enumerate(["cd /w && npm test", "cd '/a b'; sed -n 1,10p x.py", "cd x && cd y && cat f.py",
+                                 "cd /w", "S=/tmp/x; grep -n a $S/f", 'f="a b.py"\nhead $f', "X=1 make test"]):
+            t.assistant([tool_use(f"b{i}", "Bash", command=cmd)])
+            t.user(tool_results=[(f"b{i}", "x" * 400)])
+        t.assistant([text("done")])
+        self.save(t)
+        fams = {x["family"] for x in self.json_of("waste")["groups"]["tool_families"]["items"]}
+        self.assertEqual(fams, {"Bash:npm", "Bash:sed", "Bash:cat", "Bash:cd", "Bash:grep", "Bash:head", "Bash:make"})
+
+    def test_reads_and_searches_by_tool_and_chain(self):
+        main = ClaudeTranscript(session="f", t0=NOW)
+        main.assistant([tool_use("r1", "Read", file_path="/w/a.py")])
+        main.user(tool_results=[("r1", "y" * 4000)])                           # 1,000 tokens, R = 2
+        main.assistant([tool_use("b1", "Bash", command="cd /w && cat b.py")])
+        main.user(tool_results=[("b1", "z" * 2000)])                           # 500 tokens, R = 1
+        main.assistant([tool_use("b2", "Bash", command="npm test")])
+        main.user(tool_results=[("b2", "n" * 400)])                            # not a read
+        main.assistant([text("done")])
+        path = self.save(main)
+        sub = ClaudeTranscript(session="f", t0=NOW, agent="a1")
+        sub.assistant([tool_use("g1", "Bash", command="grep -n x f.py")])
+        sub.user(tool_results=[("g1", "g" * 800)])                             # 200 tokens, R = 1
+        sub.assistant([tool_use("g2", "Grep", pattern="x")])
+        sub.user(tool_results=[("g2", "h" * 400)])                             # 100 tokens, R = 0
+        sub.assistant([text("done")])
+        sub.write(subagent_path(path, "a1"))
+        g = self.json_of("waste")["groups"]["file_reads"]
+        rows = [(x["family"], x["chain"], x["calls"], x["tokens"], round(x["etu"], 6)) for x in g["items"]]
+        self.assertEqual(rows, [("Read", "main", 1, 1000, 1000 * W[1] + 1000 * W[2] * 2),
+                                ("Bash:cat", "main", 1, 500, 500 * W[1] + 500 * W[2]),
+                                ("Bash:grep", "sub", 1, 200, 200 * W[1] + 200 * W[2]),
+                                ("Grep", "sub", 1, 100, 100 * W[1])])
+        self.assertAlmostEqual(g["items"][0]["usd"], g["items"][0]["etu"] * 4 / 1e6)
+        self.assertEqual((g["main"]["tokens"], g["sub"]["tokens"]), (1500, 300))
+        self.assertAlmostEqual(g["main"]["etu"], 1350 + 650)
+        self.assertAlmostEqual(g["sub"]["usd"], (260 + 125) * 4 / 1e6)
+        out = self.run_cli("waste")[1].split("(9)")[1]
+        self.assertIn("file reads and searches", out)
+        self.assertIn("Bash:cat", out)
+        self.assertIn("subagents 300 tokens", out)
 
 
 class TestSubagentGroups(Home):  # P8-T3

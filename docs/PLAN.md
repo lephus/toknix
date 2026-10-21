@@ -303,6 +303,25 @@ Người dùng chọn làm T1 trước.
 
 ---
 
+## P9 — Đọc file và overhead cố định (dữ liệu thật 2026-10-21)
+
+Phân tích 7 ngày ($4.218 theo giá API):
+- `Bash:cd …` ($293 chi phí đọc lại) không phải lệnh `cd`: `waste` lấy từ đầu tiên làm tên lệnh, mà subagent viết `cd X && sed -n …` / `cat …` / `grep …`. Sau `cd`: sed $91, cat $81, grep $45; 93–96% nằm trong subagent. Nội dung gần như không trùng (bản sao y hệt giữa các chuỗi chỉ ~$38), tức là đọc có chủ đích, đắt vì subagent chạy dài.
+- Overhead cố định của mọi request (P8-T4) là $654 (15,5%): tool $278 (riêng định nghĩa Artifact $181), danh sách skill $152, file chỉ dẫn $130.
+
+Người dùng chọn T1 và T2 (2026-10-21). Gợi ý bỏ tool lớn không dùng cần kiểm chứng trên Claude Code thật nên chưa làm.
+
+**P9-T1 `[x]` `waste`: nhìn qua `cd X &&`, nhóm đọc file (A6.2)**
+- Họ tool `Bash:<prog>` lấy lệnh sau `cd X &&` / `cd X;` ở đầu.
+- Nhóm (9) đọc và tìm trong file: Read, Grep và Bash `cat`/`sed`/`head`/`grep`…, tách chuỗi chính và subagent: số lần, token, ETU, $.
+  - Thêm khi làm: phép gán đứng riêng ở đầu (`S=/tmp/x; sed …`) cũng được bỏ qua, vì đó là toàn bộ họ `Bash:?` ($91).
+  - Kết quả (2026-10-21): 2 test mới. Dữ liệu thật 7 ngày: nhóm (1) giờ là `Bash:sed` $191, `Bash:cat` $165, `Bash:grep` $93 (không còn `Bash:cd`, `Bash:?`). Nhóm (9): subagent đọc và tìm 39,6M token, $599; phiên chính 2,6M token, $92.
+
+**P9-T2 `[ ]` `context`: $ của toàn bộ overhead cố định (A6.2)**
+- Ngoài phần không dùng, báo ETU và $ của từng phần overhead trên mọi request trong khoảng thời gian, và các tool tốn nhất.
+
+---
+
 ## Rủi ro đã biết
 
 | ID | Rủi ro | Xử lý |
