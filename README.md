@@ -146,7 +146,7 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix map [DIR] [--budget 1500]` | the most used files and their top-level symbols, within a token budget |
 | `toknix report [--days 7] [--json]` | token use from transcripts: ETU and $, cost by model, cache hit, output share, top sessions |
 | `toknix waste [--days 7] [--json]` | 8 groups of waste (re-read cost, big outputs, junk reads, cache breaks, subagents by type and model…) with fixes |
-| `toknix context [--days 30] [--path DIR] [--json]` | instruction files loaded every session, MCP servers and skills, and how often they are used |
+| `toknix context [--days 30] [--path DIR] [--json]` | instruction files loaded every session, MCP servers and skills, how often they are used, and the fixed overhead of every request (tools, skill listing, MCP…) with what unused plugins, MCP servers and skills cost |
 | `toknix snapshot --label L [--days 7]` | save a report summary to compare later |
 | `toknix bench tasks.json --label L [--rules FILE]` | A/B runs of a real agent in throwaway git worktrees |
 | `toknix compare A B [--json]` | compare two bench labels and give a verdict |

@@ -296,8 +296,10 @@ Người dùng chọn làm T1 trước.
   - `model` trong meta chỉ là alias và thiếu ở 187/928 file, nên model lấy từ transcript. "Đọc và tìm kiếm" = agent không gọi Write/Edit/MultiEdit/NotebookEdit. Không gợi ý cho `fork`, vì fork đọc lại cache của phiên cha (request đầu cache_read trung vị 150k). Model gợi ý là `waste_subagent_model` (Sonnet 5.5).
   - Kết quả (2026-10-21): nhóm (8) của `waste`, 3 test mới. Dữ liệu thật 7 ngày (920 agent, 71% ETU): `general-purpose` trên Opus 5.5 có 457 agent, 70 request/agent, $2.416; 210 agent không sửa file ($614), nếu chạy Sonnet 5.5 thì rẻ hơn ~$307 (ước lượng). `Explore` chạy Opus 5.5 (30 agent, $66, không agent nào sửa file): rẻ hơn ~$33. Tổng gợi ý ~$354/7 ngày.
 
-**P8-T4 `[ ]` `context`: overhead cố định mỗi request**
+**P8-T4 `[x]` `context`: overhead cố định mỗi request**
 - Ước lượng token mà skill, plugin và MCP không dùng chiếm trong mỗi request (request đầu của phiên có context trung vị 54k, của subagent 44k).
+  - Đo, không đoán: Claude Code 2.1.30x ghi system prompt và định nghĩa tool (`api-request-shape`) cùng danh sách skill / agent / MCP (`attachment`) trước request đầu của mỗi chuỗi. Context thật của request đầu được chia theo tỉ lệ ký tự (4 ký tự/token thiếu ~30%). Skill và agent dựng sẵn không bị tính là "không dùng".
+  - Kết quả (2026-10-21): parser lưu `Session.overheads` và `Session.commands`; 3 test parser, 4 test `context`. Dữ liệu thật 7 ngày: request đầu trung vị 55,7k (64 phiên) và 49,4k (835 subagent). Trong một request của phiên: tool 27,6k, danh sách skill 11,1k, file chỉ dẫn 4,9k, system prompt 4,9k, MCP 4,2k. Phần không dùng ~8,0k token mỗi request của phiên, 7,0k mỗi request của subagent, ≈ $90/7 ngày. Lớn nhất là plugin figma (1/16 mục được dùng) và vercel (0/40), mỗi plugin ~2k token/request ≈ $25/7 ngày. `context --days 30` chạy 40 s.
 
 ---
 

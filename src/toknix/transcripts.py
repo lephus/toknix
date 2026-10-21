@@ -3,20 +3,26 @@
 Real Claude Code files write one assistant line per content block, and every line of one API request
 repeats the usage: requests are keyed by (message.id, requestId), their blocks merged, their usage
 counted once. Each subagent has its own file, `<session>/subagents/agent-<id>.jsonl`, read into the same
-session as a chain of its own; there the usage grows while a request streams, so the largest one is kept. Everything is read defensively: a broken line, a missing field or a field of the wrong
-type is skipped, never fatal.
+session as a chain of its own; there the usage grows while a request streams, so the largest one is kept.
+What a chain sends before its first request (system prompt, tool definitions, skill and agent listings, MCP
+instructions…) is kept per chain as its fixed overhead (P8-T4). Everything is read defensively: a broken
+line, a missing field or a field of the wrong type is skipped, never fatal.
 """
 from __future__ import annotations
 
 import datetime
 import json
+import re
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from toknix.config import claude_dir, codex_dir
 
 WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+COMMAND_RE = re.compile(r"<command-name>/?([^<\s]+)</command-name>")  # a `/name` the user typed
+LISTING_RE = re.compile(r"- (.+?):(?:\s|$)")  # `- name: description` in a skill or agent listing
 
 
 @dataclass
@@ -64,12 +70,24 @@ class Request:
 
 
 @dataclass
+class Overhead:
+    """What a chain sends before its first request (P8-T4): (kind, name, chars) parts, and that request's
+    context. shape: the system prompt and tools were recorded (Claude Code 2.1.30x)."""
+    parts: list = field(default_factory=list)
+    shape: bool = False
+    context: int = 0
+    builtin_agents: set = field(default_factory=set)
+
+
+@dataclass
 class Session:
     agent: str
     path: Path
     id: str
     requests: list = field(default_factory=list)
     compactions: int = 0
+    overheads: dict = field(default_factory=dict)   # chain ("" main, "agent-<id>") -> Overhead
+    commands: Counter = field(default_factory=Counter)  # `/name` commands the user typed
 
     @property
     def main(self) -> list:
@@ -153,6 +171,83 @@ def _str(value) -> str:
     return value if isinstance(value, str) else ""
 
 
+def _server(tool: str) -> str:
+    """`mcp__<server>__<tool>` -> server."""
+    return tool[5:].split("__")[0]
+
+
+def _listing(content, names) -> list[tuple[str, int]]:
+    """(name, chars) of each `- name: …` item of a listing, continuation lines included."""
+    if not isinstance(content, str):
+        return []
+    known = {n for n in names if isinstance(n, str)} if isinstance(names, list) else None
+    lines = content.split("\n")
+    if lines and not lines[-1]:
+        lines.pop()
+    out: list[list] = []
+    for line in lines:
+        m = LISTING_RE.match(line)
+        if m and (known is None or m.group(1) in known):
+            out.append([m.group(1), len(line) + 1])
+        elif out:
+            out[-1][1] += len(line) + 1
+    return [(n, c) for n, c in out]
+
+
+def _tool_part(name: str, kind: str = "tool") -> tuple[str, str]:
+    """A tool's (kind, name): MCP tools count for their server."""
+    return ("mcp", _server(name)) if name.startswith("mcp__") else (kind, name)
+
+
+def _shape_parts(shape: dict) -> list[tuple]:
+    """The system prompt and each tool definition of an `api-request-shape`."""
+    system = shape.get("system")
+    blocks = system if isinstance(system, list) else [{"text": system}]
+    out = [("system", "", sum(len(b["text"]) for b in blocks if isinstance(b, dict) and isinstance(b.get("text"), str)))]
+    tools = shape.get("tools") if isinstance(shape.get("tools"), list) else []
+    out += [_tool_part(_str(t.get("name"))) + (len(json.dumps(t, ensure_ascii=False)),)
+            for t in tools if isinstance(t, dict)]
+    return [p for p in out if p[2]]
+
+
+def _list(value) -> list:
+    return value if isinstance(value, list) else []
+
+
+def _attachment_parts(a: dict, text: str, overhead: Overhead) -> list[tuple]:
+    """The parts of one attachment the model receives as `text`; what no item explains is the `""` part."""
+    kind = _str(a.get("type"))
+    if kind == "skill_listing":
+        part, items = "skill", [("skill", n, c) for n, c in _listing(a.get("content"), a.get("names"))]
+    elif kind == "agent_listing_delta":
+        lines = "\n".join(x for x in _list(a.get("addedLines")) if isinstance(x, str))
+        part, items = "agent", [("agent", n, c) for n, c in _listing(lines or None, a.get("addedTypes"))]
+        overhead.builtin_agents.update(x for x in _list(a.get("builtInTypes")) if isinstance(x, str))
+    elif kind == "mcp_instructions_delta":
+        pairs = zip(_list(a.get("addedNames")), _list(a.get("addedBlocks")))
+        part, items = "mcp", [("mcp", n, len(b)) for n, b in pairs if isinstance(n, str) and isinstance(b, str)]
+    elif kind == "deferred_tools_delta":  # one name per line; MCP tools count for their server
+        names = [n for n in _list(a.get("addedNames")) if isinstance(n, str)]
+        part, items = "deferred", [_tool_part(n, "deferred") + (len(n) + 1,) for n in names]
+    elif kind in ("instructions", "nested_memory"):
+        files = [f for f in _list(a.get("files")) if isinstance(f, dict)]
+        part, items = "instructions", [("instructions", f["path"], len(f["content"])) for f in files
+                                       if isinstance(f.get("path"), str) and isinstance(f.get("content"), str)]
+    elif kind.startswith("hook_"):
+        return [("hook", _str(a.get("hookName")), len(text))]
+    else:
+        return [("other", kind, len(text))]
+    rest = len(text) - sum(c for *_, c in items)
+    return items + ([(part, "", rest)] if rest > 0 else [])
+
+
+def _rendered(obj: dict) -> str:
+    r = obj.get("rendered")
+    if isinstance(r, list):
+        return "".join(b["content"] for b in r if isinstance(b, dict) and isinstance(b.get("content"), str))
+    return r if isinstance(r, str) else ""
+
+
 def parse_claude(path) -> Session:
     """The session file, then its subagent files; request keys and tool uses are shared by all of them."""
     path = Path(path)
@@ -169,12 +264,23 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
     """agent: the subagent file's name (`agent-<id>`), None for the session file."""
     pending = {False: [[], 0, False], True: [[], 0, False]}  # per chain: results, user text chars, compacted
     mine: set = set()  # keys of the requests this file brought in
+    overhead = session.overheads[agent or ""] = Overhead()  # the file's own chain; inline sidechains have none
+    shape_parts, sent_parts, first = [], [], None
 
     for obj in _lines(path):
         kind = obj.get("type")
         side = agent is not None or obj.get("isSidechain") is True
         if agent is None and isinstance(obj.get("sessionId"), str):
             session.id = obj["sessionId"]
+        own = first is None and side == (agent is not None)  # before this file's chain has a request
+        if own and kind == "api-request-shape" and isinstance(obj.get("shape"), dict):
+            shape_parts, overhead.shape = _shape_parts(obj["shape"]), True
+            continue
+        if own and kind == "attachment" and isinstance(obj.get("attachment"), dict):
+            text = _rendered(obj)
+            if text:
+                sent_parts += _attachment_parts(obj["attachment"], text, overhead)
+            continue
         if kind == "system" and obj.get("subtype") == "compact_boundary":
             if not side:
                 session.compactions += 1
@@ -185,6 +291,7 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
             continue
         content = msg.get("content")
         if kind == "user":
+            texts = [content] if isinstance(content, str) else []
             for b in content if isinstance(content, list) else []:
                 if not isinstance(b, dict):
                     continue
@@ -194,9 +301,12 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
                     if res.tool_use_id in uses:
                         uses[res.tool_use_id].result = res
                 elif b.get("type") == "text" and isinstance(b.get("text"), str):
-                    pending[side][1] += len(b["text"])
-            if isinstance(content, str):
-                pending[side][1] += len(content)
+                    texts.append(b["text"])
+            for t in texts:
+                pending[side][1] += len(t)
+                session.commands.update(m.group(1) for m in COMMAND_RE.finditer(t))
+            if own and sum(map(len, texts)):
+                sent_parts.append(("user", "", sum(map(len, texts))))
             continue
         if kind != "assistant":
             continue
@@ -219,6 +329,8 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
             by_key[key] = r
             mine.add(key)
             session.requests.append(r)
+            if own:
+                first = r
         elif key not in mine:
             continue  # already read from the session file (older Claude Code): count it once
         else:  # a later line of the same request: subagent files stream a growing usage
@@ -245,6 +357,8 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
                     r.write_input_chars += size
                 else:
                     r.other_input_chars += size
+    overhead.parts = shape_parts + sent_parts
+    overhead.context = first.context if first is not None else 0
 
 
 # --------------------------------------------------------------------------- Codex

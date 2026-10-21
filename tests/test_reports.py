@@ -14,6 +14,7 @@ from unittest import mock
 import support  # noqa: F401  (puts src/ on sys.path)
 
 from toknix import cli, reports, store
+from toknix.textutil import fmt_num
 from transcript_factory import ClaudeTranscript, CodexRollout, subagent_path, text, thinking, tool_use
 
 NOW = 1_800_000_000.0
@@ -497,6 +498,93 @@ class TestContext(Home):
         out = self.run_cli("context")[1]
         self.assertIn("unused", out)
         self.assertIn("not called in 30 days", out)
+
+
+def listing(*items: tuple[str, int]) -> str:
+    """`- name: …` lines, each `length` chars with its newline."""
+    return "".join(f"- {name}: ".ljust(length - 1, "x") + "\n" for name, length in items)
+
+
+class TestOverhead(Home):  # P8-T4
+    SKILLS = listing(("seo", 200), ("plug:a", 300), ("plug:b", 400), ("builtin", 100))
+    AGENTS = listing(("general-purpose", 100), ("plug:rev", 200))
+    DEFERRED = "mcp__figma__get\nmcp__claude_ai_Docs__read\n"
+    CHARS = 1000 + 1000 + 300 + 500 + len(DEFERRED) + 100  # system, skills, agents, MCP blocks, names, user
+
+    def prefix(self, t: ClaudeTranscript):
+        t.shape(["s" * 1000], [])
+        t.attachment("skill_listing", self.SKILLS, content=self.SKILLS, names=["seo", "plug:a", "plug:b", "builtin"])
+        t.attachment("agent_listing_delta", self.AGENTS, addedLines=self.AGENTS.splitlines(),
+                     builtInTypes=["general-purpose"])
+        t.attachment("mcp_instructions_delta", "f" * 300 + "d" * 200, addedNames=["figma", "claude.ai Docs"],
+                     addedBlocks=["f" * 300, "d" * 200])
+        t.attachment("deferred_tools_delta", self.DEFERRED, addedNames=self.DEFERRED.split())
+        t.user("u" * 100)
+
+    def make(self) -> Path:
+        skill = self.home / ".claude" / "skills" / "seo"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("---\nname: seo\n---\n")
+        t = ClaudeTranscript(session="o", t0=NOW)
+        self.prefix(t)
+        ctx = 2 * self.CHARS  # 2 tokens per char
+        t.assistant([tool_use("s1", "Skill", skill="plug:a")], input=0, cache_write=ctx, output=0)
+        t.user(tool_results=[("s1", "ok")])
+        t.assistant([tool_use("m1", "mcp__claude_ai_Docs__read")], input=0, cache_read=ctx, output=0)
+        t.user(tool_results=[("m1", "ok")])
+        t.user("<command-name>/seo</command-name>")
+        t.assistant([text("done")], input=0, cache_read=ctx, output=0)
+        return self.save(t)
+
+    def test_parts_scaled_to_the_first_request(self):
+        self.make()
+        o = self.json_of("context")["overhead"]
+        self.assertEqual(o["chains"], {"main": 1, "sub": 0})
+        self.assertEqual(o["first_context"], {"main": 2 * self.CHARS, "sub": None})
+        parts = {p["part"]: p["main"] for p in o["parts"]}
+        self.assertEqual(parts, {"system": 2000, "skill": 2000, "mcp": 2 * (500 + len(self.DEFERRED)), "agent": 600})
+
+    def test_unused_plugins_mcp_servers_and_their_cost(self):
+        self.make()
+        u = self.json_of("context")["overhead"]["unused"]
+        # plug:b and plug:rev never used, figma never called; seo (/seo), plug:a (Skill), claude.ai Docs are used;
+        # `builtin` and general-purpose come with Claude Code
+        tokens = 2 * (400 + 200 + 300 + len("mcp__figma__get\n"))
+        self.assertAlmostEqual(u["main"], tokens)
+        self.assertAlmostEqual(u["etu"], tokens * (1.25 + 0.05 * 2))  # written once, read by the 2 later requests
+        self.assertAlmostEqual(u["usd"], tokens * (5 + 0.2 * 2) / 1e6)
+        self.assertEqual([(s["source"], s["used"], s["items"], s["unused"]) for s in u["sources"]],
+                         [("plugin plug", 1, 3, ["plug:b", "plug:rev"]), ("MCP figma", 0, 1, ["figma"])])
+        self.assertAlmostEqual(u["sources"][0]["tokens"], 2 * (400 + 200))
+        out = self.run_cli("context")[1]
+        self.assertIn("Fixed overhead per request", out)
+        self.assertIn(f"first request: sessions {fmt_num(2 * self.CHARS)} tokens (median of 1)", out)
+        self.assertIn(f"not used in 30 days: {fmt_num(tokens)} tokens per session request", out)
+        self.assertIn("plugin plug (1 of 3 used)", out)
+
+    def test_subagents_have_their_own_overhead_and_mark_agents_used(self):
+        path = self.make()
+        sub = ClaudeTranscript(session="o", t0=NOW, agent="a1")
+        sub.shape(["t" * 500], [])
+        sub.assistant([text("x")], input=0, cache_write=1000, output=0)
+        sub_path = subagent_path(path, "a1")
+        sub.write(sub_path)
+        sub_path.with_name("agent-a1.meta.json").write_text(json.dumps({"agentType": "plug:rev"}))
+        o = self.json_of("context")["overhead"]
+        self.assertEqual(o["chains"], {"main": 1, "sub": 1})
+        self.assertEqual(o["first_context"]["sub"], 1000)
+        self.assertEqual({p["part"]: p["sub"] for p in o["parts"]}["system"], 1000)
+        plug = o["unused"]["sources"][0]
+        self.assertEqual((plug["source"], plug["used"], plug["unused"]), ("plugin plug", 2, ["plug:b"]))
+        self.assertEqual(o["unused"]["sub"], 0)
+
+    def test_without_request_shapes(self):
+        t = ClaudeTranscript(session="old", t0=NOW)
+        t.assistant([text("x")])
+        self.save(t)
+        o = self.json_of("context")["overhead"]
+        self.assertEqual(o["chains"], {"main": 0, "sub": 0})
+        self.assertIn("no request shapes in the transcripts", self.run_cli("context")[1])
 
 
 class TestSnapshot(Home):

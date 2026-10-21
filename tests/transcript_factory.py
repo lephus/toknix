@@ -67,6 +67,19 @@ class ClaudeTranscript:
             if not repeat_usage:
                 break
 
+    def shape(self, system: list[str], tools: list[dict]):
+        """The system prompt and tool definitions of the requests that follow (P8-T4, Claude Code 2.1.30x)."""
+        self._line({"type": "api-request-shape", "sessionId": self.session, "shapeHash": f"h{len(self.lines)}",
+                    "shape": {"system": [{"type": "text", "text": t} for t in system], "tools": tools}})
+
+    def attachment(self, kind: str, rendered: str | None, **fields):
+        """An attachment line: `rendered` is the text the model receives (None: not sent)."""
+        obj = {"type": "attachment", "sessionId": self.session, "isSidechain": False, "timestamp": iso(self.t),
+               "attachment": {"type": kind, **fields}}
+        if rendered is not None:
+            obj.update(rendered=[{"content": rendered}], renderedRole="system")
+        self._line(obj)
+
     def compact(self):
         self.t += 1
         self._line({"type": "system", "subtype": "compact_boundary", "sessionId": self.session,

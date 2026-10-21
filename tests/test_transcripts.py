@@ -231,6 +231,94 @@ class TestSubagentFiles(Home):  # P8-T1
         self.assertEqual([[r.output for r in c] for c in s.chains], [[], [5]])
 
 
+SKILLS = "- seo: rank pages\n- plug:a: does a\n  more about a\n- plug:b: does b"
+BASH = {"name": "Bash", "description": "run a command", "input_schema": {"type": "object"}}
+FIGMA_TOOL = {"name": "mcp__figma__get", "description": "get a frame", "input_schema": {}}
+
+
+def overhead_transcript(t: ClaudeTranscript):
+    """Everything Claude Code writes before a chain's first request (P8-T4)."""
+    t.shape(["You are Claude Code.", "x" * 100], [BASH, FIGMA_TOOL])
+    t.attachment("skill_listing", "<system-reminder>\nSkills:\n" + SKILLS + "\n</system-reminder>",
+                 content=SKILLS, names=["seo", "plug:a", "plug:b"])
+    t.attachment("agent_listing_delta", "Agents:\n- Explore: search\n- plug:rev: review",
+                 addedTypes=["Explore", "plug:rev"], addedLines=["- Explore: search", "- plug:rev: review"],
+                 builtInTypes=["Explore"])
+    t.attachment("mcp_instructions_delta", "# MCP\n## claude.ai Docs\nuse docs",
+                 addedNames=["claude.ai Docs"], addedBlocks=["## claude.ai Docs\nuse docs"])
+    t.attachment("deferred_tools_delta", "Deferred:\nWebFetch\nmcp__claude_ai_Docs__read",
+                 addedNames=["WebFetch", "mcp__claude_ai_Docs__read"])
+    t.attachment("instructions", "Instructions:\nrules", files=[{"path": "/w/CLAUDE.md", "content": "rules"}])
+    t.attachment("hook_additional_context", "hook says hi", hookName="SessionStart")
+    t.attachment("environment", "env: darwin")
+    t.attachment("prompt_snapshot", None, systemPrompt=["not sent"])
+    t.user("fix it")
+
+
+class TestOverhead(Home):  # P8-T4
+    def test_parts_before_the_first_request(self):
+        t = ClaudeTranscript()
+        overhead_transcript(t)
+        t.assistant([text("a")], input=10, cache_read=0, cache_write=5000)
+        t.attachment("skill_listing", "- late: after the first request", content="- late: x", names=["late"])
+        t.user("<command-name>/seo</command-name>")
+        t.assistant([text("b")], input=10, cache_read=5000)
+        s = transcripts.parse_claude(self.claude_file(t))
+        o = s.overheads[""]
+        self.assertTrue(o.shape)
+        self.assertEqual(o.context, 5010)
+        parts = {(k, n): c for k, n, c in o.parts}
+        self.assertEqual(parts["system", ""], len("You are Claude Code.") + 100)
+        self.assertEqual(parts["tool", "Bash"], len(json.dumps(BASH, ensure_ascii=False)))
+        self.assertEqual(parts["mcp", "figma"], len(json.dumps(FIGMA_TOOL, ensure_ascii=False)))
+        self.assertEqual(parts["skill", "seo"], len("- seo: rank pages\n"))
+        self.assertEqual(parts["skill", "plug:a"], len("- plug:a: does a\n  more about a\n"))  # continued line
+        self.assertEqual(parts["skill", "plug:b"], len("- plug:b: does b\n"))
+        rendered = len("<system-reminder>\nSkills:\n" + SKILLS + "\n</system-reminder>")
+        self.assertEqual(parts["skill", ""], rendered - len(SKILLS) - 1)  # header and wrapper
+        self.assertEqual(parts["agent", "plug:rev"], len("- plug:rev: review\n"))
+        self.assertEqual(o.builtin_agents, {"Explore"})
+        self.assertEqual(parts["mcp", "claude.ai Docs"], len("## claude.ai Docs\nuse docs"))
+        self.assertEqual(parts["mcp", "claude_ai_Docs"], len("mcp__claude_ai_Docs__read\n"))
+        self.assertEqual(parts["deferred", "WebFetch"], len("WebFetch\n"))
+        self.assertEqual(parts["instructions", "/w/CLAUDE.md"], len("rules"))
+        self.assertEqual(parts["hook", "SessionStart"], len("hook says hi"))
+        self.assertEqual(parts["other", "environment"], len("env: darwin"))
+        self.assertEqual(parts["user", ""], len("fix it"))
+        self.assertNotIn(("skill", "late"), parts)  # after the first request
+        self.assertNotIn(("other", "prompt_snapshot"), parts)  # not sent to the model
+        self.assertEqual(s.commands, {"seo": 1})
+
+    def test_each_subagent_has_its_own(self):
+        main = ClaudeTranscript()
+        main.assistant([text("a")])  # an older Claude Code: no shape
+        path = self.claude_file(main)
+        sub = ClaudeTranscript(agent="a1")
+        sub.shape(["sub prompt"], [BASH])
+        sub.assistant([text("b")], input=0, cache_write=3000, output=10, partial_output=1)
+        sub.write(subagent_path(path, "a1"))
+        s = transcripts.parse_claude(path)
+        self.assertFalse(s.overheads[""].shape)
+        o = s.overheads["agent-a1"]
+        self.assertEqual((o.shape, o.context), (True, 3000))
+        self.assertEqual({(k, n) for k, n, _ in o.parts}, {("system", ""), ("tool", "Bash")})
+
+    def test_broken_attachments_are_skipped(self):
+        t = ClaudeTranscript()
+        t.shape(["p"], ["not a tool", {"name": 5}])
+        t.attachment("skill_listing", "- a: x", content=7, names="a")
+        t.attachment("agent_listing_delta", "x", addedLines=[3], builtInTypes="Explore")
+        t.attachment("mcp_instructions_delta", "y", addedNames=["a"], addedBlocks=[None])
+        t.attachment("instructions", "z", files=[{"path": None}, "x"])
+        t.lines.append(json.dumps({"type": "attachment", "attachment": "x", "rendered": 5}))
+        t.assistant([text("a")])
+        o = transcripts.parse_claude(self.claude_file(t)).overheads[""]
+        self.assertTrue(o.shape)
+        self.assertEqual([p for p in o.parts if p[0] == "tool"], [("tool", "", len(json.dumps({"name": 5})))])
+        self.assertEqual(sum(c for k, _, c in o.parts if k not in ("system", "tool")),
+                         len("- a: x") + len("x") + len("y") + len("z"))  # all unattributed, nothing lost
+
+
 class TestCodexParser(Home):
     def test_turns_calls_and_totals(self):
         r = CodexRollout()

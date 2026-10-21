@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import statistics
 import sys
 import time
 from collections import Counter
@@ -258,17 +259,22 @@ def _chain_breaks(s, chain: list, cfg: dict, pr: pricing.Pricer) -> list[dict]:
     return out
 
 
+def _agent_type(s, chain: str) -> str:
+    """`agentType` of a subagent file, from its `agent-<id>.meta.json` ("" when unknown)."""
+    kind = _json(s.path.parent / s.path.stem / "subagents" / f"{chain}.meta.json").get("agentType")
+    return kind if isinstance(kind, str) else ""
+
+
 def _subagent(s, chain: list, pr: pricing.Pricer, cheap: str) -> dict:
     """One subagent file (P8-T3): its type from `agent-<id>.meta.json`, the model it spent most ETU on, its cost,
     whether it edited a file, and what its tokens would have cost on `cheap`."""
-    meta = _json(s.path.parent / s.path.stem / "subagents" / f"{chain[0].chain}.meta.json")
-    kind = meta.get("agentType")
+    kind = _agent_type(s, chain[0].chain)
     by_model, cost = Counter(), Cost()
     for r in chain:
         c = pr.cost(r)
         cost.add(*c)
         by_model[r.model or UNKNOWN_MODEL] += c[0]
-    return {"type": kind if isinstance(kind, str) and kind else "?", "model": by_model.most_common(1)[0][0],
+    return {"type": kind or "?", "model": by_model.most_common(1)[0][0],
             "requests": len(chain), "etu": cost.etu, "usd": cost.usd,
             "cheap_usd": sum(pr.usd_as(r, cheap) or 0.0 for r in chain),
             "edited": any(u.name in transcripts.WRITE_TOOLS for r in chain for u in r.tool_uses)}
@@ -475,7 +481,8 @@ def context_data(days: int, directory: str | None = None, cfg: dict | None = Non
         skills.setdefault(_skill_name(md), "plugin")
 
     mcp_calls, skill_calls = Counter(), Counter()
-    for s in transcripts.sessions(days, agents=("claude",)):
+    ss = transcripts.sessions(days, agents=("claude",))
+    for s in ss:
         for r in s.requests:
             for use in r.tool_uses:
                 m = re.match(r"mcp__(.+?)__", use.name)
@@ -489,7 +496,138 @@ def context_data(days: int, directory: str | None = None, cfg: dict | None = Non
         "warn": total > cfg["context_warn_tokens"],
         "mcp_servers": [{"name": n, "source": src, "calls": mcp_calls[n]} for n, src in servers.items()],
         "skills": [{"name": n, "source": src, "calls": skill_calls[n]} for n, src in skills.items()],
+        "overhead": overhead_data(ss, {n for n, src in skills.items() if src in ("user", "project")},
+                                  pricing.Pricer(cfg)),
     }
+
+
+PARTS = {"tool": "tool definitions", "skill": "skill listing", "instructions": "instruction files (CLAUDE.md, memory)",
+         "system": "system prompt", "mcp": "MCP servers (instructions, tool names, tools)",
+         "deferred": "deferred tool names", "agent": "agent types", "hook": "hook output",
+         "other": "other (environment, reminders)"}
+
+
+def _norm_server(name: str) -> str:
+    """An MCP server as tool names and instruction blocks both spell it: `claude.ai Docs` = `claude_ai_Docs`."""
+    return re.sub(r"[^A-Za-z0-9]", "_", name).lower()
+
+
+def _used(ss) -> tuple[set, set, set]:
+    """Skills (full name and the part after `:`), agent types and MCP servers used in these sessions."""
+    skills, agents, servers = set(), set(), set()
+    for s in ss:
+        skills.update(s.commands)
+        for key in s.overheads:
+            if key.startswith("agent-"):
+                agents.add(_agent_type(s, key))
+        for r in s.requests:
+            for use in r.tool_uses:
+                m = re.match(r"mcp__(.+?)__", use.name)
+                if m:
+                    servers.add(_norm_server(m.group(1)))
+                elif use.name == "Skill" and isinstance(use.input.get("skill"), str):
+                    skills.add(use.input["skill"])
+                elif use.name in ("Agent", "Task"):
+                    kind = use.input.get("subagent_type")
+                    agents.add(kind if isinstance(kind, str) and kind else "general-purpose")
+    return skills | {n.split(":")[-1] for n in skills}, agents, servers
+
+
+def overhead_data(ss, own_skills: set, pr: pricing.Pricer) -> dict:
+    """P8-T4: what each chain sends before its first request, in tokens of that request's context, and the part
+    of it that plugins, MCP servers, skills and agent types nobody used cost over the period."""
+    skills_used, agents_used, servers_used = _used(ss)
+    builtin = set().union(*(o.builtin_agents for s in ss for o in s.overheads.values()))
+    names: dict[str, str] = {}  # MCP server, normalized -> as first seen
+    sources: dict[str, dict] = {}
+    chains = {"main": [], "sub": []}  # (context, tokens by part, unused tokens)
+    for s in ss:
+        for key, o in s.overheads.items():
+            reqs = [r for r in s.requests if r.chain == key]
+            total = sum(c for *_, c in o.parts)
+            if not (o.shape and o.context and reqs and total):
+                continue
+            scale = o.context / total
+            by_part, unused = Counter(), Counter()
+            for kind, name, chars in o.parts:
+                if kind != "user":
+                    by_part[kind] += chars * scale
+                if not name or kind not in ("skill", "agent", "mcp"):
+                    continue
+                if kind == "mcp":
+                    item, removable = names.setdefault(_norm_server(name), name), True
+                    used, source = _norm_server(name) in servers_used, f"MCP {item}"
+                else:
+                    item, plugin = name, name.split(":")[0] if ":" in name else None
+                    removable = plugin is not None or (name in own_skills if kind == "skill" else name not in builtin)
+                    used = (name in skills_used or name.split(":")[-1] in skills_used) if kind == "skill" \
+                        else name in agents_used
+                    source = f"plugin {plugin}" if plugin else f"{kind} {name}"
+                if not removable:
+                    continue
+                src = sources.setdefault(source, {"source": source, "items": set(), "used": set(), "chains": 0,
+                                                  "tokens": 0.0, "etu": 0.0, "usd": None})
+                src["items"].add(item)
+                if used:
+                    src["used"].add(item)
+                else:
+                    unused[source] += chars * scale
+            for source, t in unused.items():
+                src = sources[source]
+                src["chains"] += 1
+                src["tokens"] += t
+                src["etu"] += pr.reread(reqs[0], t, len(reqs) - 1)  # written once, read by every later request
+                src["usd"] = _add(src["usd"], pr.reread_usd(reqs[0], t, len(reqs) - 1))
+            chains["main" if key == "" else "sub"].append((o.context, by_part, sum(unused.values())))
+
+    def mean(kind: str, f) -> float | None:
+        return sum(f(c) for c in chains[kind]) / len(chains[kind]) if chains[kind] else None
+
+    rows = [{"source": x["source"], "tokens": x["tokens"] / x["chains"], "etu": x["etu"], "usd": x["usd"],
+             "used": len(x["used"]), "items": len(x["items"]), "unused": sorted(x["items"] - x["used"])}
+            for x in sources.values() if x["chains"]]
+    usd = None
+    for x in rows:
+        usd = _add(usd, x["usd"])
+    return {
+        "chains": {k: len(v) for k, v in chains.items()},
+        "first_context": {k: statistics.median(c[0] for c in v) if v else None for k, v in chains.items()},
+        "parts": [{"part": p, "main": mean("main", lambda c: c[1][p]), "sub": mean("sub", lambda c: c[1][p])}
+                  for p in PARTS if any(c[1][p] for v in chains.values() for c in v)],
+        "unused": {"main": mean("main", lambda c: c[2]), "sub": mean("sub", lambda c: c[2]),
+                   "etu": sum(x["etu"] for x in rows), "usd": usd,
+                   "sources": sorted(rows, key=lambda x: (-x["etu"], x["source"]))},
+    }
+
+
+def _format_overhead(o: dict, days: int) -> list[str]:
+    out = ["", "Fixed overhead per request"]
+    n = o["chains"]
+    if not n["main"] and not n["sub"]:
+        return out + ["  no request shapes in the transcripts (Claude Code 2.1.30 or later writes them)"]
+    first = o["first_context"]
+    out.append("  first request: " + ", ".join(
+        f"{label} {fmt_num(first[k])} tokens (median of {n[k]})"
+        for k, label in (("main", "sessions"), ("sub", "subagents")) if n[k]))
+
+    def cell(x) -> str:
+        return fmt_num(x) if x is not None else "—"
+    out.append(f"  {'sessions':>9}  {'subagents':>9}  part")
+    out += [f"  {cell(p['main']):>9}  {cell(p['sub']):>9}  {PARTS[p['part']]}" for p in o["parts"]]
+    u = o["unused"]
+    per = ", ".join(f"{fmt_num(u[k])} tokens per {label} request" for k, label in (("main", "session"),
+                                                                                   ("sub", "subagent")) if n[k])
+    cost = f"{fmt_num(u['etu'])} ETU" + (f" ≈ {fmt_usd(u['usd'])}" if u["usd"] is not None else "")
+    out.append(f"  not used in {days} days: {per}; {cost} in these {n['main'] + n['sub']} chains")
+    if u["sources"]:
+        out.append(f"  {'tokens/req':>10}  {'ETU':>8}  {'$':>8}  source")
+    for x in u["sources"][:15]:
+        items = ", ".join(x["unused"])
+        out.append(f"  {fmt_num(x['tokens']):>10}  {fmt_num(x['etu']):>8}  {fmt_usd(x['usd']):>8}  {x['source']} "
+                   f"({x['used']} of {x['items']} used): {items[:80]}{'…' if len(items) > 80 else ''}")
+    out.append("  fix: turn off what you don't use (a plugin with /plugin, an MCP server with /mcp) and delete unused "
+               "skills and agents; toknix never changes them")
+    return out
 
 
 def format_context(d: dict) -> str:
@@ -503,6 +641,7 @@ def format_context(d: dict) -> str:
         out += [f"  {x['calls']:>5}  {x['name']}  ({x['source']})"
                 + (f"  — not called in {d['days']} days: consider disabling it" if not x["calls"] else "")
                 for x in rows] or ["  none"]
+    out += _format_overhead(d["overhead"], d["days"])
     return "\n".join(out)
 
 
