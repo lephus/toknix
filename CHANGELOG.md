@@ -28,6 +28,10 @@ The tool was briefly published as `tokopt`. Everything is now named `toknix`; `t
 - `toknix report`, `waste` (7 groups with fixes), `context`, `snapshot`, from Claude Code and Codex transcripts.
   - Subagent transcripts (`<session>/subagents/*.jsonl`) are read too: costs count every chain, re-reads
     are counted within each chain, and the report shows the subagents' share.
+  - Each request is priced at its own model's list price (5-minute and 1-hour cache writes, fast mode, US-only
+    inference). ETU is now one input token of `etu_model` (Claude Opus 5.5), so it adds up across models and
+    is proportional to $. `report` shows $ and the cost of each model; `waste`, `gain` and the context
+    reminder show $ too.
 - Char/token calibration from transcripts, used only when it is good enough.
 - `toknix statusline`: context use, session ETU (subagents included) and savings, read incrementally.
 - `toknix ui`: a read-only page on 127.0.0.1 with live activity, the original and filtered output of each

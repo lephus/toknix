@@ -42,9 +42,10 @@ class ClaudeTranscript:
 
     def assistant(self, blocks: list[dict], input=10, cache_read=0, cache_write=0, output=50, dt: float = 1.0,
                   sidechain=False, model: str | None = None, cache_write_1h: int = 0, repeat_usage: bool = True,
-                  partial_output: int | None = None):
+                  partial_output: int | None = None, speed: str | None = None, geo: str | None = None):
         """One API request; each block becomes its own line, all with the same usage (like the real files).
-        partial_output: output_tokens of every line but the last, as in subagent files (streamed usage)."""
+        partial_output: output_tokens of every line but the last, as in subagent files (streamed usage).
+        speed / geo: usage.speed and usage.inference_geo ("standard" / "global" in real files, P8-T2)."""
         self.t += dt
         self.n += 1
         ident = f"{self.agent}_{self.n}" if self.agent else str(self.n)
@@ -52,6 +53,10 @@ class ClaudeTranscript:
                  "cache_read_input_tokens": cache_read, "output_tokens": output,
                  "cache_creation": {"ephemeral_5m_input_tokens": cache_write - cache_write_1h,
                                     "ephemeral_1h_input_tokens": cache_write_1h}}
+        if speed is not None:
+            usage["speed"] = speed
+        if geo is not None:
+            usage["inference_geo"] = geo
         blocks = blocks or [{"type": "text", "text": ""}]
         for i, b in enumerate(blocks):
             u = usage if partial_output is None or i == len(blocks) - 1 else dict(usage, output_tokens=partial_output)

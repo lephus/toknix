@@ -19,7 +19,7 @@ Ràng buộc chung:
 
 ## A1. Ước lượng token và đơn vị ETU
 
-**Mục tiêu:** có một đơn vị so sánh chi phí giữa các loại token.
+**Mục tiêu:** có một đơn vị so sánh chi phí giữa các loại token và giữa các model.
 
 ```
 est_tokens(text) = Σ_lớp ceil(chars_lớp / token_ratios[lớp])     # chỉ dùng cho output tool, file
@@ -27,18 +27,36 @@ est_tokens(text) = Σ_lớp ceil(chars_lớp / token_ratios[lớp])     # chỉ 
   lớp non_ascii: ký tự ngoài ASCII (tiếng Việt có dấu, ━ ✓ …)
   lớp default:   phần còn lại
   token_ratios mặc định = {default: 4.0, hex: 2.0, non_ascii: 1.5}   [ASSUMPTION]
-ETU(u) = w_in·input + w_cw·cache_write + w_cr·cache_read + w_out·output
-weights mặc định = [1, 1.25, 0.1, 5]              # FACT: tỉ lệ giá niêm yết Anthropic
-reread_cost(T, R) = T·w_cw + T·w_cr·R              # T token vào context khi phiên còn R request phía sau
-                                                   # ví dụ T=5.000, R=50 → ≈ 31.000 ETU
+
+(P8-T2) mỗi request r có 5 loại token:
+  u(r) = [input, cache_write_5m, cache_write_1h, cache_read, output]
+  cache_write_1h = usage.cache_creation.ephemeral_1h_input_tokens, cache_write_5m = cache_write − cache_write_1h
+giá(r) = prices[model_r] · hệ số(r)           # $/MTok, cùng thứ tự với u; FACT: bảng giá Anthropic 2026-10-21
+  hệ số(r) = price_multipliers[usage.speed] · price_multipliers[usage.inference_geo]   # fast 2, us 1,1; giá trị khác 1
+w(r) = giá(r) / giá_input(etu_model)          # ETU cho mỗi token; etu_model mặc định claude-opus-5-5 ($4/MTok)
+     = [w_in, w_cw, w_cw, w_cr, w_out] lấy từ config.weights, nếu model_r không có giá
+ETU(r) = w(r) · u(r)                            # 1 ETU = 1 token input của etu_model
+USD(r) = giá(r) · u(r) / 10^6                   # chỉ có khi model_r có giá; khi đó ETU(r) = USD(r) · 10^6 / giá_input(etu_model)
+  ví dụ w: Opus 5.5 [1, 1,25, 2, 0,05, 5]; Sonnet 5.5 [0,5, 0,625, 1, 0,025, 2,5]; Fable 5.1 [2,5, 3,125, 5, 0,0625, 12,5]
+weights mặc định = [1, 1.25, 0.1, 5]            # input, cache_write, cache_read, output: tỉ lệ giá chuẩn của Anthropic
+reread_cost(T, R, r) = T·w_cw(r) + T·w_cr(r)·R  # T token vào context ở request r, còn R request phía sau đọc lại
+  w_cw(r) = w_cw_1h(r) nếu r có cache_write_1h > 0, ngược lại w_cw_5m(r)   # T được ghi cache ở chính r
+  ví dụ T=5.000, R=50, Opus 5.5, cache 5 phút → 5.000·1,25 + 5.000·0,05·50 = 18.750 ETU
 ```
+
+- **Bảng giá (`prices` trong config):** mỗi model là danh sách 5 giá $/MTok theo thứ tự của `u`. Claude Haiku 5.5 có hai bậc theo độ dài prompt: `{"prices": [...], "above": 100000, "prices_above": [...]}`, prompt = input + cache_read + cache_write của chính request đó. `FACT` (trang giá Anthropic, 2026-10-21): cache read = 0,1 × input, trừ Fable 5.1 / Mythos 5.1 (0,025) và Opus 5.5 / Sonnet 5.5 (0,05). Cache write 5 phút = 1,25 ×, 1 giờ = 2 ×. Fast mode = 2 × mọi loại token. `inference_geo: "us"` = 1,1 ×.
+- **Tra model:** lấy phần của model id từ `claude-` trở đi (bỏ tiền tố Bedrock như `us.anthropic.`), chọn key dài nhất mà model id bằng key hoặc bắt đầu bằng key cộng một trong `-@[:`. Vì vậy `claude-opus-5-5` lấy giá Opus 5.5 chứ không phải `claude-opus-5`, `claude-sonnet-4` gồm cả 4.5 và 4.6 (cùng giá), `claude-haiku-4-5-20251001` lấy giá `claude-haiku-4-5`.
+- **Model không có giá** (Codex, Gemini, model mới chưa có trong bảng): ETU tính theo `weights` (đơn vị là token input của chính model đó), không có USD. `report` ghi số request và tên các model đó. `etu_model` rỗng hoặc không có giá thì mọi request dùng `weights`, như trước P8-T2.
+- **USD** là giá API niêm yết của Anthropic. Người dùng gói Pro/Max không trả theo token, nên đây là chi phí tương đương để so sánh. Không tính: Batch, phí web search, giá riêng của Bedrock và Vertex.
+- **Vì sao đổi (P8-T2):** trước đây mọi request dùng `weights` cố định. Dữ liệu thật 7 ngày (2026-10-21): 83% số tiền là Opus 5.5. Chuỗi chính ghi cache 1 giờ (2 ×, trước tính 1,25 ×), subagent ghi cache 5 phút. Cache read của Opus 5.5 là 0,05 × (trước tính 0,1 ×), mà cache read chiếm ~60% số tiền. Người dùng chọn ETU tỉ lệ với $ (2026-10-21).
 
 - Chuỗi hex: `[0-9a-fA-F]{16,}`. Chuỗi base64: `[A-Za-z0-9+/]{16,}={0,2}` và phải có đủ chữ hoa, chữ thường, chữ số, để từ thường dài (`internationalization`) hay đường dẫn (`usr/lib/python3`) không bị tính vào lớp hex.
 - `est_tokens` chạy một lượt regex. Hook read vẫn dùng `size // 4` để giữ tốc độ.
 - Bộ lọc (`toknix run`) **luôn** dùng `token_ratios` trong config. Kết quả hiệu chỉnh (A6.4) chỉ dùng cho báo cáo (`gain`, `report`, `waste`, `statusline`), để lượng output agent nhận được không tự thay đổi.
 
 - Token của model **luôn lấy từ `usage` trong transcript** (số chính xác của provider), không ước lượng.
-- Trọng số đọc từ `config.weights`. Codex và Gemini có tỉ lệ giá khác nên người dùng tự đặt.
+- `weights` là trọng số cho model không có giá. Codex và Gemini có tỉ lệ giá khác nên người dùng tự đặt.
+- **Nơi dùng `w(r)`:** `report`, `waste`, `gain` và statusline tính theo model của từng request. Hook prompt dùng request chuỗi chính cuối cùng. `bench` vẫn dùng `weights`, vì output của agent không cho biết model của từng request; `cost` của bench là số $ do chính agent báo (`claude -p`).
 
 ---
 
@@ -443,6 +461,7 @@ Chi tiết đã chốt khi implement (P3-T2, `src/toknix/langs.py`):
     - `parse_claude(<session>.jsonl)` đọc thêm mọi `<session>/subagents/*.jsonl` vào cùng session, request đánh dấu sidechain. Khoá `(message.id, requestId)` dùng chung cho mọi file, nên request vừa nằm trong file phiên (bản Claude Code cũ) vừa trong file subagent chỉ tính một lần.
     - Mỗi request có `chain`: `""` cho chuỗi chính, `agent-<id>` cho từng file subagent, `"sidechain"` cho dòng sidechain nằm trong file phiên. `Session.chains` = các chuỗi theo thứ tự xuất hiện, chuỗi chính đầu tiên (rỗng nếu phiên chưa có request nào). Thông tin "gửi kèm request" (tool_result, chữ người dùng, compaction) tính theo chuỗi. `Session.compactions` chỉ đếm compaction của chuỗi chính.
     - `FACT`: trong file subagent, các dòng của một request có usage tăng dần (stream), dòng đầu thiếu phần lớn output (0,8M so với 3,5M token trong 7 ngày). Vì vậy request trùng khoá lấy **giá trị lớn nhất của từng trường usage**. File phiên có usage giống nhau ở mọi dòng nên kết quả không đổi.
+  - **Giá (P8-T2):** request còn mang `cache_write_1h` (cũng lấy giá trị lớn nhất), `speed` và `inference_geo` của usage (chuỗi, thiếu thì rỗng). `FACT`, transcript thật 2026-10-21: usage có `"speed": "standard"`, `"inference_geo": "global"`, `"service_tier": "standard"`.
 
 ### A6.2 Các báo cáo
 
@@ -459,6 +478,11 @@ Chi tiết đã chốt khi implement (P3-T2, `src/toknix/langs.py`):
   - `waste`: R của một tool_result đếm trong chuỗi chứa nó (subagent không đọc lại context của chuỗi chính, và ngược lại); (1)(2)(3)(4)(6) duyệt mọi chuỗi, (4) đếm số lần Read trong từng chuỗi; (5) ngưỡng theo request chuỗi chính, ETU tính cả subagent; (7) tỉ trọng output tính cả subagent.
   - `context`: lượt gọi MCP/skill đếm trên mọi chuỗi. R̄ của `gain` lấy từ tool_result Bash của mọi chuỗi (hook chạy cả trong subagent).
   - Hiệu chỉnh A6.4 vẫn chỉ dùng chuỗi chính.
+- (P8-T2) ETU tính theo từng request với `w(r)` (A1); tỉ trọng output = Σ output·w_out(r) / Σ ETU(r).
+  - `report`: thêm `usd` (tổng, subagent, top session), `etu_model` và `etu_model_usd` (giá input của nó, $/MTok), `models` = mỗi model một dòng {requests, ETU, USD, tỉ trọng ETU} xếp theo ETU, và `unpriced` = {requests, models} cho request không có giá.
+  - `waste`: `reread_cost` dùng `w(r)` của request mang tool_result (A1). Cache vỡ mất `w_cw_5m·cache_write_5m + w_cw_1h·cache_write_1h − w_cr·cache_write` của request vỡ. Nhóm (1), (2), (5) và tổng (6) có thêm `usd` (cộng phần có giá).
+  - `gain`: hệ số đọc lại = trung vị của `w_cw(r) + w_cr(r)·R` trên các tool_result Bash (R̄ vẫn được báo). Chưa có transcript → `w` của `etu_model` với cache 5 phút: `w_cw_5m + w_cr·reread_default` (Opus 5.5: 1,25 + 0,05·20 = 2,25). Có giá thì kèm USD = ETU · giá_input(etu_model) / 10^6.
+  - `snapshot`: thêm `usd`.
 - Chi tiết đã chốt khi implement (P4-T2, `src/toknix/reports.py`):
   - **Mặc định và tuỳ chọn:** `--days` mặc định là 7 (`context`: 30); mọi lệnh có `--json`; `context --path DIR`. Không có transcript → `no transcripts in the last N days`.
   - **Số liệu theo phiên:** chỉ tính chuỗi chính; "lượt gọi" là request.
@@ -518,7 +542,7 @@ nguyên nhân (theo thứ tự ưu tiên):
   model    message.model khác request trước
   idle     khoảng cách timestamp > cache_ttl_seconds (mặc định 300; nhận biết TTL 1 giờ từ usage nếu có)
   unknown  còn lại (đổi MCP/tool, sửa instruction, cập nhật Claude Code)
-ETU mất = cache_write_k · (w_cw − w_cr)
+ETU mất = cache_write_k · (w_cw − w_cr)            # (P8-T2) theo w(k), cache_write 5 phút và 1 giờ tính riêng (A6.2)
 ```
 
 Gợi ý trong `waste`: idle → /clear hoặc chấp nhận khi nghỉ lâu; model → tránh đổi model giữa phiên; unknown → kiểm tra MCP/instruction vừa đổi.
@@ -644,6 +668,10 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
     - `[ASSUMPTION]` Claude Code hiện `systemMessage` cho người dùng và không đưa vào context của model, nên lời nhắc không tốn token. Kiểm ở `docs/VERIFY.md`, check I.
     - Prompt bắt đầu bằng `/clear` hoặc `/compact`, ctx dưới ngân sách, hoặc không tìm thấy usage → không in gì. Nhắc ở mọi prompt khi còn vượt (người dùng chọn).
   - **Đo 2026-10-19:** transcript thật 69 MB: lần đầu 134 ms, các lần sau 30 ms (tính cả khởi động Python).
+  - **Giá theo model (P8-T2):**
+    - ETU của mỗi request theo `w(r)` của model trong dòng đó (A1). Khoá gần đây nhớ usage 5 loại; phần tăng thêm nhân với `w(r)` của dòng mới. Cache cũ (thiếu `"v": 2`) được đọc lại từ đầu.
+    - saved dùng `w` của request chuỗi chính cuối cùng: `w_cw_1h` nếu chuỗi chính đã có lần ghi cache 1 giờ, ngược lại `w_cw_5m`.
+    - Hook nhắc: ETU mỗi request = ctx·w_cr của request chuỗi chính cuối cùng; model có giá thì kèm $: `(~14.0k ETU, $0.056 each)`.
 
 ---
 

@@ -46,6 +46,8 @@ class Request:
     cache_write_1h: int = 0
     sidechain: bool = False
     chain: str = ""                    # "" main, "agent-<id>" a subagent file, "sidechain" inline in the session file
+    speed: str = ""                    # usage.speed ("fast" costs more, P8-T2)
+    geo: str = ""                      # usage.inference_geo ("us" costs more)
     text_chars: int = 0
     thinking_chars: int = 0
     thinking_hidden: bool = False      # a thinking block whose text is not in the transcript
@@ -142,6 +144,15 @@ USAGE_FIELDS = (("input", "input_tokens"), ("cache_write", "cache_creation_input
                 ("cache_read", "cache_read_input_tokens"), ("output", "output_tokens"))
 
 
+def _one_hour(usage: dict) -> int:
+    cache_creation = usage.get("cache_creation")
+    return _int(cache_creation.get("ephemeral_1h_input_tokens")) if isinstance(cache_creation, dict) else 0
+
+
+def _str(value) -> str:
+    return value if isinstance(value, str) else ""
+
+
 def parse_claude(path) -> Session:
     """The session file, then its subagent files; request keys and tool uses are shared by all of them."""
     path = Path(path)
@@ -197,12 +208,11 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
         key = (msg["id"], obj.get("requestId"))
         r = by_key.get(key)
         if r is None:
-            cache_creation = usage.get("cache_creation") if isinstance(usage.get("cache_creation"), dict) else {}
-            r = Request(key, parse_ts(obj.get("timestamp")), msg.get("model") if isinstance(msg.get("model"), str)
-                        else "", _int(usage.get("input_tokens")), _int(usage.get("cache_creation_input_tokens")),
+            r = Request(key, parse_ts(obj.get("timestamp")), _str(msg.get("model")),
+                        _int(usage.get("input_tokens")), _int(usage.get("cache_creation_input_tokens")),
                         _int(usage.get("cache_read_input_tokens")), _int(usage.get("output_tokens")),
-                        _int(cache_creation.get("ephemeral_1h_input_tokens")), side,
-                        agent or ("sidechain" if side else ""))
+                        _one_hour(usage), side, agent or ("sidechain" if side else ""),
+                        _str(usage.get("speed")), _str(usage.get("inference_geo")))
             results, user_text, compacted = pending[side]
             r.results_before, r.user_text_before, r.compacted_before = results, user_text, compacted
             pending[side] = [[], 0, False]
@@ -214,6 +224,7 @@ def _read_claude(path: Path, session: Session, by_key: dict, uses: dict, agent: 
         else:  # a later line of the same request: subagent files stream a growing usage
             for name, k in USAGE_FIELDS:
                 setattr(r, name, max(getattr(r, name), _int(usage.get(k))))
+            r.cache_write_1h = max(r.cache_write_1h, _one_hour(usage))
         for b in content if isinstance(content, list) else []:
             if not isinstance(b, dict):
                 continue

@@ -115,6 +115,16 @@ class TestClaudeParser(Home):
         self.assertEqual(r.model, "claude-sonnet-5-5")
         self.assertEqual(r.cache_write_1h, 20000)
 
+    def test_speed_and_inference_geo(self):  # P8-T2: fast mode and US-only inference change the price
+        t = ClaudeTranscript()
+        t.assistant([text("a")], speed="fast", geo="us")
+        t.assistant([text("b")], speed="standard", geo="global")
+        t.assistant([text("c")])
+        t.assistant([text("d")], speed=7, geo=["us"])
+        s = transcripts.parse_claude(self.claude_file(t))
+        self.assertEqual([(r.speed, r.geo) for r in s.requests],
+                         [("fast", "us"), ("standard", "global"), ("", ""), ("", "")])
+
     def test_session_listing_and_days(self):
         for name, t0, project in (("old", 1_000_000_000.0, "-w-repo"), ("new", 1_800_000_000.0, "-w-other")):
             t = ClaudeTranscript(session=name, t0=t0)
@@ -170,6 +180,19 @@ class TestSubagentFiles(Home):  # P8-T1
         s = transcripts.parse_claude(path)
         self.assertEqual(s.chains[1][0].output, 4030)
         self.assertEqual([u.name for u in s.chains[1][0].tool_uses], ["Read"])
+
+    def test_streamed_one_hour_write_takes_the_largest(self):  # P8-T2: the 1h share is priced on its own
+        main = ClaudeTranscript()
+        main.assistant([text("a")], output=10)
+        path = self.claude_file(main)
+        sub = ClaudeTranscript(agent="a1")
+        sub.assistant([text("b")], cache_write=3000, cache_write_1h=3000)
+        line = json.loads(sub.lines[0])
+        line["message"]["usage"]["cache_creation"]["ephemeral_1h_input_tokens"] = 0
+        sub.lines.insert(0, json.dumps(line))  # an earlier line of the same request, before the write was known
+        sub.write(subagent_path(path, "a1"))
+        r = transcripts.parse_claude(path).chains[1][0]
+        self.assertEqual((r.cache_write, r.cache_write_1h), (3000, 3000))
 
     def test_request_in_both_files_counts_once(self):  # older Claude Code kept sidechains in the session file
         sub = ClaudeTranscript(agent="a1")

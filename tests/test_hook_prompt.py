@@ -44,8 +44,16 @@ class PromptHook(unittest.TestCase):
     def test_over_budget_tells_the_user(self):
         self.transcript(50000, 280000)
         self.assertEqual(self.reply(), {"systemMessage": (
-            "toknix: context 280k is over the 200k budget; every request re-reads it (~28.0k ETU each). "
+            "toknix: context 280k is over the 200k budget; every request re-reads it (~14.0k ETU, $0.056 each). "
             "Start the next task with /clear, or /compact.")})
+
+    def test_cost_follows_the_last_requests_model(self):  # P8-T2 (A1)
+        for model, each in (("claude-sonnet-5-5", "~7.0k ETU, $0.028 each"), ("gpt-5-codex", "~28.0k ETU each")):
+            with self.subTest(model=model):
+                t = ClaudeTranscript(model=model)
+                t.assistant([text("a")], input=0, cache_read=280000, output=1)
+                t.write(self.path)
+                self.assertIn(f"re-reads it ({each})", self.reply()["systemMessage"])
 
     def test_under_budget_is_silent(self):
         self.transcript(280000, 199999)  # the last main request counts, not the biggest

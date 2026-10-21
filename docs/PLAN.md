@@ -286,8 +286,10 @@ Người dùng chọn làm T1 trước.
 - Statusline: ETU cộng cả file subagent, đọc tăng dần từng file; ctx vẫn lấy từ chuỗi chính.
   - Kết quả (2026-10-19): 7 test parser, 5 test report/waste/context/gain, 3 test statusline. Dữ liệu thật 7 ngày: `report` thấy 1.523M ETU (trước 407M), subagent 73%; tool output ước lượng 48M token (trước 4,1M), vì subagent đọc phần lớn. `waste` (1) giờ đứng đầu là `Bash:cd …` trong subagent: 18M token, 122M ETU; (6) có 279 lần cache vỡ "idle", phần lớn trong subagent. Statusline trên phiên có 526 subagent (384 MB): lần đầu 1,08 s, các lần sau 50 ms. `report`/`waste` mất 22–25 s vì 2,6 GB file subagent.
 
-**P8-T2 `[ ]` Trọng số theo model và báo cáo ra $ (A1)**
+**P8-T2 `[x]` Trọng số theo model và báo cáo ra $ (A1)**
 - `weights` mặc định là tỉ lệ giá của một model; Opus 5.5 có cache read / input = 0,05, không phải 0,1, nên ETU phóng đại chi phí context gấp đôi. Bảng giá theo model trong config, báo cáo kèm $.
+- Người dùng chốt (2026-10-21): ETU tỉ lệ với $. Mỗi request tính theo giá model của nó (cache write 5 phút / 1 giờ, fast mode, `inference_geo`, Haiku 5.5 hai bậc giá), quy về token input của `etu_model` (Opus 5.5). Model không có giá dùng `weights`. bench vẫn dùng `weights`.
+  - Kết quả (2026-10-21): `src/toknix/pricing.py`; 15 test giá, 2 test parser, 3 test report/waste, 3 test statusline, 1 test hook prompt; các test cũ chuyển sang trọng số của Opus 5.5. Dữ liệu thật 7 ngày: `report` 1.049M ETU ≈ $4.197 (trước 1.523M ETU theo trọng số cố định), subagent 71% ($2.993); Opus 5.5 88%, Sonnet 5.5 8%, Fable 5 3%. `waste` (6): 104,6M ETU ≈ $418 mất vì cache vỡ, 321/388 lần là idle. Hook nhắc trên phiên 912k: `~45.6k ETU, $0.182 each`. Phần tính giá tốn 0,19 s trên 53.728 request.
 
 **P8-T3 `[ ]` `waste`: subagent theo loại và model**
 - Nhóm theo `agentType` / `model` trong `agent-<id>.meta.json`: số agent, request/agent, ETU, $; gợi ý model rẻ hơn cho việc đọc và tìm kiếm.

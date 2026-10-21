@@ -66,20 +66,24 @@ def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
     filter_tokens = sum(k["saved_tokens"] for k in kinds.values())
     guard_tokens = sum(g[2] for g in guard)
     direct = filter_tokens + guard_tokens
-    w_cw, w_cr = cfg["weights"][1], cfg["weights"][2]
-    from toknix import reports  # transcripts are only read here, never by the hooks
-    bash = reports.bash_stats(cfg["gain_transcript_days"])
-    r_bar, source = (statistics.median(bash["r_values"]), "transcripts") if bash["r_values"] else \
-        (cfg["reread_default"], "default")
-    multiplier = w_cw + w_cr * r_bar
+    from toknix import pricing, reports  # transcripts are only read here, never by the hooks
+    pr = pricing.Pricer(cfg)
+    bash = reports.bash_stats(cfg["gain_transcript_days"], cfg)
+    if bash["r_values"]:  # P8-T2: each Bash result at the price of the request that carried it
+        r_bar, source, multiplier = statistics.median(bash["r_values"]), "transcripts", \
+            statistics.median(bash["multipliers"])
+    else:
+        w = pr.weights(pr.etu_model)  # etu_model, 5-minute writes; `weights` when it has no price (A1)
+        r_bar, source, multiplier = cfg["reread_default"], "default", w[1] + w[3] * cfg["reread_default"]
+    etu = direct * multiplier
     return {
         "days": days,
         "no_data": not runs and not guard,
         "direct_tokens": direct,
         "filter_tokens": filter_tokens,
         "guard_tokens": guard_tokens,
-        "reread": {"etu": round(direct * multiplier, 1), "multiplier": multiplier, "r_bar": r_bar,
-                   "r_bar_source": source},
+        "reread": {"etu": round(etu, 1), "usd": etu * pr.ref / 1e6 if pr.ref else None, "multiplier": multiplier,
+                   "r_bar": r_bar, "r_bar_source": source, "etu_model": pr.etu_model if pr.ref else None},
         "r_bar_samples": len(bash["r_values"]),
         "wrapped": {"bash_calls": bash["bash_calls"], "wrapped": bash["wrapped"],
                     "share": bash["wrapped"] / bash["bash_calls"] if bash["bash_calls"] else None},
@@ -95,13 +99,19 @@ def gain_data(days: int | None = None, cfg: dict | None = None) -> dict:
 def format_gain(d: dict, cfg: dict) -> str:
     if d["no_data"]:
         return "no data yet"
+    from toknix.pricing import Pricer, fmt_usd
     r = d["reread"]
-    w_cw, w_cr = cfg["weights"][1], cfg["weights"][2]
+    usd = f" ≈ {fmt_usd(r['usd'])}" if r["usd"] is not None else ""
+    if r["r_bar_source"] == "default":
+        w = Pricer(cfg).weights(r["etu_model"] or "")
+        how = (f"w_cw {w[1]:g} + w_cr {w[3]:g} × R̄ {r['r_bar']:g}, "
+               + (f"{r['etu_model']} prices" if r["etu_model"] else "`weights`"))
+    else:
+        how = f"median of w_cw + w_cr × R over {d['r_bar_samples']} Bash results, each at its model's price"
     out = [f"toknix gain ({'last %d days' % d['days'] if d['days'] else 'all time'})", "",
            f"Saved directly: {fmt_num(d['direct_tokens'])} tokens (filters {fmt_num(d['filter_tokens'])}, "
            f"read guard {fmt_num(d['guard_tokens'])})",
-           f"With re-reads (estimate): {fmt_num(r['etu'])} ETU = direct × {r['multiplier']:g} "
-           f"(w_cw {w_cw:g} + w_cr {w_cr:g} × R̄ {r['r_bar']:g})"]
+           f"With re-reads (estimate): {fmt_num(r['etu'])} ETU{usd} = direct × {r['multiplier']:.3g} ({how})"]
     if r["r_bar_source"] == "default":
         out.append(f"  R̄ = {r['r_bar']:g} is the default value, not measured from transcripts yet")
     else:

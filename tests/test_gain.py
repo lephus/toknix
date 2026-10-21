@@ -101,15 +101,21 @@ class TestTotals(TempHome):
         self.assertEqual(data["rules"], [{"rule": "bigfile", "denials": 1, "saved_tokens": 3000},
                                          {"rule": "junk", "denials": 2, "saved_tokens": 1000}])
 
-    def test_reread_estimate_uses_weights_and_default_r(self):
+    def test_reread_estimate_uses_etu_model_and_default_r(self):  # P8-T2: Opus 5.5, 5-minute writes (A1)
         self.run_row()
         r = self.gain_json()["reread"]
-        self.assertEqual(r, {"etu": SAVED_TOKENS * 3.25, "multiplier": 3.25, "r_bar": 20, "r_bar_source": "default"})
+        self.assertEqual((r["r_bar"], r["r_bar_source"]), (20, "default"))
+        self.assertAlmostEqual(r["multiplier"], 1.25 + 0.05 * 20)
+        self.assertAlmostEqual(r["etu"], SAVED_TOKENS * 2.25)
+        self.assertAlmostEqual(r["usd"], SAVED_TOKENS * 2.25 * 4 / 1e6)
 
     def test_reread_follows_config(self):
-        (self.home / "config.json").write_text(json.dumps({"weights": [1, 2.0, 0.5, 5], "reread_default": 10}))
+        (self.home / "config.json").write_text(json.dumps({"weights": [1, 2.0, 0.5, 5], "reread_default": 10,
+                                                           "etu_model": ""}))
         self.run_row()
-        self.assertEqual(self.gain_json()["reread"]["multiplier"], 2.0 + 0.5 * 10)
+        r = self.gain_json()["reread"]
+        self.assertEqual(r["multiplier"], 2.0 + 0.5 * 10)
+        self.assertIsNone(r["usd"])  # no etu_model price: ETU is not $
 
     def test_days_window(self):
         self.run_row(at=1_000.0)  # long ago
@@ -188,7 +194,8 @@ class TestText(TempHome):
         code, out, err = self.gain()
         self.assertEqual((code, err), (0, ""))
         self.assertIn("Saved directly: 2.0k tokens (filters 1.1k, read guard 880)", out)
-        self.assertIn("With re-reads (estimate): 6.5k ETU", out)
+        self.assertIn("With re-reads (estimate): 4.5k ETU ≈ $0.018 = direct × 2.25 (w_cw 1.25 + w_cr 0.05 × R̄ 20, "
+                      "claude-opus-5-5 prices)", out)
         self.assertIn("R̄ = 20 is the default value, not measured", out)
         self.assertRegex(out, r"pytest\s+1\s+1\s+1\.1k\s+0\s+0%")
         self.assertRegex(out, r"junk\s+1\s+880")

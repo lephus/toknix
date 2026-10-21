@@ -150,15 +150,19 @@ def hook_prompt(data: dict) -> dict | None:
         return None
     if not isinstance(path, str):
         return None
-    from toknix import statusline
-    ctx = statusline.last_context(Path(path).expanduser())
+    from toknix import pricing, statusline
+    last = statusline.last_request(Path(path).expanduser())
     cfg = load()
     budget = cfg["context_budget"]
-    if ctx is None or ctx < budget:
+    if last is None or last[0] < budget:
         return None
-    each = ctx * float(cfg["weights"][2])
+    ctx, model, speed, geo = last
+    pr = pricing.Pricer(cfg)  # P8-T2: re-read at the price of the last main request's model
+    each = ctx * pr.weights(model, ctx, speed, geo)[3]
+    rates = pr.rates(model, ctx, speed, geo)
+    usd = f", {pricing.fmt_usd(ctx * rates[3] / 1e6)}" if rates else ""
     return {"systemMessage": f"toknix: context {statusline.fmt_ctx(ctx)} is over the {statusline.fmt_ctx(budget)} "
-                             f"budget; every request re-reads it (~{statusline.fmt_num(each)} ETU each). "
+                             f"budget; every request re-reads it (~{statusline.fmt_num(each)} ETU{usd} each). "
                              "Start the next task with /clear, or /compact."}
 
 

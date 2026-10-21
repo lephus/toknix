@@ -74,7 +74,33 @@ DEFAULTS: dict = {
     "context_warn_tokens": 1500,      # A6.2 context
     "bench_min_saving": 0.10,         # A6.3 ACCEPT needs B at least this much cheaper (median ETU)…
     "bench_max_pass_drop": 0.0,       # …and its pass rate no lower than A's minus this
-    "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU
+    "weights": [1.0, 1.25, 0.1, 5.0],  # input, cache_write, cache_read, output → ETU of a model without a price
+    # A1 (P8-T2): 1 ETU = one input token of etu_model; a priced request costs its prices / that input price
+    "etu_model": "claude-opus-5-5",
+    # $/MTok: input, 5-minute cache write, 1-hour cache write, cache read, output. Anthropic list prices,
+    # 2026-10-21. The longest key the model id starts with wins; config.json entries add to these.
+    "prices": {
+        "claude-fable-5-1": [10, 12.5, 20, 0.25, 50],
+        "claude-mythos-5-1": [10, 12.5, 20, 0.25, 50],
+        "claude-fable-5": [10, 12.5, 20, 1, 50],
+        "claude-mythos-5": [10, 12.5, 20, 1, 50],
+        "claude-opus-5-5": [4, 5, 8, 0.2, 20],
+        "claude-opus-5": [5, 6.25, 10, 0.5, 25],
+        "claude-opus-4-8": [5, 6.25, 10, 0.5, 25],
+        "claude-opus-4-7": [5, 6.25, 10, 0.5, 25],
+        "claude-opus-4-6": [5, 6.25, 10, 0.5, 25],
+        "claude-opus-4-5": [5, 6.25, 10, 0.5, 25],
+        "claude-opus-4-1": [15, 18.75, 30, 1.5, 75],
+        "claude-opus-4": [15, 18.75, 30, 1.5, 75],
+        "claude-sonnet-5-5": [2, 2.5, 4, 0.1, 10],
+        "claude-sonnet-5": [2, 2.5, 4, 0.2, 10],
+        "claude-sonnet-4": [3, 3.75, 6, 0.3, 15],
+        "claude-haiku-5-5": {"prices": [0.1, 0.125, 0.2, 0.01, 0.5],
+                             "above": 100000, "prices_above": [0.5, 0.625, 1, 0.05, 2.5]},  # prompt tokens
+        "claude-haiku-4-5": [1, 1.25, 2, 0.1, 5],
+        "claude-3-5-haiku": [0.8, 1, 1.6, 0.08, 4],
+    },
+    "price_multipliers": {"fast": 2.0, "us": 1.1},  # usage.speed / usage.inference_geo values
     "reread_default": 20,         # R̄ for `gain` until transcripts are read (N1.1)
     "recall_warn_rate": 0.2,      # gain warns when a filter kind is recalled more often than this…
     "recall_warn_min_cuts": 10,   # …over at least this many cut outputs (N2.1)

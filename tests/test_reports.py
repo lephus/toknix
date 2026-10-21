@@ -14,10 +14,13 @@ from unittest import mock
 import support  # noqa: F401  (puts src/ on sys.path)
 
 from toknix import cli, reports, store
-from transcript_factory import ClaudeTranscript, subagent_path, text, thinking, tool_use
+from transcript_factory import ClaudeTranscript, CodexRollout, subagent_path, text, thinking, tool_use
 
 NOW = 1_800_000_000.0
-W = [1.0, 1.25, 0.1, 5.0]
+# ETU per token of claude-opus-5-5, the factory's model, with 5-minute cache writes: input, cache write, cache read,
+# output (A1, P8-T2: 1 ETU = one input token of etu_model, claude-opus-5-5 by default)
+W = [1.0, 1.25, 0.05, 5.0]
+HAIKU = [0.1 / 4, 0.125 / 4, 0.2 / 4, 0.01 / 4, 0.5 / 4]  # claude-haiku-5-5, prompt ≤ 100k: 5 kinds (A1)
 
 
 def etu(i, cw, cr, o):
@@ -87,7 +90,10 @@ class TestReport(Home):
         self.assertAlmostEqual(d["etu_per_request"], total / 5)
         self.assertAlmostEqual(d["cache_hit"], 4299 / (1169 + 3199 + 4299))
         self.assertAlmostEqual(d["output_share"], 1169 * 5 / total)
-        self.assertEqual(d["subagents"], {"chains": 1, "requests": 1, "etu": sub, "share": sub / total})
+        self.assertEqual((d["subagents"]["chains"], d["subagents"]["requests"]), (1, 1))
+        self.assertAlmostEqual(d["subagents"]["etu"], sub)
+        self.assertAlmostEqual(d["subagents"]["usd"], 999 * (4 + 5 + 0.2 + 20) / 1e6)  # P8-T2: Opus 5.5 prices
+        self.assertAlmostEqual(d["subagents"]["share"], sub / total)
         self.assertEqual(d["tool_output_tokens"], 1000)  # 4000 chars / 4
         top = {s["id"]: s for s in d["top_sessions"]}
         self.assertEqual([s["id"] for s in d["top_sessions"]], ["a", "b"])
@@ -159,7 +165,7 @@ class TestWaste(Home):
         fam = g["tool_families"]["items"]
         self.assertEqual(fam[0]["family"], "Bash:npm")
         self.assertEqual(fam[0]["tokens"], 6000)
-        self.assertAlmostEqual(fam[0]["etu"], 6000 * 1.25 + 6000 * 0.1 * 4)  # R = requests left after it
+        self.assertAlmostEqual(fam[0]["etu"], 6000 * W[1] + 6000 * W[2] * 4)  # R = requests left after it
         self.assertEqual(fam[1]["family"], "Read:/w/src/app.ts")
         self.assertEqual(fam[1]["tokens"], 600)
         self.assertEqual([x["etu"] for x in fam], sorted((x["etu"] for x in fam), reverse=True))
@@ -206,8 +212,8 @@ class TestWaste(Home):
         self.assertEqual([b["cause"] for b in g["items"]], ["compact", "model", "idle", "unknown"])
         lost = {b["cause"]: b["etu_lost"] for b in g["items"]}
         self.assertEqual(lost["compact"], 0)  # normal after a compaction, not waste
-        self.assertAlmostEqual(lost["model"], 40000 * (1.25 - 0.1))
-        self.assertAlmostEqual(g["etu_lost"], (40000 + 20000 + 15000) * (1.25 - 0.1))
+        self.assertAlmostEqual(lost["model"], 40000 * (HAIKU[1] - HAIKU[3]))  # priced as the request's model
+        self.assertAlmostEqual(g["etu_lost"], (40000 + 20000 + 15000) * (HAIKU[1] - HAIKU[3]))
 
     def test_one_hour_ttl_is_not_idle(self):
         t = ClaudeTranscript(session="ttl", t0=NOW)
@@ -267,7 +273,7 @@ class TestSubagents(Home):  # P8-T1
         g = self.json_of("waste")["groups"]
         big = g["big_outputs"]["items"]
         self.assertEqual([(b["family"], b["tokens"], b["remaining_requests"]) for b in big], [("Bash:npm", 6000, 1)])
-        self.assertAlmostEqual(big[0]["etu"], 6000 * 1.25 + 6000 * 0.1 * 1)
+        self.assertAlmostEqual(big[0]["etu"], 6000 * W[1] + 6000 * W[2] * 1)
         self.assertEqual([j["path"] for j in g["junk"]["items"]], ["/w/node_modules/x/a.js"])
         # the subagent's first request starts its own cache: not a break of the main chain
         self.assertEqual([b["cause"] for b in g["cache_breaks"]["items"]], ["unknown"])
@@ -294,7 +300,7 @@ class TestSubagents(Home):  # P8-T1
         self.save_agent(path, sub)
         g = self.json_of("waste")["groups"]
         self.assertEqual(g["long_sessions"]["items"][0]["requests"], 81)
-        self.assertAlmostEqual(g["long_sessions"]["items"][0]["etu"], 81 * 100 + 10000 * 5)
+        self.assertAlmostEqual(g["long_sessions"]["items"][0]["etu"], 81 * 1000 * W[2] + 10000 * W[3])
         self.assertEqual([i["session"] for i in g["output_heavy"]["items"]], ["m"])
 
     def test_context_and_gain_see_subagent_calls(self):
@@ -313,6 +319,66 @@ class TestSubagents(Home):  # P8-T1
         self.assertEqual(skills, {"pdf": 1})
         stats = reports.bash_stats(7)
         self.assertEqual((stats["r_values"], stats["bash_calls"]), ([0], 1))
+
+
+class TestPrices(Home):  # P8-T2: each request at its model's price (A1)
+    def mixed(self):
+        main = ClaudeTranscript(session="p", t0=NOW)
+        main.assistant([text("a")], input=1000, cache_write=10000, cache_write_1h=10000, output=1000)  # 26,000 ETU
+        main.assistant([text("b")], input=0, cache_read=10000, output=500)                             # 3,000
+        path = self.save(main)
+        sub = ClaudeTranscript(session="p", t0=NOW, agent="a1", model="claude-sonnet-5-5")
+        sub.assistant([text("c")], input=0, cache_write=4000, output=2000)                             # 7,500
+        sub.write(subagent_path(path, "a1"))
+        codex = CodexRollout(session="c1", t0=NOW)
+        codex.turn(1000, 0, 100)                                             # no price: weights → 1,500
+        os.utime(codex.write(self.home / ".codex" / "sessions" / "2027" / "rollout-c1.jsonl"), (NOW, NOW))
+
+    def test_report_usd_by_model_and_unpriced(self):
+        self.mixed()
+        d = self.json_of("report")
+        self.assertAlmostEqual(d["etu"], 38000)
+        self.assertAlmostEqual(d["usd"], (4000 + 80000 + 20000 + 2000 + 10000 + 10000 + 20000) / 1e6)
+        self.assertEqual((d["etu_model"], d["etu_model_usd"]), ("claude-opus-5-5", 4))
+        self.assertAlmostEqual(d["output_share"], (5000 + 2500 + 5000 + 500) / 38000)
+        self.assertAlmostEqual(d["subagents"]["etu"], 7500)
+        models = [(m["model"], m["requests"], round(m["etu"]), m["usd"] and round(m["usd"], 6)) for m in d["models"]]
+        self.assertEqual(models, [("claude-opus-5-5", 2, 29000, 0.116), ("claude-sonnet-5-5", 1, 7500, 0.03),
+                                  ("(unknown)", 1, 1500, None)])
+        self.assertAlmostEqual(d["models"][0]["share"], 29000 / 38000)
+        self.assertEqual(d["unpriced"], {"requests": 1, "models": ["(unknown)"]})
+        top = {s["id"]: s for s in d["top_sessions"]}
+        self.assertAlmostEqual(top["p"]["usd"], 0.146)
+        self.assertIsNone(top["c1"]["usd"])
+        out = self.run_cli("report")[1]
+        self.assertIn("38.0k ETU ≈ $0.146 at API list prices", out)
+        self.assertIn("1 ETU = one claude-opus-5-5 input token ($4.00/MTok)", out)
+        self.assertIn("claude-sonnet-5-5", out.split("By model")[1])
+        self.assertIn("no price for 1 requests ((unknown))", out)
+
+    def test_waste_rereads_at_the_one_hour_write_price(self):
+        t = ClaudeTranscript(session="h", t0=NOW)
+        t.assistant([tool_use("b1", "Bash", command="npm test")])
+        t.user(tool_results=[("b1", "x" * 24000)])                              # 6,000 tokens
+        t.assistant([text("seen")], cache_write=6000, cache_write_1h=6000)      # writes it for 1 hour
+        t.assistant([text("again")], cache_read=6000)                           # R = 1
+        self.save(t)
+        g = self.json_of("waste")["groups"]
+        fam = g["tool_families"]["items"][0]
+        self.assertAlmostEqual(fam["etu"], 6000 * 2 + 6000 * 0.05 * 1)
+        self.assertAlmostEqual(fam["usd"], (6000 * 8 + 6000 * 0.2) / 1e6)
+        self.assertAlmostEqual(g["big_outputs"]["items"][0]["usd"], fam["usd"])
+        self.assertIn("$0.049", self.run_cli("waste")[1])
+
+    def test_cache_break_lost_at_the_one_hour_write_price(self):
+        t = ClaudeTranscript(session="b", t0=NOW)
+        t.assistant([text("1")], cache_read=50000, cache_write=1000)
+        t.assistant([text("2")], cache_read=0, cache_write=40000, cache_write_1h=40000)
+        self.save(t)
+        g = self.json_of("waste")["groups"]["cache_breaks"]
+        self.assertAlmostEqual(g["etu_lost"], 40000 * 2 - 40000 * 0.05)
+        self.assertAlmostEqual(g["usd_lost"], (40000 * 8 - 40000 * 0.2) / 1e6)
+        self.assertIn("$0.312 lost", self.run_cli("waste")[1])
 
 
 class TestContext(Home):
@@ -362,6 +428,7 @@ class TestSnapshot(Home):
         self.assertEqual(d["label"], "before")
         self.assertEqual(d["waste"]["big_outputs"], 1)
         self.assertIn("etu", d["report"])
+        self.assertAlmostEqual(d["report"]["usd"], d["report"]["etu"] * 4 / 1e6)  # P8-T2
 
     def test_label_is_a_safe_file_name(self):
         with redirect_stderr(io.StringIO()):
@@ -383,6 +450,8 @@ class TestGainFromTranscripts(Home):
         # Bash results sent with requests 2..5 of 5: 3, 2, 1, 0 requests left → median 1.5
         self.assertEqual(d["reread"]["r_bar"], statistics.median([3, 2, 1, 0]))
         self.assertEqual(d["reread"]["r_bar_source"], "transcripts")
+        # P8-T2: median of w_cw + w_cr·R over those results, with the weights of the request that carried each
+        self.assertAlmostEqual(d["reread"]["multiplier"], statistics.median(W[1] + W[2] * r for r in [3, 2, 1, 0]))
         self.assertEqual(d["wrapped"], {"bash_calls": 4, "wrapped": 3, "share": 0.75})
 
 

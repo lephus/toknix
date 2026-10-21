@@ -144,7 +144,7 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix symbol <name> [--kind K] [--path DIR]` | print a function or class (`Class.method` works) with line numbers |
 | `toknix refs <name> [--path DIR]` | where a name is used in code (not in strings or comments), definition left out |
 | `toknix map [DIR] [--budget 1500]` | the most used files and their top-level symbols, within a token budget |
-| `toknix report [--days 7] [--json]` | token use from transcripts: ETU, cache hit, output share, top sessions |
+| `toknix report [--days 7] [--json]` | token use from transcripts: ETU and $, cost by model, cache hit, output share, top sessions |
 | `toknix waste [--days 7] [--json]` | 7 groups of waste (re-read cost, big outputs, junk reads, cache breaks…) with fixes |
 | `toknix context [--days 30] [--path DIR] [--json]` | instruction files loaded every session, MCP servers and skills, and how often they are used |
 | `toknix snapshot --label L [--days 7]` | save a report summary to compare later |
@@ -154,9 +154,12 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix install` / `uninstall` / `doctor` | set up, remove, and check the hooks and rules |
 | `toknix init-project [--path DIR]` | deny Read of junk directories in the project's `.claude/settings.json`; write `.geminiignore` |
 
-**ETU** is the unit used to compare costs: `input + 1.25 × cache_write + 0.1 × cache_read + 5 × output`,
-the ratio of Anthropic's list prices. Codex and Gemini price differently, so set `weights` in the config
-for them.
+**ETU** is the unit used to compare costs: one input token of `etu_model` (Claude Opus 5.5, $4 per million
+tokens). Each request is priced at its own model's list price: input, cache writes (5-minute and 1-hour),
+cache reads and output. So ETU adds up across models and is proportional to dollars; reports show both. For
+Opus 5.5 that is `input + 1.25 × 5-min cache write + 2 × 1-hour cache write + 0.05 × cache read + 5 × output`.
+The dollars are API list prices: on a Pro or Max plan you do not pay per token, so read them as a comparison.
+A model without a price (Codex, Gemini) uses `weights` and has no $; set them for those agents.
 
 ## Reading `toknix gain`
 
@@ -164,7 +167,7 @@ for them.
 toknix gain (all time)
 
 Saved directly: 15.1k tokens (filters 15.1k, read guard 0)
-With re-reads (estimate): 49.1k ETU = direct × 3.25 (w_cw 1.25 + w_cr 0.1 × R̄ 20)
+With re-reads (estimate): 34.0k ETU ≈ $0.136 = direct × 2.25 (w_cw 1.25 + w_cr 0.05 × R̄ 20, claude-opus-5-5 prices)
   R̄ = 20 is the default value, not measured from transcripts yet
 
 By filter kind
@@ -176,8 +179,9 @@ By filter kind
   files the read guard kept out. These are estimated tokens. Treat them as an estimate, not a bill.
 - **With re-reads** is closer to what you pay. Tokens that enter the context are written to the cache
   once, then read again by every later request of the session.
-  - R̄ is the median number of requests left after a Bash result, measured from your transcripts.
-  - Until there are transcripts, R̄ is 20, and the line says it is the default.
+  - R̄ is the median number of requests left after a Bash result, measured from your transcripts. Each
+    result is priced at the model of the request that carried it.
+  - Until there are transcripts, R̄ is 20 at Opus 5.5 prices, and the line says it is the default.
 - **cuts / recalled / rate:** how often each filter cut output, and how often you or the agent then
   needed `toknix recall`.
   - Above 20% with 10 cuts or more, gain warns that the filter may cut too much. Please report the
@@ -234,7 +238,9 @@ Settings live in `~/.toknix/config.json`. Only the keys you set override the def
 | `guard_junk`, `guard_big_file_lines`, `guard_repeat_reads` | true, 800, 2 | read guard rules (`0` turns a rule off) |
 | `grep_head_limit` | 200 | added to content Greps (`0` = off) |
 | `context_window` | 200000 | for the status line; 1M models are recognised |
-| `weights` | `[1, 1.25, 0.1, 5]` | ETU weights: input, cache write, cache read, output |
+| `etu_model` | `"claude-opus-5-5"` | 1 ETU = one input token of this model (`""`: every request uses `weights`) |
+| `prices` | Anthropic list prices | $ per million tokens by model: input, 5-min cache write, 1-hour cache write, cache read, output. Your entries add to the defaults |
+| `weights` | `[1, 1.25, 0.1, 5]` | ETU weights of a model without a price: input, cache write, cache read, output |
 | `hook_permission` | `null` | see the warning below |
 
 | Environment variable | Effect |

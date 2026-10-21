@@ -20,7 +20,7 @@ from toknix import statusline, store
 from transcript_factory import ClaudeTranscript, subagent_path, text, tool_use
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-W = [1.0, 1.25, 0.1, 5.0]
+W = [1.0, 1.25, 0.05, 5.0]  # claude-opus-5-5 in ETU (A1, P8-T2): input, 5-minute cache write, cache read, output
 
 
 class Home(unittest.TestCase):
@@ -76,8 +76,8 @@ class TestLine(Home):
         self.saved_at(t0 + 1.5, chars=336000, guard=2000)  # 84,000 + 2,000 tokens
         with mock.patch.object(store.time, "time", return_value=t0 + 1.5):
             store.record_guard("other", "junk", "y", 99999)
-        saved = 86000 * (1.25 + 0.1 * 2)
-        etu = 4 * (10 + 100 + 50)
+        saved = 86000 * (W[1] + W[2] * 2)
+        etu = 4 * (10 + 1000 * W[2] + 50)
         self.assertIn(f"saved ~{statusline.fmt_num(saved)} ETU ({saved / (etu + saved):.1%})", self.line())
 
     def test_saving_after_the_last_request_is_zero_so_far(self):
@@ -112,7 +112,7 @@ class TestLine(Home):
              "start_ts": t0 + 1, "keys": []}))
         line = self.line()
         self.assertIn(f"saved ~{statusline.fmt_num(1000 * 1.25)} ETU", line)
-        self.assertIn(f"· {statusline.fmt_num(2 * 160)} ETU ·", line)
+        self.assertIn(f"· {statusline.fmt_num(2 * (10 + 1000 * W[2] + 50))} ETU ·", line)
 
     def test_colours(self):
         for pct, colour in ((59, None), (60, "33"), (79, "33"), (80, "31"), (97, "31")):
@@ -217,7 +217,7 @@ class TestIncremental(Home):
         small.assistant([text("b")], cache_read=1990, output=1)  # ctx 2,000 = 1 %
         small.write(self.path)
         self.assertTrue(self.line().startswith("ctx 2.0k/200k ▯"))
-        self.assertIn(f"{statusline.fmt_num(10 + 1990 * 0.1 + 5)} ETU", self.line())
+        self.assertIn(f"{statusline.fmt_num(10 + 1990 * W[2] + 5)} ETU", self.line())
 
 
 class TestSubagentFiles(Home):  # P8-T1
@@ -230,7 +230,7 @@ class TestSubagentFiles(Home):  # P8-T1
         sub.write(subagent_path(self.path, "a1"))
         line = self.line()
         self.assertTrue(line.startswith("ctx 92k/200k"), line)
-        self.assertIn(f"· {statusline.fmt_num(9200 + 50000 + 500)} ETU ·", line)
+        self.assertIn(f"· {statusline.fmt_num((92000 + 500000) * W[2] + 500)} ETU ·", line)
 
     def test_appends_and_streamed_usage_are_counted_once(self):
         t = ClaudeTranscript()
@@ -242,10 +242,10 @@ class TestSubagentFiles(Home):  # P8-T1
         last = sub.lines.pop()  # the line with the full output arrives later
         path = subagent_path(self.path, "a1")
         sub.write(path)
-        self.assertIn(f"· {statusline.fmt_num(100 + 100 + 40)} ETU ·", self.line())
+        self.assertIn(f"· {statusline.fmt_num(2000 * W[2] + 40)} ETU ·", self.line())
         sub.lines.append(last)
         sub.write(path)
-        full = 100 + 100 + 20000
+        full = 2000 * W[2] + 20000
         self.assertIn(f"· {statusline.fmt_num(full)} ETU ·", self.line())
         self.assertIn(f"· {statusline.fmt_num(full)} ETU ·", self.line())  # read once
         for f in (self.home / ".toknix").glob("sl-*.json"):
@@ -264,7 +264,44 @@ class TestSubagentFiles(Home):  # P8-T1
         sub = ClaudeTranscript(agent="a1")
         sub.assistant([text("b")], input=0, cache_read=10000, output=0)
         sub.write(subagent_path(self.path, "a1"))
-        self.assertIn(f"· {statusline.fmt_num(100 + 1000)} ETU ·", self.line())
+        self.assertIn(f"· {statusline.fmt_num(11000 * W[2])} ETU ·", self.line())
+
+
+class TestPrices(Home):  # P8-T2: each request at its model's price (A1)
+    def test_each_line_at_its_models_price(self):
+        t = ClaudeTranscript()
+        t.assistant([text("a")], input=0, cache_read=100000, output=0)                         # Opus 5.5: 5,000
+        t.assistant([text("b")], input=0, cache_read=100000, output=0, model="claude-sonnet-5-5")  # 2,500
+        t.assistant([text("c")], input=0, cache_write=1000, cache_write_1h=1000, output=0)    # 1h write: 2,000
+        t.assistant([text("d")], input=0, cache_read=1000, output=1, speed="fast")             # 2 × (50 + 5)
+        t.write(self.path)
+        sub = ClaudeTranscript(agent="a1", model="gpt-5-codex")                                 # no price: weights
+        sub.assistant([text("e")], input=0, cache_read=1000, output=0)                           # 100
+        sub.write(subagent_path(self.path, "a1"))
+        self.assertIn(f"· {statusline.fmt_num(5000 + 2500 + 2000 + 110 + 100)} ETU ·", self.line())
+
+    def test_saved_at_the_one_hour_write_price(self):
+        t0 = time.time() - 100
+        t = ClaudeTranscript(t0=t0)
+        t.assistant([text("a")], cache_read=1000, cache_write=500, cache_write_1h=500, output=10)  # t0+1
+        for _ in range(3):
+            t.assistant([text("b")], cache_read=1000, output=10)
+        t.write(self.path)
+        with mock.patch.object(store.time, "time", return_value=t0 + 1.5):
+            store.record_guard("s1", "junk", "x", 1000)
+        self.assertIn(f"saved ~{statusline.fmt_num(1000 * (2 + W[2] * 2))} ETU", self.line())
+
+    def test_cache_from_before_prices_is_rebuilt(self):
+        t = ClaudeTranscript()
+        t.assistant([text("a")], input=0, cache_read=1000, output=0)
+        t.write(self.path)
+        self.line()
+        cache = next((self.home / ".toknix").glob("sl-*.json"))
+        state = json.loads(cache.read_text())
+        state.pop("v")
+        state["etu"] = 999999.0  # counted with the old weights
+        cache.write_text(json.dumps(state))
+        self.assertIn(f"· {statusline.fmt_num(1000 * W[2])} ETU ·", self.line())
 
 
 class TestSpeed(Home):

@@ -141,7 +141,7 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
 | `toknix refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
 | `toknix map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
-| `toknix report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU, cache hit, tỉ trọng output, các session tốn nhất |
+| `toknix report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU và $, chi phí theo model, cache hit, tỉ trọng output, các session tốn nhất |
 | `toknix waste [--days 7] [--json]` | 7 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ…), kèm cách sửa |
 | `toknix context [--days 30] [--path DIR] [--json]` | file chỉ dẫn được nạp mỗi session, MCP server và skill, kèm số lần chúng được dùng |
 | `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
@@ -151,9 +151,12 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
 | `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
 
-**ETU** là đơn vị để so sánh chi phí: `input + 1,25 × cache_write + 0,1 × cache_read + 5 × output`, theo tỉ
-lệ giá niêm yết của Anthropic. Codex và Gemini có giá khác, nên với hai agent này hãy đặt `weights` trong
-config.
+**ETU** là đơn vị để so sánh chi phí: một token input của `etu_model` (Claude Opus 5.5, $4 cho một triệu
+token). Mỗi request tính theo giá niêm yết của chính model của nó: input, cache write (5 phút và 1 giờ), cache
+read và output. Vì vậy ETU cộng được giữa các model và tỉ lệ với số đô la; báo cáo hiện cả hai. Với Opus 5.5:
+`input + 1,25 × cache write 5 phút + 2 × cache write 1 giờ + 0,05 × cache read + 5 × output`. Số đô la là giá
+API niêm yết: gói Pro hay Max không trả theo token, nên hãy coi nó là con số để so sánh. Model không có giá
+(Codex, Gemini) dùng `weights` và không có $; với hai agent này hãy đặt `weights` trong config.
 
 ## Đọc `toknix gain`
 
@@ -161,7 +164,7 @@ config.
 toknix gain (all time)
 
 Saved directly: 15.1k tokens (filters 15.1k, read guard 0)
-With re-reads (estimate): 49.1k ETU = direct × 3.25 (w_cw 1.25 + w_cr 0.1 × R̄ 20)
+With re-reads (estimate): 34.0k ETU ≈ $0.136 = direct × 2.25 (w_cw 1.25 + w_cr 0.05 × R̄ 20, claude-opus-5-5 prices)
   R̄ = 20 is the default value, not measured from transcripts yet
 
 By filter kind
@@ -173,8 +176,9 @@ By filter kind
   đã chặn. Đây là số token ước lượng. Hãy coi nó là ước tính, không phải hoá đơn.
 - **With re-reads** gần với số tiền bạn thật sự trả. Token đã vào context được ghi vào cache một lần, rồi
   được đọc lại ở mọi request sau đó trong session.
-  - R̄ là trung vị số request còn lại sau một kết quả Bash, đo từ transcript của bạn.
-  - Khi chưa có transcript, R̄ là 20, và dòng output ghi rõ đó là giá trị mặc định.
+  - R̄ là trung vị số request còn lại sau một kết quả Bash, đo từ transcript của bạn. Mỗi kết quả tính theo
+    giá model của request mang nó.
+  - Khi chưa có transcript, R̄ là 20 theo giá Opus 5.5, và dòng output ghi rõ đó là giá trị mặc định.
 - **cuts / recalled / rate:** mỗi bộ lọc đã cắt output bao nhiêu lần, và sau đó bạn hay agent cần đến
   `toknix recall` bao nhiêu lần.
   - Nếu tỉ lệ này trên 20% với từ 10 lần cắt trở lên, `gain` cảnh báo bộ lọc có thể cắt quá tay. Khi đó hãy
@@ -231,7 +235,9 @@ Thiết lập nằm trong `~/.toknix/config.json`. Chỉ những key bạn đặ
 | `guard_junk`, `guard_big_file_lines`, `guard_repeat_reads` | true, 800, 2 | các luật của read guard (`0` để tắt một luật) |
 | `grep_head_limit` | 200 | giới hạn thêm vào Grep ở chế độ content (`0` = tắt) |
 | `context_window` | 200000 | dùng cho status line; model 1M được tự nhận ra |
-| `weights` | `[1, 1.25, 0.1, 5]` | trọng số ETU: input, cache write, cache read, output |
+| `etu_model` | `"claude-opus-5-5"` | 1 ETU = một token input của model này (`""`: mọi request dùng `weights`) |
+| `prices` | giá niêm yết của Anthropic | $ cho một triệu token theo model: input, cache write 5 phút, cache write 1 giờ, cache read, output. Mục bạn thêm được cộng vào mặc định |
+| `weights` | `[1, 1.25, 0.1, 5]` | trọng số ETU của model không có giá: input, cache write, cache read, output |
 | `hook_permission` | `null` | xem cảnh báo bên dưới |
 
 | Biến môi trường | Tác dụng |
