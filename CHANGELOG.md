@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `install.sh`: on a fresh macOS the install succeeded but `toknix` was "command not found", because
+  `~/.local/bin` is not on PATH there and the script only printed a note. It now adds `~/.local/bin` to PATH
+  in your shell profile (two marked lines; `--no-modify-path` to skip), ends with the `export` line to use
+  in the current terminal, and `--uninstall` takes those lines out again.
+
 ## 0.2.0 (2026-10-21)
 
 Costs are now counted the way they are billed: every chain of a session, each request at its own model's

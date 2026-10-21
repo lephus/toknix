@@ -9,10 +9,14 @@
 #   --uninstall     remove the hooks, the rules block and toknix itself
 #   --from SOURCE   install from SOURCE (a local directory or a pip/uv URL) instead of GitHub
 #   --no-hooks      install the toknix command only; skip `toknix install`
-# Environment: TOKNIX_REPO (owner/name, default lephus/toknix), TOKNIX_REF (default main).
+#   --no-modify-path  do not add ~/.local/bin to PATH in your shell profile
+# Environment: TOKNIX_REPO (owner/name, default lephus/toknix), TOKNIX_REF (default main),
+#   TOKNIX_NO_MODIFY_PATH=1 (same as --no-modify-path).
 #
 # Uses `uv tool install` when uv is on PATH; otherwise a private venv in ~/.toknix/venv (so PEP 668
 # "externally managed" Pythons, e.g. Ubuntu 24.04, are never touched) linked from ~/.local/bin/toknix.
+# Either way the command lands in ~/.local/bin, which a fresh macOS shell does not have on PATH: the
+# shell profile gets one marked line for it, and --uninstall takes that line out again.
 set -eu
 
 REPO="${TOKNIX_REPO:-lephus/toknix}"
@@ -21,8 +25,18 @@ SOURCE="git+https://github.com/${REPO}@${REF}"
 DRY_RUN=0
 UNINSTALL=0
 HOOKS=1
+MODIFY_PATH=1
+if [ "${TOKNIX_NO_MODIFY_PATH:-}" = "1" ]; then
+    MODIFY_PATH=0
+fi
 VENV="${HOME}/.toknix/venv"
 BIN_DIR="${HOME}/.local/bin"
+PATH_MARK="# toknix: put ~/.local/bin on PATH (added by install.sh)"
+# $HOME and $PATH below are for the profile to expand, not this script
+# shellcheck disable=SC2016
+PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+# shellcheck disable=SC2016
+FISH_PATH_LINE='set -gx PATH "$HOME/.local/bin" $PATH'
 
 say() { printf 'toknix: %s\n' "$*"; }
 die() { printf 'toknix: error: %s\n' "$*" >&2; exit 1; }
@@ -41,13 +55,14 @@ while [ $# -gt 0 ]; do
         --dry-run) DRY_RUN=1 ;;
         --uninstall) UNINSTALL=1 ;;
         --no-hooks) HOOKS=0 ;;
+        --no-modify-path) MODIFY_PATH=0 ;;
         --from)
             [ $# -ge 2 ] || die "--from needs a source"
             SOURCE="$2"
             shift
             ;;
         -h | --help)
-            sed -n '2,16p' "$0" 2>/dev/null || true
+            sed -n '2,21p' "$0" 2>/dev/null || true
             exit 0
             ;;
         *) die "unknown option: $1 (see --help)" ;;
@@ -74,6 +89,62 @@ toknix_bin() {
     fi
 }
 
+# The profile the user's login shell reads: where the PATH line goes.
+profile_file() {
+    case "$(basename "${SHELL:-sh}")" in
+        zsh) printf '%s\n' "${ZDOTDIR:-$HOME}/.zshrc" ;;
+        bash)
+            if [ "$(uname -s)" = Darwin ]; then
+                printf '%s\n' "${HOME}/.bash_profile"  # Terminal starts bash as a login shell
+            else
+                printf '%s\n' "${HOME}/.bashrc"
+            fi
+            ;;
+        fish) printf '%s\n' "${HOME}/.config/fish/config.fish" ;;
+        *) printf '%s\n' "${HOME}/.profile" ;;
+    esac
+}
+
+add_to_path() {
+    profile="$(profile_file)"
+    if [ -f "$profile" ] && grep -qF "$PATH_MARK" "$profile"; then
+        return 0
+    fi
+    if [ "$DRY_RUN" -eq 1 ]; then
+        printf '+ add %s to PATH in %s\n' "$BIN_DIR" "$profile"
+        return 0
+    fi
+    line="$PATH_LINE"
+    case "$profile" in
+        *.fish) line="$FISH_PATH_LINE" ;;
+    esac
+    mkdir -p "$(dirname "$profile")"
+    printf '%s\n%s\n' "$PATH_MARK" "$line" >>"$profile"
+    say "added ${BIN_DIR} to PATH in ${profile}"
+}
+
+# Take the marked PATH line out of every profile install could have written, leaving the rest untouched.
+remove_from_path() {
+    for profile in "${ZDOTDIR:-$HOME}/.zshrc" "${HOME}/.bash_profile" "${HOME}/.bashrc" "${HOME}/.profile" \
+        "${HOME}/.config/fish/config.fish"; do
+        if ! [ -f "$profile" ] || ! grep -qF "$PATH_MARK" "$profile"; then
+            continue
+        fi
+        if [ "$DRY_RUN" -eq 1 ]; then
+            printf '+ remove the toknix PATH lines from %s\n' "$profile"
+            continue
+        fi
+        tmp="${profile}.toknix-tmp"
+        awk -v mark="$PATH_MARK" '$0 == mark { skip = 2 } skip > 0 { skip--; next } { print }' "$profile" >"$tmp"
+        if [ -s "$tmp" ]; then
+            cat "$tmp" >"$profile" # write through, so a symlinked dotfile stays a symlink
+        else
+            rm -f "$profile" # nothing but our lines: install created it
+        fi
+        rm -f "$tmp"
+    done
+}
+
 uninstall() {
     tok="$(toknix_bin || true)"
     if [ -n "$tok" ]; then
@@ -90,6 +161,7 @@ uninstall() {
     if [ -L "${BIN_DIR}/toknix" ]; then
         run rm -f "${BIN_DIR}/toknix"
     fi
+    remove_from_path
     say "removed. Your data in ~/.toknix (stats, saved outputs) is kept; delete it by hand if you like."
 }
 
@@ -128,15 +200,25 @@ main() {
         tok="${tok:-toknix}"
     fi
     [ -n "$tok" ] || die "toknix was installed but is not on PATH; add ${BIN_DIR} to PATH and run 'toknix install'"
-    case ":${PATH}:" in
-        *":${BIN_DIR}:"*) ;;
-        *) say "note: ${BIN_DIR} is not on PATH; add it to your shell profile" ;;
-    esac
+    on_path=1
+    if ! command -v toknix >/dev/null 2>&1; then # the hooks use the full path; the user's shell needs PATH
+        on_path=0
+        if [ "$MODIFY_PATH" -eq 1 ]; then
+            add_to_path
+        fi
+    fi
     if [ "$HOOKS" -eq 1 ]; then
         run "$tok" install
     fi
     run "$tok" doctor || true
     say "done. Restart Claude Code to load the hooks."
+    if [ "$on_path" -eq 0 ]; then
+        if [ "$MODIFY_PATH" -eq 0 ]; then
+            say "to keep ${BIN_DIR} on PATH, add that line to your shell profile."
+        fi
+        say "this terminal does not have ${BIN_DIR} on PATH yet: open a new terminal, or run"
+        printf '    %s\n' "$PATH_LINE"
+    fi
 }
 
 main

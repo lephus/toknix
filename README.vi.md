@@ -28,12 +28,16 @@ Script cài:
 - dùng `uv tool install` nếu máy có [uv](https://docs.astral.sh/uv/). Nếu không, nó tạo một venv riêng
   trong `~/.toknix/venv`, nên Python hệ thống bị đánh dấu "externally managed" (PEP 668, ví dụ Ubuntu 24.04)
   không bị đụng tới, rồi tạo `~/.local/bin/toknix` trỏ vào venv đó;
+- thêm `~/.local/bin` vào PATH trong profile của shell (`~/.zshrc`, `~/.bash_profile` hoặc `~/.bashrc`,
+  `config.fish`, `~/.profile`) nếu PATH chưa có: hai dòng có đánh dấu, không bao giờ thêm trùng. Sau đó mở
+  terminal mới, hoặc chạy dòng `export` mà script in ở cuối;
 - chạy `toknix install`, rồi `toknix doctor`.
 
 | Muốn | Chạy |
 |---|---|
 | xem trước sẽ làm gì | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
 | chỉ cài lệnh, không cài hook | `… \| sh -s -- --no-hooks` |
+| không sửa profile của shell | `… \| sh -s -- --no-modify-path` |
 | gỡ hết | `… \| sh -s -- --uninstall`, hoặc `toknix uninstall` nếu chỉ muốn gỡ hook và rules |
 | cài không qua script | `uv tool install git+https://github.com/lephus/toknix && toknix install` |
 
@@ -75,7 +79,7 @@ Lệnh này làm ba việc:
 1. Chạy `toknix uninstall`: bỏ 4 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
    `~/.claude/CLAUDE.md` (cùng `AGENTS.md` / `GEMINI.md` nếu có). Các file này trở về đúng như trước khi cài.
 2. Gỡ chính lệnh `toknix`: `uv tool uninstall toknix`, hoặc xoá venv `~/.toknix/venv` và link
-   `~/.local/bin/toknix`.
+   `~/.local/bin/toknix`, cùng hai dòng PATH mà script cài đã thêm vào profile của shell.
 3. Giữ lại dữ liệu trong `~/.toknix` (thống kê, output đã lưu). Muốn xoá luôn thì chạy `rm -rf ~/.toknix`.
 
 Sau đó **khởi động lại Claude Code** để nó không còn nạp các hook cũ.

@@ -28,12 +28,16 @@ The installer:
 - uses `uv tool install` if you have [uv](https://docs.astral.sh/uv/). Otherwise it creates a private
   venv in `~/.toknix/venv`, so a system Python marked "externally managed" (PEP 668, e.g. Ubuntu 24.04) is
   never touched, and links `~/.local/bin/toknix` to it;
+- puts `~/.local/bin` on PATH in your shell profile (`~/.zshrc`, `~/.bash_profile` or `~/.bashrc`,
+  `config.fish`, `~/.profile`) when it is not there yet: two marked lines, never added twice. Open a new
+  terminal afterwards, or run the `export` line the installer prints at the end;
 - runs `toknix install` and then `toknix doctor`.
 
 | Want to | Run |
 |---|---|
 | see what would happen | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
 | install the command only, no hooks | `… \| sh -s -- --no-hooks` |
+| leave my shell profile alone | `… \| sh -s -- --no-modify-path` |
 | remove everything | `… \| sh -s -- --uninstall`, or `toknix uninstall` to drop only the hooks and rules |
 | install without the script | `uv tool install git+https://github.com/lephus/toknix && toknix install` |
 
@@ -76,7 +80,7 @@ It does three things:
    the rules block from `~/.claude/CLAUDE.md` (and from `AGENTS.md` / `GEMINI.md` if they have one). Those
    files go back to exactly what they were before the install.
 2. Removes the `toknix` command itself: `uv tool uninstall toknix`, or the `~/.toknix/venv` venv and the
-   `~/.local/bin/toknix` link.
+   `~/.local/bin/toknix` link, and the two PATH lines the installer added to your shell profile.
 3. Keeps your data in `~/.toknix` (stats, saved outputs). To delete it too: `rm -rf ~/.toknix`.
 
 Then **restart Claude Code** so it stops loading the old hooks.
