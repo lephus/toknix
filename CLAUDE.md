@@ -5,6 +5,9 @@ CLI Python tối ưu token cho các coding agent (Claude Code, Codex CLI, Gemini
 - **Kế hoạch:** `docs/PLAN.md`
 - **Thuật toán:** `docs/ALGORITHMS.md` (nguồn sự thật duy nhất, nếu mâu thuẫn thì sửa tài liệu trước rồi mới sửa code)
 - **Thiết kế mở rộng (lý do của các mục N…):** `docs/superpowers/specs/2026-10-18-token-optimizations-design.md`
+- **Đang dở (2026-10-21):** brainstorm phương pháp tối ưu khoa học và compact tự động, chưa duyệt, chưa có code. Đọc
+  `docs/superpowers/specs/2026-10-21-scientific-token-optimization-design.md` (mục 7) trước khi làm. Bỏ dòng này khi
+  thiết kế đã được duyệt và gộp vào ALGORITHMS/PLAN.
 
 ## Cách làm việc
 
