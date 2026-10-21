@@ -1,6 +1,28 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.2.0 (2026-10-21)
+
+Costs are now counted the way they are billed: every chain of a session, each request at its own model's
+price. ETU changes meaning, so the numbers of 0.1.0 (status line, `report`, `waste`, `gain`, snapshots) do not
+compare with those of 0.2.0. `bench` results still do: bench keeps `weights`.
+
+### Measuring
+- Subagent transcripts (`<session>/subagents/*.jsonl`) are read too. Costs count every chain, re-reads are
+  counted within each chain, and `report` and the status line include the subagents.
+- Each request is priced at its own model's list price (5-minute and 1-hour cache writes, fast mode, US-only
+  inference). ETU is now one input token of `etu_model` (Claude Opus 5.5), so it adds up across models and is
+  proportional to $. `report` shows $ and the cost of each model; `waste`, `gain` and the context reminder
+  show $ too. Prices live in the config (`prices`), models without a price use `weights`.
+- `waste` (8): subagents by type and model. For agents that edited no file it estimates what a cheaper model
+  (`waste_subagent_model`, Sonnet 5.5) would have cost.
+- `waste` (9): file reads and searches (Read, Grep, cat, sed, grep…) in sessions and in subagents. A Bash
+  command is named after any leading `cd <dir>` or `NAME=value` statement.
+- `context` measures the fixed overhead of every request from the transcripts (Claude Code 2.1.30 or later):
+  tool definitions, skill listing, instructions, system prompt, MCP servers, agent types. It prices each
+  part, names the biggest tool definitions, and shows what plugins, MCP servers, skills and agent types that
+  were never used cost.
+
+## 0.1.0 (not tagged)
 
 First version. Python ≥ 3.9, standard library only.
 
@@ -25,23 +47,9 @@ The tool was briefly published as `tokopt`. Everything is now named `toknix`; `t
 
 ### Measuring
 - `toknix gain`: direct savings, the re-read estimate, recall rates per filter, top commands.
-- `toknix report`, `waste` (8 groups with fixes), `context`, `snapshot`, from Claude Code and Codex transcripts.
-  - Subagent transcripts (`<session>/subagents/*.jsonl`) are read too: costs count every chain, re-reads
-    are counted within each chain, and the report shows the subagents' share.
-  - Each request is priced at its own model's list price (5-minute and 1-hour cache writes, fast mode, US-only
-    inference). ETU is now one input token of `etu_model` (Claude Opus 5.5), so it adds up across models and
-    is proportional to $. `report` shows $ and the cost of each model; `waste`, `gain` and the context
-    reminder show $ too.
-  - `waste` groups subagents by type and model. For agents that edited no file it estimates what a cheaper
-    model (`waste_subagent_model`, Sonnet 5.5) would have cost.
-  - `waste` names a Bash command after any leading `cd <dir>` or `NAME=value` statement, and shows the cost
-    of file reads and searches (Read, Grep, cat, sed, grep…) in sessions and in subagents.
-  - `context` measures the fixed overhead of every request from the transcripts: tool definitions, skill
-    listing, instructions, system prompt, MCP servers, agent types. It also shows what plugins, MCP servers,
-    skills and agent types that were never used cost, what each part of it costs in all, and the biggest
-    tool definitions.
+- `toknix report`, `waste` (7 groups with fixes), `context`, `snapshot`, from Claude Code and Codex transcripts.
 - Char/token calibration from transcripts, used only when it is good enough.
-- `toknix statusline`: context use, session ETU (subagents included) and savings, read incrementally.
+- `toknix statusline`: context use, session ETU and savings, read incrementally.
 - `toknix ui`: a read-only page on 127.0.0.1 with live activity, the original and filtered output of each
   cut run side by side, read-guard denials and savings per day. `toknix run` now also keeps the filtered
   output next to the raw one (`tee/<id>.out.log`).

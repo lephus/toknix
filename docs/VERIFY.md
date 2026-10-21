@@ -55,7 +55,7 @@ Script dùng `uv tool install` nếu có uv; nếu không thì tạo venv `~/.to
 
 ```bash
 command -v toknix        # phải ra một đường dẫn, ví dụ ~/.local/bin/toknix
-toknix --version         # toknix 0.1.0
+toknix --version         # toknix 0.2.0
 ```
 
 ## 2. Cài hook và kiểm tra (check F)
