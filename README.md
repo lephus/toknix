@@ -301,6 +301,21 @@ python scripts/bench_codesearch.py 2000        # symbol/refs on a generated 2,00
   disagree, the document is fixed first.
 - [docs/VERIFY.md](docs/VERIFY.md): the checks on a real Claude Code session.
 
+## References
+
+Both papers train a new tokenizer. toknix does not: you pay for the tokens your provider's tokenizer counts.
+
+- Shi et al., *Counting and Min-Cost Encoding for Tokenization in Large Language Models* (CNF-MCE),
+  [arXiv:2610.01127](https://arxiv.org/abs/2610.01127), 1 October 2026. It counts substrings across the
+  whole corpus, keeps only the ones that are actually used, then picks the segmentation with the lowest
+  total cost, and compares this with BPE. toknix takes two ideas from it: token cost depends on the kind of
+  text, not on its length in characters (token estimates by character class, rewriting costly strings), and
+  what matters is what gets used, not what appears often (filter recall, MCP servers and skills that are
+  loaded but never called).
+- Reif, Kaplan, Schwartz, *More Than Words: Compositional Tokenization for Efficient Language Models*
+  (CoBPE), [arXiv:2610.05597](https://arxiv.org/abs/2610.05597), October 2026. It writes a short phrase as
+  a base token plus modifiers, which makes sequences about 30% shorter than with BPE.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

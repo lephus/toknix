@@ -298,6 +298,21 @@ python scripts/bench_codesearch.py 2000        # đo symbol/refs trên một rep
   và code không khớp, tài liệu được sửa trước.
 - [docs/VERIFY.md](docs/VERIFY.md): các bước kiểm trên một session Claude Code thật.
 
+## Tài liệu tham khảo
+
+Cả hai bài đều huấn luyện tokenizer mới. toknix thì không: bạn trả tiền theo số token mà tokenizer của nhà
+cung cấp đếm.
+
+- Shi và cộng sự, *Counting and Min-Cost Encoding for Tokenization in Large Language Models* (CNF-MCE),
+  [arXiv:2610.01127](https://arxiv.org/abs/2610.01127), 1/10/2026. Bài đếm chuỗi con trên toàn bộ dữ liệu,
+  chỉ giữ những chuỗi thực sự được dùng, rồi chọn cách tách token có tổng chi phí thấp nhất, và so sánh với
+  BPE. toknix lấy hai ý từ bài này: chi phí token phụ thuộc loại văn bản, không tỉ lệ với số ký tự (ước lượng
+  token theo loại ký tự, viết lại các chuỗi tốn token), và điều quan trọng là cái được dùng, không phải cái
+  xuất hiện nhiều (tỉ lệ recall của bộ lọc, MCP server và skill được nạp nhưng không bao giờ được gọi).
+- Reif, Kaplan, Schwartz, *More Than Words: Compositional Tokenization for Efficient Language Models*
+  (CoBPE), [arXiv:2610.05597](https://arxiv.org/abs/2610.05597), 10/2026. Bài biểu diễn một cụm từ ngắn
+  bằng một token gốc cộng các modifier, nhờ đó chuỗi ngắn hơn khoảng 30% so với BPE.
+
 ## Giấy phép
 
 MIT, xem [LICENSE](LICENSE).
