@@ -155,7 +155,7 @@ Chạy lại script ở Phụ lục A sẽ ra số hơi khác (±0,5%) vì trans
 
 ## 8. Bối cảnh khác (trước chỉ có trong memory của máy cũ)
 
-- **Repo và phát hành:** thư mục `tokopt/` là repo `lephus/toknix` (public). Làm trên `v0.1-dev`; phát hành = fast-forward
+- **Repo và phát hành:** thư mục `tokopt/` là repo `lephus/toknix` (public). Làm trên `dev` (trước 2026-10-22 là `v0.1-dev`, đã gộp vào `main` và xoá); phát hành = fast-forward
   `main` rồi push, **không force**. Máy cũ push qua SSH host alias `phule9225.github.com` trong `~/.ssh/config`; máy khác
   cần alias đó hoặc đổi remote. Thư mục `toknix/` bên ngoài là bản clone cũ chỉ có commit README đầu tiên: không push từ đó.
   Phát hành bản mới: tăng `__version__`, thêm CHANGELOG, sửa version trong `tests/test_cli.py`, ví dụ pin trong hai README
