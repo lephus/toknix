@@ -280,6 +280,10 @@ khi bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
   được model của phiên chính.
 - **Codex và Gemini CLI chưa có hook.** Hai agent này chỉ nhận rules block, để agent tự gọi `toknix run` và
   `toknix outline`. Transcript của Gemini không được đọc.
+  - Model của subagent: Gemini CLI vốn đã chạy subagent chỉ đọc (`codebase_investigator`) bằng Flash. toknix
+    không đặt model cho Codex. Codex chỉ có một thiết lập, `[agents] default_subagent_model` trong
+    `~/.codex/config.toml` (Codex 0.145 trở lên), áp cho mọi subagent, kể cả subagent sửa code, và model không
+    có trong gói của bạn làm các lần spawn đó lỗi. Bạn tự đặt nếu thấy hợp ([A9.1](docs/ALGORITHMS.md)).
 - **Một số hành vi của Claude Code chưa được xác nhận trên session thật** ([docs/VERIFY.md](docs/VERIFY.md)):
   - `updatedInput` có được áp dụng khi hook không gửi permission decision không;
   - Claude Code có tự bỏ qua các lần Read lặp lại không;

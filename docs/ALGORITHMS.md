@@ -794,4 +794,26 @@ không khớp gì → None (giữ model)
 - **Đo hiệu quả:** `waste` (8) đã nhóm subagent theo loại và model lấy từ transcript, nên thấy được phần đã chuyển; bảng `routes` cho biết hook đổi bao nhiêu lần và vì sao. Dấu hiệu đổi sai: số request mỗi agent của nhóm Sonnet tăng mạnh so với trước.
 - **Lỗi:** như A3, mọi exception thành "không có ý kiến"; transcript không đọc được thì không đổi.
 - **Thời gian:** đo 2026-10-22 trên macOS, transcript 45 MB: 30–40 ms mỗi lần (`python -c pass` 10 ms), vì chỉ đọc 1 MB cuối.
-- **Codex, Gemini:** chưa làm (P10-T2). Codex có `agents.default_subagent_model` và `model` trong file agent `.toml`; Gemini có `agents.overrides.<name>.modelConfig.model` và tự định tuyến phiên chính bằng `auto`. Không agent nào có hook đổi được model.
+- **Codex, Gemini:** xem A9.1.
+
+### A9.1 Codex và Gemini CLI (P10-T2)
+
+Kiểm từ mã nguồn ngày 2026-10-22: máy phát triển không cài Codex hay Gemini, nên hai agent đọc source, và các dòng then chốt đã được đọc lại. Không agent nào trong hai agent này có hook đổi được model của subagent theo từng việc như A9; chỉ có config đọc lúc khởi động.
+
+- **Gemini CLI** (`google-gemini/gemini-cli` @ `09d81bf`): không ghi gì.
+  - `FACT` Subagent dựng sẵn (`agents/registry.ts`):
+    - `codebase_investigator` chỉ có LS, ReadFile, Glob, Grep. Nó dùng `PREVIEW_GEMINI_FLASH_MODEL` khi model chính là Gemini 3; model mặc định `auto` được tính là Gemini 3 (`isGemini3Model(resolveModel("auto"))`).
+    - `cli_help` dùng `flash`.
+    - `generalist` sửa được file và dùng `inherit`.
+    - Phiên chính mặc định `auto` tự định tuyến Flash/Pro.
+  - Vậy việc đọc và tìm đã chạy Flash. Thấp hơn chỉ còn `flash-lite`, và chưa kiểm cấu hình thinking của agent dựng sẵn có chạy trên đó không.
+  - `FACT` `~/.gemini/settings.json` được đọc qua `strip-json-comments`, tức là cho phép comment. Gemini cũng tự ghi lại file này. Nếu sau này cần ghi, chỉ được thêm hoặc bớt đúng key, không đọc rồi ghi lại cả file bằng `json` của Python (sẽ lỗi khi file có comment, hoặc làm mất comment).
+  - Antigravity CLI thay Gemini CLI cho gói miễn phí và Google One từ 2026-06-18. Nó dùng `~/.gemini/antigravity-cli/settings.json`, agent đặt trong `~/.gemini/config/agents/<name>.md` (`model: inherit|flash|pro`). Không có source để kiểm, nên không làm.
+- **Codex CLI** (`openai/codex` @ `61f34c3`, bản ổn định rust-v0.163.0): `[TBD]`, chưa ghi gì, chờ người dùng chọn.
+  - `FACT` `[agents] default_subagent_model` (có từ v0.145) áp cho **mọi** subagent được spawn không kèm `model`, kể cả `worker` làm việc sửa code, không riêng việc đọc.
+  - `FACT` Role không có key model riêng. Muốn đổi riêng `explorer` phải khai `[agents.explorer]` với `config_file` trỏ tới một file chứa `model`. Khi đó role của người dùng thay hẳn role dựng sẵn, và tool spawn lộ thêm tham số `agent_type` (khi chưa có role nào của người dùng, parent không chọn được role).
+  - `FACT` Model không có trong danh sách model của tài khoản thì mọi lần spawn không kèm model đều lỗi: `Unknown model … for spawn_agent`. `gpt-6-luna` là model tài liệu khuyên cho agent nhanh, phạm vi hẹp. Nó có ở gói Work và Codex; gói Free/Go "khi có"; Enterprise/Edu cần admin bật; với API key chưa kiểm.
+  - Suy từ code, chưa chạy: Codex trước v0.145 đọc key lạ trong `[agents]` như một role (`#[serde(flatten)] roles`). Dòng `default_subagent_model = …` khi đó sai kiểu, và Codex không khởi động.
+  - Hai hướng để người dùng chọn. Cả hai cần kiểm trên một bản cài thật đăng nhập được.
+    - (a) `install` ghi `default_subagent_model` khi `codex --version` ≥ 0.145 và người dùng chưa đặt. Chấp nhận mọi subagent dùng model nhỏ.
+    - (b) Tạo role `explorer` riêng với model nhỏ. Chấp nhận thay role dựng sẵn và lộ `agent_type`.

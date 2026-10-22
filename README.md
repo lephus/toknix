@@ -282,6 +282,11 @@ know you want that. `"ask"` always asks.
   turn it off. No hook can change the main session's model.
 - **Codex and Gemini CLI have no hooks yet.** They get the rules block, so the agent can call `toknix run`
   and `toknix outline` itself. Gemini transcripts are not read.
+  - Subagent models: Gemini CLI already runs its read-only subagent (`codebase_investigator`) on Flash.
+    toknix does not set one for Codex. Codex's only setting, `[agents] default_subagent_model` in
+    `~/.codex/config.toml` (Codex 0.145 or later), applies to every subagent, including the ones that edit
+    code, and a model that is not on your plan makes those spawns fail. Set it yourself if that suits you
+    ([A9.1](docs/ALGORITHMS.md)).
 - **Some Claude Code behaviour is still to be confirmed on a real session**
   ([docs/VERIFY.md](docs/VERIFY.md)):
   - whether `updatedInput` is applied without a permission decision;

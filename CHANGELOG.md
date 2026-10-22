@@ -11,6 +11,9 @@
   and leaves forks, Plan and plugin agents alone. `"route_subagents": false` turns it off; `route_models` and
   `route_agent_types` tune it. Run `toknix install` to add the hook; `toknix doctor` shows how many subagents
   it moved in the last 7 days.
+- Codex and Gemini CLI are unchanged. Gemini CLI already runs its read-only subagent on Flash. Codex can only
+  set one model for every subagent (`[agents] default_subagent_model`), and a model that is not on your plan
+  makes those spawns fail, so toknix leaves that setting to you.
 
 ### Changed
 - `context_window` and `context_budget` default to 1,000,000 (was 200k): the status line counts against 1M and

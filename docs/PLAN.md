@@ -333,8 +333,12 @@ Người dùng chọn T1 và T2 (2026-10-21). Gợi ý bỏ tool lớn không d�
 - Xong khi: test cho từng nhánh "không làm gì" của A9, cho classify, chỉ đổi xuống; install thêm và uninstall gỡ đúng hook; chạy thật một lần bằng `claude -p` thấy `resolvedModel` đổi.
   - Kết quả (2026-10-22): `hooks.hook_agent`, `classify_task`, `main_model`; bảng `routes`; 16 test hook, test installer cập nhật. Chạy thật (`claude -p --model sonnet`): lượt trả lời đầu chưa có dòng assistant trong transcript nên model của phiên chính lấy từ dòng `api-request`; sau đó 3/3 Explore chạy `claude-haiku-5-5`, "Design cache layer" giữ model. Hook 30–40 ms trên transcript 45 MB.
 
-**P10-T2 `[ ]` Codex và Gemini: model mặc định cho subagent (A9)**
-- `install` ghi model rẻ cho subagent đọc/tìm: Codex `agents.default_subagent_model`, Gemini `agents.overrides.<name>.modelConfig.model`; `uninstall` trả lại như cũ. Cần kiểm tên model và key trên bản cài thật trước khi làm.
+**P10-T2 `[x]` Codex và Gemini: kiểm cách chọn model cho subagent (A9.1)**
+- `install` ghi model rẻ cho subagent đọc/tìm, nếu agent cho phép mà không làm hỏng gì. Máy phát triển không cài Codex hay Gemini, nên kiểm trên source.
+  - Kết quả (2026-10-22): Gemini không cần ghi gì: subagent chỉ đọc `codebase_investigator` vốn chạy Flash, phiên chính tự định tuyến. Codex chỉ có `[agents] default_subagent_model` cho mọi subagent (cả worker); model ngoài gói của tài khoản làm mọi lần spawn lỗi; bản trước v0.145 có thể không khởi động. Nên chưa ghi gì; phần Codex tách thành P10-T3.
+
+**P10-T3 `[ ]` `[TBD]` Codex: model cho subagent (A9.1)**
+- Chờ người dùng chọn hướng (a) hoặc (b) trong A9.1. Sau đó kiểm trên một bản Codex ≥ 0.145 đăng nhập được: subagent chạy model nào, spawn có lỗi không, và `uninstall` trả config về đúng như cũ.
 
 ---
 
