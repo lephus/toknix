@@ -244,6 +244,9 @@ Thiết lập nằm trong `~/.toknix/config.json`. Chỉ những key bạn đặ
 | `prices` | giá niêm yết của Anthropic | $ cho một triệu token theo model: input, cache write 5 phút, cache write 1 giờ, cache read, output. Mục bạn thêm được cộng vào mặc định |
 | `weights` | `[1, 1.25, 0.1, 5]` | trọng số ETU của model không có giá: input, cache write, cache read, output |
 | `hook_permission` | `null` | xem cảnh báo bên dưới |
+| `route_subagents` | true | hook agent chọn model rẻ hơn cho subagent theo việc (`false`: tắt) |
+| `route_models` | `{"explore": "haiku", "read": "sonnet", "implement": "sonnet"}` | model cho từng loại việc (`null`: để nguyên loại đó); giá trị của bạn cộng vào mặc định |
+| `route_agent_types` | `["general-purpose", "Explore"]` | loại subagent mà hook agent được đổi |
 
 | Biến môi trường | Tác dụng |
 |---|---|
@@ -271,6 +274,10 @@ khi bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
     chưa đạt ngưỡng chất lượng (sai số trung vị 21–25%, trong khi ngưỡng là 15%), nên tỉ lệ mặc định vẫn
     được dùng.
   - Vì vậy `gain` hiện số ước tính. Còn `report` và `waste` dùng số `usage` chính xác lấy từ transcript.
+- **Hook agent đoán việc qua từ ngữ.** Hook đọc description của subagent, rồi phần đầu prompt (từ khoá tiếng
+  Anh và tiếng Việt); việc không xếp được loại thì giữ model chính. Nếu model rẻ hơn làm subagent chạy lâu hơn,
+  `waste` (8) sẽ thấy số request mỗi agent tăng; đặt `"route_subagents": false` để tắt. Không hook nào đổi
+  được model của phiên chính.
 - **Codex và Gemini CLI chưa có hook.** Hai agent này chỉ nhận rules block, để agent tự gọi `toknix run` và
   `toknix outline`. Transcript của Gemini không được đọc.
 - **Một số hành vi của Claude Code chưa được xác nhận trên session thật** ([docs/VERIFY.md](docs/VERIFY.md)):

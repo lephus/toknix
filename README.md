@@ -247,6 +247,9 @@ Settings live in `~/.toknix/config.json`. Only the keys you set override the def
 | `prices` | Anthropic list prices | $ per million tokens by model: input, 5-min cache write, 1-hour cache write, cache read, output. Your entries add to the defaults |
 | `weights` | `[1, 1.25, 0.1, 5]` | ETU weights of a model without a price: input, cache write, cache read, output |
 | `hook_permission` | `null` | see the warning below |
+| `route_subagents` | true | the agent hook gives subagents a cheaper model by task (`false`: off) |
+| `route_models` | `{"explore": "haiku", "read": "sonnet", "implement": "sonnet"}` | model for each kind of task (`null` leaves that kind alone); your entries add to the defaults |
+| `route_agent_types` | `["general-purpose", "Explore"]` | subagent types the agent hook may change |
 
 | Environment variable | Effect |
 |---|---|
@@ -273,6 +276,10 @@ know you want that. `"ask"` always asks.
   - It can calibrate these ratios from your transcripts. On the transcripts tested so far, the fit missed
     its quality bar (median error 21–25% against the 15% required), so the defaults are used.
   - `gain` therefore shows estimates. `report` and `waste` use the exact `usage` numbers of the transcripts.
+- **The agent hook guesses the task from words.** It reads the subagent's description, then the start of its
+  prompt (English and Vietnamese keywords); a task it cannot place keeps the main model. If a cheaper model
+  makes subagents work longer, `waste` (8) shows more requests per agent; set `"route_subagents": false` to
+  turn it off. No hook can change the main session's model.
 - **Codex and Gemini CLI have no hooks yet.** They get the rules block, so the agent can call `toknix run`
   and `toknix outline` itself. Gemini transcripts are not read.
 - **Some Claude Code behaviour is still to be confirmed on a real session**

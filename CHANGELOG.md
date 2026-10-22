@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Choosing models
+- New hook `toknix hook agent` (PreToolUse `Agent|Task`). Subagents are about 70% of the cost of a Claude Code
+  session. When a subagent is started without a model, toknix gives it a cheaper one by its task, as Anthropic
+  recommends: Explore gets Haiku; reading, searching, reviewing and implementing a task that is already written
+  down get Sonnet; design, planning and debugging keep the main session's model. It only ever picks a model
+  cheaper than the main session's, never overrides a model that the agent, an agent definition or you chose,
+  and leaves forks, Plan and plugin agents alone. `"route_subagents": false` turns it off; `route_models` and
+  `route_agent_types` tune it. Run `toknix install` to add the hook; `toknix doctor` shows how many subagents
+  it moved in the last 7 days.
+
+### Changed
+- `context_window` and `context_budget` default to 1,000,000 (was 200k): the status line counts against 1M and
+  the context reminder only comes past 1M. Set `context_budget` lower in `~/.toknix/config.json` for an earlier
+  reminder.
+
 ## 0.2.1 (2026-10-21)
 
 ### Fixed
