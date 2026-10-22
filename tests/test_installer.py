@@ -334,16 +334,17 @@ class TestDoctor(TempHome):
         for _ in range(2):
             store.record_run("pytest", "pytest", 1, 10, 5, 1, 1, "")
         store.record_guard("s", "junk", "x", 1)
+        store.record_route("s", "general-purpose", "implement", "claude-opus-5-5", "sonnet")  # P10-T1
         with mock.patch("toknix.installer.time.time", return_value=1_000.0 + 10 * 86400):
             code, out, err = self.main("doctor")
         self.assertEqual((code, err), (0, ""))
-        for name in ("bash", "read", "session-start", "prompt"):
+        for name in ("bash", "read", "session-start", "prompt", "agent"):
             self.assertRegex(out, rf"hook {name}\s+installed: {re.escape(exe)} hook {name}")
         self.assertIn(f"statusLine", out)
         self.assertIn(f"Python {sys.version.split()[0]}", out)
         self.assertIn(sys.executable, out)
         self.assertIn(str(self.settings), out)
-        self.assertRegex(out, r"last 7 days: 2 runs, 1 guard events")
+        self.assertRegex(out, r"last 7 days: 2 runs, 1 guard events, 1 subagents routed")
 
     def fake_toknix(self, body: str) -> Path:
         exe = self.home / "bin" / "toknix"

@@ -431,16 +431,17 @@ def doctor() -> tuple[list[str], bool]:
         else:
             lines.append(f"  {'rules':<19} missing in {rules_path}")
             ok = False
-    runs = guard = 0
+    runs = guard = routes = 0
     if (toknix_home() / "toknix.db").exists():
         since = time.time() - 7 * 86400
         try:
             with store.db() as c:
                 runs = c.execute("SELECT COUNT(*) FROM runs WHERE ts >= ?", (since,)).fetchone()[0]
                 guard = c.execute("SELECT COUNT(*) FROM guard WHERE ts >= ?", (since,)).fetchone()[0]
+                routes = c.execute("SELECT COUNT(*) FROM routes WHERE ts >= ?", (since,)).fetchone()[0]  # A9
         except sqlite3.Error as e:
             lines.append(f"  ⚠ cannot read {toknix_home() / 'toknix.db'}: {e}")
-    lines.append(f"  last 7 days: {runs} runs, {guard} guard events")
+    lines.append(f"  last 7 days: {runs} runs, {guard} guard events, {routes} subagents routed")
     if not ok:
         lines.append("  fix: run `toknix install`, then restart Claude Code")
     return lines, ok
