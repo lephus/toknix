@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-10-22)
 
 ### Choosing models
 - New hook `toknix hook agent` (PreToolUse `Agent|Task`). Subagents are about 70% of the cost of a Claude Code

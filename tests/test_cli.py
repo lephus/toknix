@@ -33,10 +33,10 @@ def call(argv):
 
 class TestCli(unittest.TestCase):
     def test_version_is_0_1_0(self):
-        self.assertEqual(__version__, "0.2.1")
+        self.assertEqual(__version__, "0.3.0")
         code, out, _ = call(["--version"])
         self.assertEqual(code, 0)
-        self.assertEqual(out.strip(), "toknix 0.2.1")
+        self.assertEqual(out.strip(), "toknix 0.3.0")
 
     def test_every_v01_command_is_registered(self):
         sub = next(a for a in cli.build_parser()._actions if isinstance(a, argparse._SubParsersAction))
@@ -86,7 +86,7 @@ class TestCli(unittest.TestCase):
         p = subprocess.run([sys.executable, "-m", "toknix", "--version"],
                            capture_output=True, text=True, env=env)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(p.stdout.strip(), "toknix 0.2.1")
+        self.assertEqual(p.stdout.strip(), "toknix 0.3.0")
 
 
 if __name__ == "__main__":
