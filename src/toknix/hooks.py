@@ -244,7 +244,7 @@ def hook_agent(data: dict) -> dict | None:
     from toknix import pricing
     pr = pricing.Pricer(cfg)
     main_rates = pr.rates(main) if main else None
-    to_rates = pr.rates(cfg["model_aliases"].get(target, target))
+    to_rates = pr.rates(dict(DEFAULTS["model_aliases"], **cfg["model_aliases"]).get(target, target))
     if not main_rates or not to_rates or to_rates[0] >= main_rates[0]:
         return None  # only ever route down
     store.record_route(data.get("session_id", ""), agent_type, kind, main, target)

@@ -157,6 +157,11 @@ class AgentHook(unittest.TestCase):
         self.assertEqual(self.model(), "claude-sonnet-5-5")
         self.config(route_models={"implement": "mystery"})  # no price: cannot tell it is cheaper
         self.assertIsNone(self.reply())
+        # a partial model_aliases adds to the defaults, like route_models
+        self.config(model_aliases={"sonnet": "claude-sonnet-5-5"})
+        self.assertEqual(self.model(description="Explore", subagent_type="Explore"), "haiku")
+        self.config(model_aliases={"haiku": "claude-opus-5-5"})  # an alias that is no cheaper is left alone
+        self.assertIsNone(self.reply(description="Explore", subagent_type="Explore"))
 
     def test_hook_permission(self):
         self.config(hook_permission="ask")
