@@ -39,7 +39,7 @@ def settings_path():
     return claude_dir() / "settings.json"
 
 
-def toknix_command(argv0: str | None = None, which=shutil.which, python: str | None = None) -> str:
+def toknix_command(argv0: str | None = None, which=None, python: str | None = None) -> str:
     """How Claude Code should start toknix: this console script, else `toknix` on PATH, else `python -m toknix`."""
     argv0 = sys.argv[0] if argv0 is None else argv0
     if re.split(r"[/\\]", argv0)[-1].lower() in ("toknix", "toknix.exe"):
@@ -48,7 +48,7 @@ def toknix_command(argv0: str | None = None, which=shutil.which, python: str | N
         if not PureWindowsPath(path).suffix and os.path.exists(path + ".exe"):
             path += ".exe"  # Windows console scripts get argv[0] without it
         return _quote(path)
-    found = which("toknix")
+    found = (which or shutil.which)("toknix")  # looked up at call time, so tests can patch shutil.which
     return _quote(found) if found else f"{_quote(python or sys.executable)} -m toknix"
 
 
