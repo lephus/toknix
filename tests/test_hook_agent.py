@@ -177,8 +177,11 @@ class AgentHook(unittest.TestCase):
     def test_records_the_route(self):
         self.reply()
         self.reply(description="Design it")
-        with sqlite3.connect(str(self.home / "toknix.db")) as c:
-            rows = c.execute("SELECT session, agent_type, kind, main_model, model FROM routes").fetchall()
+        con = sqlite3.connect(str(self.home / "toknix.db"))
+        try:  # closed before the temp dir is removed: Windows cannot delete an open database
+            rows = con.execute("SELECT session, agent_type, kind, main_model, model FROM routes").fetchall()
+        finally:
+            con.close()
         self.assertEqual(rows, [("s1", "general-purpose", "implement", "claude-opus-5-5", "sonnet")])
 
     def test_main_entry_point_prints_json(self):
