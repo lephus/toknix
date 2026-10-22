@@ -101,6 +101,7 @@ Then **restart Claude Code** so it stops loading the old hooks.
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
 | UserPromptSubmit | `toknix hook prompt`: warns you (not the model) when the context is over `context_budget` (1M) |
+| PreToolUse `Agent\|Task` | `toknix hook agent`: gives a subagent a cheaper model by its task (Explore → haiku; read, review, implement a given task → sonnet; design, planning, debugging keep yours). Never routes up, never overrides a model you or the agent chose; `"route_subagents": false` turns it off |
 
 It also adds `statusLine` → `toknix statusline`, but only if you have no status line yet. All your other
 settings stay as they are.

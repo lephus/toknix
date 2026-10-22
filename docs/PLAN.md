@@ -32,7 +32,7 @@ Các mục đánh dấu **(N…)** đến từ thiết kế mở rộng đã duy
 - Huấn luyện hoặc thay tokenizer
 - Tự đổi cấu hình model/effort của người dùng
 - Tự nới bộ lọc dựa trên tỉ lệ recall (v0.2; v0.1 chỉ đo)
-- Định tuyến model
+- Định tuyến model qua proxy hoặc router học máy (chọn model cho subagent bằng luật thì nằm trong phạm vi từ 2026-10-22, xem P10)
 - Proxy API
 - Đọc transcript Gemini
 
@@ -321,6 +321,20 @@ Người dùng chọn T1 và T2 (2026-10-21). Gợi ý bỏ tool lớn không d�
 **P9-T2 `[x]` `context`: $ của toàn bộ overhead cố định (A6.2)**
 - Ngoài phần không dùng, báo ETU và $ của từng phần overhead trên mọi request trong khoảng thời gian, và các tool tốn nhất.
   - Kết quả (2026-10-21): 2 test mới. Dữ liệu thật 7 ngày: overhead 163,5M ETU ≈ $654, 17% ETU của 899 chuỗi có shape. Tool $278, danh sách skill $152, file chỉ dẫn $130, MCP $40, system prompt $25. Tool tốn nhất: Artifact 14,6k token/request ($181), Agent 1,6k ($18), Bash 1,1k ($14).
+
+---
+
+## P10 — Chọn model cho subagent theo việc (người dùng chốt 2026-10-22)
+
+`waste` (8), 7 ngày: general-purpose / Opus $1.772 (198 agent, $205 trong đó không sửa file), general-purpose / Sonnet $472, fork / Opus $162, Explore / Opus $5,76. Người dùng chọn: tự đổi model (không chỉ gợi ý), theo hướng Anthropic khuyên; không đổi khi model đã được chỉ định hoặc khi tắt trong config.
+
+**P10-T1 `[x]` Hook `agent`: chọn model cho subagent của Claude Code (A9, A8)**
+- `toknix hook agent` (PreToolUse `Agent|Task`) phân loại việc bằng regex và đặt `model` rẻ hơn model của phiên chính; bảng `routes`; `install`/`uninstall`/`doctor` thêm hook.
+- Xong khi: test cho từng nhánh "không làm gì" của A9, cho classify, chỉ đổi xuống; install thêm và uninstall gỡ đúng hook; chạy thật một lần bằng `claude -p` thấy `resolvedModel` đổi.
+  - Kết quả (2026-10-22): `hooks.hook_agent`, `classify_task`, `main_model`; bảng `routes`; 16 test hook, test installer cập nhật. Chạy thật (`claude -p --model sonnet`): lượt trả lời đầu chưa có dòng assistant trong transcript nên model của phiên chính lấy từ dòng `api-request`; sau đó 3/3 Explore chạy `claude-haiku-5-5`, "Design cache layer" giữ model. Hook 30–40 ms trên transcript 45 MB.
+
+**P10-T2 `[ ]` Codex và Gemini: model mặc định cho subagent (A9)**
+- `install` ghi model rẻ cho subagent đọc/tìm: Codex `agents.default_subagent_model`, Gemini `agents.overrides.<name>.modelConfig.model`; `uninstall` trả lại như cũ. Cần kiểm tên model và key trên bản cài thật trước khi làm.
 
 ---
 

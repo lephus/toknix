@@ -43,6 +43,12 @@ DEFAULTS: dict = {
         "docker", "make", "mvn", "gradle", "./gradlew", "dotnet", "composer", "bundle", "rspec",
         "flutter", "dart", "terraform", "kubectl", "ls", "find", "tree", "du",
     ],
+    # A9 (P10-T1): a cheaper model for subagents by task, only ever below the main session's model
+    "route_subagents": True,
+    "route_agent_types": ["general-purpose", "Explore"],
+    "route_models": {"explore": "haiku", "read": "sonnet", "implement": "sonnet"},  # null: leave that kind alone
+    "model_aliases": {"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5",
+                      "fable": "claude-fable-5-1"},
     "hook_permission": None,      # "allow" / "ask": also send a permissionDecision (A3; "allow" skips the user's prompts)
     # Read guard
     "guard_junk": True,

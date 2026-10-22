@@ -100,6 +100,7 @@ Sau đó **khởi động lại Claude Code** để nó không còn nạp các h
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
 | UserPromptSubmit | `toknix hook prompt`: nhắc bạn (không phải model) khi context vượt `context_budget` (1M) |
+| PreToolUse `Agent\|Task` | `toknix hook agent`: chọn model rẻ hơn cho subagent theo việc (Explore → haiku; đọc, review, làm task đã viết rõ → sonnet; thiết kế, lập kế hoạch, debug giữ model của bạn). Không bao giờ đổi lên, không ghi đè model bạn hoặc agent đã chọn; tắt bằng `"route_subagents": false` |
 
 Lệnh cũng thêm `statusLine` → `toknix statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
 khác của bạn giữ nguyên.

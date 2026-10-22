@@ -5,6 +5,7 @@
                                                          files, and repeated reads of unchanged files
   toknix hook session-start  SessionStart(compact|clear) forget the read ledger (context was reset)
   toknix hook prompt         UserPromptSubmit            tell the user when the context is over its budget (A7)
+  toknix hook agent          PreToolUse(Agent|Task)      give a subagent a cheaper model by its task (A9)
 
 A hook must never break the agent: any internal error results in "no opinion" (exit 0, no output).
 """
@@ -18,8 +19,19 @@ import sys
 from pathlib import Path
 
 from toknix import filters, store
-from toknix.config import is_junk, load
+from toknix.config import DEFAULTS, claude_dir, is_junk, load
 from toknix.textutil import est_tokens
+
+# A9: what a subagent is asked to do, from its description, then the start of its prompt. The first that matches wins.
+ROUTE_KEEP = re.compile(r"\b(?:design\w*|architect\w*|plan|plans|planning|brainstorm\w*|debug\w*|root[- ]cause|"
+                        r"diagnos\w*|security|threat\w*|thiết kế|kế hoạch|kiến trúc|gỡ lỗi|nguyên nhân)\b", re.I)
+ROUTE_IMPLEMENT = re.compile(r"\b(?:implement\w*|task\s*#?\d+|fix|fixes|fixed|fixing|refactor\w*|"
+                             r"write (?:the |a |an )?(?:code|tests?|function)|add (?:a |the )?tests?|"
+                             r"viết code|viết test|sửa|triển khai)\b", re.I)
+ROUTE_READ = re.compile(r"\b(?:search\w*|find|finds|finding|locate|look up|research\w*|explor\w*|read|reads|reading|"
+                        r"review\w*|summar\w*|list|count|audit\w*|inspect\w*|check\w*|"
+                        r"tìm\w*|đọc|xem|rà soát|tóm tắt)\b", re.I)
+ROUTE_PROMPT_CHARS = 600
 
 # A command that changes the agent's own shell (cwd/env), at the start of any statement: after ; & | or a newline,
 # with or without arguments (`npm test; popd`).
@@ -166,7 +178,84 @@ def hook_prompt(data: dict) -> dict | None:
                              "Start the next task with /clear, or /compact."}
 
 
-HOOKS = {"bash": hook_bash, "read": hook_read, "session-start": hook_session_start, "prompt": hook_prompt}
+def classify_task(agent_type: str, description, prompt) -> str | None:
+    """A9: "explore" | "implement" | "read", or None to keep the model."""
+    if agent_type == "Explore":
+        return "explore"
+    if agent_type != "general-purpose":
+        return None
+    for t in (description, prompt[:ROUTE_PROMPT_CHARS] if isinstance(prompt, str) else None):
+        if not isinstance(t, str):
+            continue
+        for rx, kind in ((ROUTE_KEEP, None), (ROUTE_IMPLEMENT, "implement"), (ROUTE_READ, "read")):
+            if rx.search(t):
+                return kind
+    return None
+
+
+def main_model(path: Path, tail: int = 1 << 20) -> str:
+    """A9: the main session's model: the last `api-request` line (written before the request, so it is there on the
+    first response too, and follows /model), else the last main-chain assistant line; "" when neither is found."""
+    with open(path, "rb") as fh:
+        fh.seek(max(0, fh.seek(0, os.SEEK_END) - tail))
+        data = fh.read()
+    for raw in reversed(data.split(b"\n")):
+        if b'"api-request"' not in raw and b'"assistant"' not in raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        if obj.get("type") == "api-request":
+            model = (obj.get("params") or {}).get("model") if isinstance(obj.get("params"), dict) else None
+        elif obj.get("type") == "assistant" and obj.get("isSidechain") is not True and isinstance(obj.get("message"), dict):
+            model = obj["message"].get("model")
+        else:
+            continue
+        if isinstance(model, str) and model and not model.startswith("<"):  # skip "<synthetic>" messages
+            return model
+    return ""
+
+
+def hook_agent(data: dict) -> dict | None:
+    cfg = load()
+    ti = data.get("tool_input")
+    if not cfg.get("route_subagents") or data.get("tool_name") not in ("Agent", "Task") or not isinstance(ti, dict):
+        return None
+    if isinstance(ti.get("model"), str) and ti["model"]:
+        return None  # the agent or the user chose the model
+    agent_type = ti.get("subagent_type") or "general-purpose"
+    if not isinstance(agent_type, str) or agent_type not in cfg["route_agent_types"]:
+        return None
+    dirs = [claude_dir() / "agents"] + ([Path(data["cwd"]) / ".claude" / "agents"] if data.get("cwd") else [])
+    if any((d / f"{agent_type}.md").is_file() for d in dirs):
+        return None  # the user's definition of the agent decides its model
+    kind = classify_task(agent_type, ti.get("description"), ti.get("prompt"))
+    target = dict(DEFAULTS["route_models"], **cfg["route_models"]).get(kind) if kind else None
+    path = data.get("transcript_path")
+    if not isinstance(target, str) or not target or not isinstance(path, str):
+        return None
+    try:
+        main = main_model(Path(path).expanduser())
+    except OSError:
+        return None
+    from toknix import pricing
+    pr = pricing.Pricer(cfg)
+    main_rates = pr.rates(main) if main else None
+    to_rates = pr.rates(cfg["model_aliases"].get(target, target))
+    if not main_rates or not to_rates or to_rates[0] >= main_rates[0]:
+        return None  # only ever route down
+    store.record_route(data.get("session_id", ""), agent_type, kind, main, target)
+    out = {"hookEventName": "PreToolUse", "updatedInput": dict(ti, model=target)}
+    if cfg.get("hook_permission") in ("allow", "ask"):
+        out["permissionDecision"] = cfg["hook_permission"]
+    return {"hookSpecificOutput": out}
+
+
+HOOKS = {"bash": hook_bash, "read": hook_read, "session-start": hook_session_start, "prompt": hook_prompt,
+         "agent": hook_agent}
 
 
 def _read_stdin() -> str:

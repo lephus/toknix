@@ -713,6 +713,7 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
      - PreToolUse `Read|Grep|Glob` → `hook read`
      - SessionStart `compact|clear` → `hook session-start`
      - UserPromptSubmit (không matcher) → `hook prompt` (P7-T2, A7)
+     - PreToolUse `Agent|Task` → `hook agent` (P10-T1, A9)
      - `statusLine` → `toknix statusline`, chỉ khi người dùng chưa có statusLine.
   3. (P3-T5) Rules block giữa marker `<!-- toknix:begin vN -->`…`<!-- toknix:end -->` trong CLAUDE.md, AGENTS.md, GEMINI.md. Thay thế block cũ, giữ nguyên nội dung khác.
      - File đích là file chỉ dẫn toàn cục của từng agent: `$CLAUDE_CONFIG_DIR` hoặc `~/.claude/CLAUDE.md` (luôn ghi), `$CODEX_HOME` hoặc `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`. Hai file sau chỉ được ghi khi thư mục của agent đã tồn tại; toknix không tạo thư mục cho agent không dùng.
@@ -742,3 +743,55 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
     - **`install.ps1`:** `irm | iex` không truyền được tham số, nên có thêm biến môi trường `TOKNIX_DRY_RUN`, `TOKNIX_UNINSTALL`, `TOKNIX_FROM`, `TOKNIX_NO_HOOKS`. Không có uv thì thêm `venv\Scripts` vào PATH của user.
     - **`--uninstall`:** chạy `toknix uninstall` (gỡ hook và rules), rồi gỡ tool của uv hoặc xoá venv và symlink. Dữ liệu trong `~/.toknix` được giữ lại.
     - **Đã kiểm 2026-10-19 trên macOS** (HOME tạm, `--from` thư mục repo): cả nhánh uv lẫn nhánh venv (Python 3.9.6 của hệ thống) đều cài xong, `toknix --version` chạy, và gỡ cài đặt xoá sạch file do install tạo. Ubuntu 24.04 và Windows 11 kiểm trong CI (P5-T2).
+
+---
+
+## A9. Chọn model cho subagent (`toknix hook agent`, PreToolUse matcher `Agent|Task`)
+
+**Mục tiêu:** subagent chiếm ~71% chi phí (P8), và Opus 5.5 là 88% số tiền. Khi phiên chính chạy model đắt, hook tự giao việc đọc, tìm, review và làm theo một task đã viết rõ cho model rẻ hơn, theo hướng Anthropic khuyên (Explore dùng Haiku; Sonnet cho việc code thông thường; giữ model mạnh cho thiết kế, lập kế hoạch và debug). Người dùng chốt 2026-10-22: tự đổi, không chỉ gợi ý; không đổi khi model đã được chỉ định cho việc đó, hoặc khi tắt trong config.
+
+- `FACT` (kiểm 2026-10-22, Claude Code 2.1.308, `claude -p --model sonnet`): PreToolUse trên tool `Agent` trả `updatedInput` = `{...tool_input, "model": "haiku"}` (không có `permissionDecision`) thì subagent chạy `claude-haiku-5-5`; PostToolUse thấy `tool_input.model = "haiku"` và `tool_response.resolvedModel = "claude-haiku-5-5"`. Input của hook: `session_id, transcript_path, cwd, permission_mode, effort, tool_name, tool_input{description, prompt, subagent_type, model?, run_in_background?}`; không có model của phiên chính.
+- `FACT` (cùng ngày): ở lượt trả lời đầu tiên của phiên, lúc hook chạy, transcript chưa có dòng assistant nào (3/3 lần chạy `claude -p`), nên không đọc model được từ đó. Dòng `{"type":"api-request","querySource":…,"params":{"model":…}}` được ghi trước khi gửi request, nên luôn có sẵn, và đổi theo `/model`. Trong 109 file phiên 3 ngày gần nhất, mọi dòng `api-request` đều là của chuỗi chính (`repl_main_thread` 1.379, `sdk` 15); subagent ghi ở file riêng (P8-T1). Chạy lại sau khi sửa: 3/3 Explore chạy `claude-haiku-5-5`, "Design cache layer" giữ model.
+- Thứ tự Claude Code chọn model của subagent (tài liệu sub-agents): tham số `model` của lời gọi Agent > `model` trong file định nghĩa agent > `CLAUDE_CODE_SUBAGENT_MODEL` > model của phiên chính. Explore và Plan dựng sẵn chạy theo model của phiên chính.
+
+```
+input: {session_id, transcript_path, cwd, tool_name ∈ {Agent, Task}, tool_input}
+không làm gì (None) nếu:
+  config.route_subagents = false | tool_name khác | tool_input không phải object
+  | tool_input.model là chuỗi khác rỗng                         # agent hoặc người dùng đã chọn model
+  | type = tool_input.subagent_type or "general-purpose" ∉ config.route_agent_types
+  | có file định nghĩa agent `<type>.md` trong <cwd>/.claude/agents/ hoặc <claude_dir>/agents/
+                                                                # người dùng định nghĩa agent, file đó quyết định model
+kind = classify(type, description, prompt)          # None = giữ model
+target = config.route_models[kind]                   # alias Claude Code nhận: haiku | sonnet | opus | fable, hoặc id đầy đủ
+không làm gì nếu target rỗng
+main = main_model(transcript_path): trong 1 MB cuối, dòng gần nhất là `api-request` (params.model)
+       hoặc assistant của chuỗi chính (message.model, bỏ "<synthetic>"); không có thì ""
+không làm gì nếu main không có giá, hoặc giá input(id(target)) ≥ giá input(main)   # chỉ đổi xuống, không bao giờ đổi lên
+  id(alias) = config.model_aliases[alias], không có thì chính alias
+output: {"hookSpecificOutput": {"hookEventName":"PreToolUse", "updatedInput": {...tool_input, "model": target}}}
+        (+ permissionDecision theo config.hook_permission như A3)
+ghi bảng routes(ts, session, agent_type, kind, main_model, model)
+```
+
+**classify(type, description, prompt)**, chỉ bằng regex, không gọi model:
+
+```
+type = "Explore"         → "explore"
+type ≠ "general-purpose" → None
+text lần lượt là description, rồi 600 ký tự đầu của prompt; với mỗi text, regex đầu tiên khớp quyết định:
+  KEEP      → None          thiết kế, lập kế hoạch, debug, kiến trúc, brainstorm, root cause, chẩn đoán, bảo mật
+  IMPLEMENT → "implement"   implement, Task <số>, fix, viết code/test, refactor, thêm test
+  READ      → "read"        tìm, search, find, locate, research, explore, đọc, read, review, summarize, list, count, audit
+không khớp gì → None (giữ model)
+```
+
+- **description trước:** Claude Code yêu cầu description 3–5 từ tóm tắt việc ("Implement Task 3", "Review spec compliance"), nên đó là tín hiệu rõ nhất. Prompt chỉ xét 600 ký tự đầu, vì prompt của agent thực thi thường nhắc "plan" hay "debug" ở phần dặn dò phía sau.
+- **KEEP đứng trước:** đổi nhầm việc khó sang model rẻ thì agent phải làm lại và tốn hơn; giữ nhầm thì chỉ mất phần tiết kiệm.
+- Regex khớp không phân biệt hoa thường, theo ranh giới từ, có cả tiếng Anh và tiếng Việt. Danh sách từ nằm trong code (`ROUTE_KEEP`, `ROUTE_IMPLEMENT`, `ROUTE_READ`), không nằm trong config.
+- **Không đổi:** `fork` (dùng lại cache của phiên cha), `Plan`, agent của plugin hay người dùng (không có trong `route_agent_types`), phiên chính (không hook nào đổi được; chỉ mod JS làm được, ngoài ràng buộc stdlib).
+- **Config:** `route_subagents` (mặc định `true`), `route_agent_types` (`["general-purpose", "Explore"]`), `route_models` (`{"explore": "haiku", "read": "sonnet", "implement": "sonnet"}`; `null` tắt một loại), `model_aliases` (`{"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5", "fable": "claude-fable-5-1"}`).
+- **Đo hiệu quả:** `waste` (8) đã nhóm subagent theo loại và model lấy từ transcript, nên thấy được phần đã chuyển; bảng `routes` cho biết hook đổi bao nhiêu lần và vì sao. Dấu hiệu đổi sai: số request mỗi agent của nhóm Sonnet tăng mạnh so với trước.
+- **Lỗi:** như A3, mọi exception thành "không có ý kiến"; transcript không đọc được thì không đổi.
+- **Thời gian:** đo 2026-10-22 trên macOS, transcript 45 MB: 30–40 ms mỗi lần (`python -c pass` 10 ms), vì chỉ đọc 1 MB cuối.
+- **Codex, Gemini:** chưa làm (P10-T2). Codex có `agents.default_subagent_model` và `model` trong file agent `.toml`; Gemini có `agents.overrides.<name>.modelConfig.model` và tự định tuyến phiên chính bằng `auto`. Không agent nào có hook đổi được model.

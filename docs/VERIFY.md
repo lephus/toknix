@@ -161,7 +161,7 @@ EOF
 
 ## 4. Hook Bash (check A, B, G)
 
-Trong `~/toknix-verify/shop`, chạy `claude` (chế độ permission mặc định). Gõ `/hooks` và kiểm tra có 4 hook của toknix: PreToolUse `Bash`, PreToolUse `Read|Grep|Glob`, SessionStart `compact|clear`, UserPromptSubmit. Không thấy thì thoát Claude Code, mở lại rồi kiểm tra lại.
+Trong `~/toknix-verify/shop`, chạy `claude` (chế độ permission mặc định). Gõ `/hooks` và kiểm tra có 5 hook của toknix: PreToolUse `Bash`, PreToolUse `Read|Grep|Glob`, SessionStart `compact|clear`, UserPromptSubmit, PreToolUse `Agent|Task`. Không thấy thì thoát Claude Code, mở lại rồi kiểm tra lại.
 
 Gửi prompt:
 

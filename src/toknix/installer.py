@@ -24,10 +24,11 @@ from toknix import __version__, runner, store
 from toknix.config import claude_dir, codex_dir, gemini_dir, toknix_home
 
 HOOKS = [("PreToolUse", "Bash", "bash"), ("PreToolUse", "Read|Grep|Glob", "read"),
-         ("SessionStart", "compact|clear", "session-start"), ("UserPromptSubmit", "", "prompt")]  # "" = no matcher
+         ("SessionStart", "compact|clear", "session-start"), ("UserPromptSubmit", "", "prompt"),  # "" = no matcher
+         ("PreToolUse", "Agent|Task", "agent")]
 # Also matches a quoted path (`'/my dir/toknix' hook bash`) and `python -m toknix hook bash`.
 # `tokopt` is the name toknix was published under for its first day: its entries are taken over too.
-HOOK_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start|prompt)\b")
+HOOK_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+hook\s+(bash|read|session-start|prompt|agent)\b")
 STATUS_RE = re.compile(r"(?:toknix|tokopt)(?:\.exe)?['\"]?\s+statusline\b")
 
 

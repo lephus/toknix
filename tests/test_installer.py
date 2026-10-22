@@ -37,6 +37,7 @@ TOKNIX_ENTRIES = {
     ("PreToolUse", "Read|Grep|Glob"): f"{EXE} hook read",
     ("SessionStart", "compact|clear"): f"{EXE} hook session-start",
     ("UserPromptSubmit", ""): f"{EXE} hook prompt",  # P7-T2: no matcher
+    ("PreToolUse", "Agent|Task"): f"{EXE} hook agent",  # P10-T1
 }
 
 
@@ -124,7 +125,7 @@ class TestInstall(TempHome):
         installer.install(exe="/new/place/toknix")
         s = self.read_settings()
         self.assertEqual(sorted(c for _, _, c in toknix_hooks(s)),
-                         ["/new/place/toknix hook bash", "/new/place/toknix hook prompt", "/new/place/toknix hook read",
+                         ["/new/place/toknix hook agent", "/new/place/toknix hook bash", "/new/place/toknix hook prompt", "/new/place/toknix hook read",
                           "/new/place/toknix hook session-start"])
         self.assertEqual(s["statusLine"]["command"], "/new/place/toknix statusline")
 

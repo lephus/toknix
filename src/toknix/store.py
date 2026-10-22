@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS runs(
   error_overflow INTEGER DEFAULT 0, saved_default INTEGER, saved_hex INTEGER, saved_non_ascii INTEGER);
 CREATE TABLE IF NOT EXISTS guard(
   ts REAL, session TEXT, rule TEXT, path TEXT, est_tokens INTEGER);
+CREATE TABLE IF NOT EXISTS routes(
+  ts REAL, session TEXT, agent_type TEXT, kind TEXT, main_model TEXT, model TEXT);
 CREATE TABLE IF NOT EXISTS recalls(
   ts REAL, tee_id TEXT);
 CREATE TABLE IF NOT EXISTS reads(
@@ -69,6 +71,14 @@ def record_guard(session, rule, path, est):
         with db() as c:
             c.execute("INSERT INTO guard VALUES(?,?,?,?,?)", (time.time(), session, rule, path, est))
     except sqlite3.Error:
+        pass
+
+
+def record_route(session, agent_type, kind, main_model, model):
+    try:
+        with db() as c:
+            c.execute("INSERT INTO routes VALUES(?,?,?,?,?,?)", (time.time(), session, agent_type, kind, main_model, model))
+    except (sqlite3.Error, OSError):
         pass
 
 
