@@ -99,7 +99,7 @@ Sau đó **khởi động lại Claude Code** để nó không còn nạp các h
 | PreToolUse `Bash` | `toknix hook bash` |
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
-| UserPromptSubmit | `toknix hook prompt`: nhắc bạn (không phải model) khi context vượt 200k |
+| UserPromptSubmit | `toknix hook prompt`: nhắc bạn (không phải model) khi context vượt `context_budget` (1M) |
 
 Lệnh cũng thêm `statusLine` → `toknix statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
 khác của bạn giữ nguyên.
@@ -151,7 +151,7 @@ cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `t
 | `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
 | `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
 | `toknix compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
-| `toknix statusline` | status line của Claude Code: `ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k` |
+| `toknix statusline` | status line của Claude Code: `ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 600k` |
 | `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
 | `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
 
@@ -238,7 +238,7 @@ Thiết lập nằm trong `~/.toknix/config.json`. Chỉ những key bạn đặ
 | `wrap_programs` | các trình chạy test, trình quản lý gói, git, docker… | các lệnh mà hook Bash viết lại |
 | `guard_junk`, `guard_big_file_lines`, `guard_repeat_reads` | true, 800, 2 | các luật của read guard (`0` để tắt một luật) |
 | `grep_head_limit` | 200 | giới hạn thêm vào Grep ở chế độ content (`0` = tắt) |
-| `context_window` | 200000 | dùng cho status line; model 1M được tự nhận ra |
+| `context_window` | 1000000 | dùng cho status line; model 1M được tự nhận ra |
 | `etu_model` | `"claude-opus-5-5"` | 1 ETU = một token input của model này (`""`: mọi request dùng `weights`) |
 | `prices` | giá niêm yết của Anthropic | $ cho một triệu token theo model: input, cache write 5 phút, cache write 1 giờ, cache read, output. Mục bạn thêm được cộng vào mặc định |
 | `weights` | `[1, 1.25, 0.1, 5]` | trọng số ETU của model không có giá: input, cache write, cache read, output |

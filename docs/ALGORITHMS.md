@@ -659,14 +659,14 @@ Một trang web chỉ đọc, chạy ở máy người dùng: xem lệnh nào đ
 ```
 stdin: JSON Claude Code gửi cho statusLine (có transcript_path, model.display_name)
 ctx = usage của lượt assistant cuối: input + cache_read + cache_write
-budget = min(context_window, context_budget)      # (P7-T2) context_budget mặc định 200k [ASSUMPTION]
+budget = min(context_window, context_budget)      # (P7-T2) context_budget mặc định 1M (người dùng chốt 2026-10-22)
 pct = ctx / budget
 session_etu = ETU cộng dồn cả transcript (đọc tăng dần, cache offset trong ~/.toknix/sl-<session>.json)
 saved_etu = Σ_e T_e·(w_cw + w_cr·(n_e − 1)) với n_e ≥ 1, ngược lại 0   # (P7-T1) cùng đơn vị với session_etu
   e: mỗi run (ts ≥ bắt đầu session) và mỗi guard của session; T_e = token tiết kiệm trực tiếp
   n_e: số request chuỗi chính có ts > ts_e, trước compaction đầu tiên sau ts_e (request đầu ghi cache, các request sau đọc lại)
 share = saved_etu / (session_etu + saved_etu)     # phần chi phí của phiên đã tránh được
-in:  "ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k"   (màu vàng ≥ 60%, đỏ ≥ 80%)
+in:  "ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 600k"   (màu vàng ≥ 60%, đỏ ≥ 80%)
      ctx ≥ budget → đuôi là "/clear or /compact now"
 yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tăng dần từ offset đã lưu
 ```
@@ -680,8 +680,8 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
   - **ETU:** cộng mọi request của transcript, kể cả subagent, vì đó là chi phí thật. **ctx:** lấy từ request cuối của chuỗi chính.
     - (P8-T1) Subagent nằm ở `<transcript không đuôi>/subagents/*.jsonl` (A6.1). Mỗi file được đọc tăng dần với `offset` và khoá riêng (`subs` trong cache); file nhỏ hơn offset thì đọc lại từ đầu. Chúng chỉ cộng vào ETU, không đổi ctx, `req_ts`, `compact_ts`.
     - Mỗi khoá gần đây nhớ usage đã cộng; dòng sau của cùng request có usage lớn hơn (stream, A6.1) thì cộng phần chênh. Cache cũ (không có `subs`) được đọc lại từ đầu.
-  - **Context window:** `context_window` trong config (200k). Model id có `[1m]` hoặc tên có `1M` → 1.000.000. ctx lớn hơn window đã cấu hình → window chuẩn nhỏ nhất (200k, 1M) chứa được ctx. Một phiên thật 69 MB từng hiện `ctx 467%` với 200k.
-  - **Ngân sách (P7-T2):** cửa sổ 1M khiến `pct` theo cửa sổ gần như không bao giờ tới 60%, trong khi mỗi request đọc lại cả context: dữ liệu thật 7 ngày có context trung vị 280k, và phần vượt 200k chiếm 38% ETU. Vì vậy thanh và ngưỡng tính theo `budget`, không theo cửa sổ. Người dùng chốt 200k ngày 2026-10-19. ctx ghi gọn: `92k`, `1.2M`.
+  - **Context window:** `context_window` trong config (1M, từ 2026-10-22; trước đó 200k). Model id có `[1m]` hoặc tên có `1M` → 1.000.000. ctx lớn hơn window đã cấu hình → window chuẩn nhỏ nhất (200k, 1M) chứa được ctx. Một phiên thật 69 MB từng hiện `ctx 467%` với 200k.
+  - **Ngân sách (P7-T2):** cửa sổ 1M khiến `pct` theo cửa sổ gần như không bao giờ tới 60%, trong khi mỗi request đọc lại cả context: dữ liệu thật 7 ngày có context trung vị 280k, và phần vượt 200k chiếm 38% ETU. Vì vậy thanh và ngưỡng tính theo `budget`, không theo cửa sổ. Người dùng chốt 200k ngày 2026-10-19, rồi đổi mặc định cả `context_window` lẫn `context_budget` thành 1M ngày 2026-10-22; muốn nhắc sớm hơn thì đặt `context_budget` nhỏ hơn trong config. ctx ghi gọn: `92k`, `1.2M`.
   - **Thanh:** 10 ô, làm tròn xuống, tối đa 10 ô khi vượt ngân sách. Vàng từ `statusline_warn` (0,6), đỏ từ `statusline_alert` (0,8); `NO_COLOR` tắt màu.
   - **saved:** các run có `ts` ≥ thời điểm bắt đầu phiên, cộng guard của `session_id` này. Dùng tỉ lệ của báo cáo.
     - (P7-T1) Trước đây in số token trực tiếp, cạnh ETU cộng dồn: hai đơn vị khác nhau, nên "saved 5k" bên cạnh "1M ETU" trông như không tiết kiệm gì. Dữ liệu thật 7 ngày (2026-10-19) có R̄ = 81, tức một token cắt được đáng ≈ 9,3 ETU.
@@ -690,7 +690,7 @@ yêu cầu: chạy < 150 ms với transcript 20 MB  →  bắt buộc đọc tă
   - **Lỗi:** mọi lỗi → không in gì, exit 0 (`TOKNIX_DEBUG=1` in traceback). Gõ tay (stdin là terminal) → in một dòng hướng dẫn ra stderr.
   - **Hook nhắc (P7-T2), `toknix hook prompt`, UserPromptSubmit:**
     - ctx = usage của request chuỗi chính cuối cùng, tìm trong 1 MB cuối của `transcript_path` (không phụ thuộc statusline có được cài hay không).
-    - ctx ≥ `context_budget` → trả `{"systemMessage": "toknix: context 280k is over the 200k budget; every request re-reads it (~28.0k ETU each). Start the next task with /clear, or /compact."}`. ETU mỗi request ≈ ctx·w_cr.
+    - ctx ≥ `context_budget` → trả `{"systemMessage": "toknix: context 1.1M is over the 1.0M budget; every request re-reads it (~110k ETU each). Start the next task with /clear, or /compact."}`. ETU mỗi request ≈ ctx·w_cr.
     - `[ASSUMPTION]` Claude Code hiện `systemMessage` cho người dùng và không đưa vào context của model, nên lời nhắc không tốn token. Kiểm ở `docs/VERIFY.md`, check I.
     - Prompt bắt đầu bằng `/clear` hoặc `/compact`, ctx dưới ngân sách, hoặc không tìm thấy usage → không in gì. Nhắc ở mọi prompt khi còn vượt (người dùng chọn).
   - **Đo 2026-10-19:** transcript thật 69 MB: lần đầu 134 ms, các lần sau 30 ms (tính cả khởi động Python).

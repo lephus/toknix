@@ -256,6 +256,7 @@ Người dùng chọn thứ tự T1 → T2 → T3.
 
 **P7-T2 `[x]` Ngân sách context tuyệt đối thay cho % cửa sổ (A7)**
 - Người dùng chốt (2026-10-19): ngân sách mặc định 200k; nhắc bằng statusline cộng hook UserPromptSubmit.
+  Đổi (2026-10-22): mặc định `context_window` và `context_budget` thành 1M.
 - Thanh ctx và ngưỡng `/clear` tính theo `min(context_window, context_budget)`, kể cả với model 1M.
 - `toknix hook prompt`: ctx ≥ ngân sách → `systemMessage` cho người dùng; dưới ngân sách, `/clear`, `/compact` → im lặng; transcript hỏng → im lặng.
 - `install`/`uninstall`/`doctor` có hook thứ 4. Thêm check I vào `docs/VERIFY.md`.

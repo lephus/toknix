@@ -51,12 +51,12 @@ class TestLine(Home):
     def test_context_bar_etu_and_hint(self):
         t = ClaudeTranscript()
         t.assistant([text("a")], input=10, cache_read=50000, cache_write=10000, output=200)
-        t.assistant([text("b")], input=20, cache_read=60000, cache_write=31980, output=300)  # ctx 92,000 = 46 %
+        t.assistant([text("b")], input=20, cache_read=60000, cache_write=31980, output=300)  # ctx 92,000 = 9 % of 1M
         t.write(self.path)
         expected_etu = sum(W[0] * i + W[1] * cw + W[2] * cr + W[3] * o
                            for i, cr, cw, o in ((10, 50000, 10000, 200), (20, 60000, 31980, 300)))
         self.assertEqual(self.line(),
-                         f"ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · {statusline.fmt_num(expected_etu)} ETU · saved ~0 ETU (0.0%) · /clear at 120k\n")  # A7
+                         f"ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · {statusline.fmt_num(expected_etu)} ETU · saved ~0 ETU (0.0%) · /clear at 600k\n")  # A7
 
     def saved_at(self, ts: float, chars: int = 0, guard: int = 0):
         with mock.patch.object(store.time, "time", return_value=ts):
@@ -118,7 +118,7 @@ class TestLine(Home):
         for pct, colour in ((59, None), (60, "33"), (79, "33"), (80, "31"), (97, "31")):
             with self.subTest(pct=pct):
                 t = ClaudeTranscript()
-                t.assistant([text("a")], input=0, cache_read=pct * 2000, cache_write=0, output=1)
+                t.assistant([text("a")], input=0, cache_read=pct * 10000, cache_write=0, output=1)
                 t.write(self.path)
                 for f in (self.home / ".toknix").glob("sl-*.json"):
                     f.unlink()
@@ -128,7 +128,7 @@ class TestLine(Home):
 
     def test_no_color(self):
         t = ClaudeTranscript()
-        t.assistant([text("a")], cache_read=190000, output=1)
+        t.assistant([text("a")], cache_read=950000, output=1)
         t.write(self.path)
         with mock.patch.dict(os.environ, {"NO_COLOR": "1"}):
             self.assertNotIn("\x1b[", self.line(plain=False))
@@ -145,7 +145,7 @@ class TestLine(Home):
         return self.line(self.payload(model=model) if model else None)
 
     def test_budget_not_window_on_one_million_models(self):  # P7-T2: a 1M window never reached 60 %
-        line = self.ctx_line(300000, {"id": "claude-opus-5-5[1m]", "display_name": "Opus"})
+        line = self.ctx_line(300000, {"id": "claude-opus-5-5[1m]", "display_name": "Opus"}, context_budget=200000)
         self.assertTrue(line.startswith("ctx 300k/200k ▮▮▮▮▮▮▮▮▮▮ "), line)
         self.assertTrue(line.endswith(" · /clear or /compact now\n"), line)
 
@@ -157,7 +157,7 @@ class TestLine(Home):
                       {"id": "claude-opus-5-5", "display_name": "Opus (1M context)"},
                       {"id": "claude-opus-5-5", "display_name": "Opus"}):  # ctx above 200k: it must be 1M
             with self.subTest(model=model):
-                line = self.ctx_line(300000, model, context_budget=1000000)
+                line = self.ctx_line(300000, model, context_window=200000, context_budget=1000000)
                 self.assertTrue(line.startswith("ctx 300k/1.0M ▮▮▮▯▯▯▯▯▯▯ "), line)
                 self.assertTrue(line.endswith(" · /clear at 600k\n"), line)
 
@@ -216,7 +216,7 @@ class TestIncremental(Home):
         small = ClaudeTranscript()
         small.assistant([text("b")], cache_read=1990, output=1)  # ctx 2,000 = 1 %
         small.write(self.path)
-        self.assertTrue(self.line().startswith("ctx 2.0k/200k ▯"))
+        self.assertTrue(self.line().startswith("ctx 2.0k/1.0M ▯"))
         self.assertIn(f"{statusline.fmt_num(10 + 1990 * W[2] + 5)} ETU", self.line())
 
 
@@ -229,7 +229,7 @@ class TestSubagentFiles(Home):  # P8-T1
         sub.assistant([text("b")], input=0, cache_read=500000, cache_write=0, output=100)
         sub.write(subagent_path(self.path, "a1"))
         line = self.line()
-        self.assertTrue(line.startswith("ctx 92k/200k"), line)
+        self.assertTrue(line.startswith("ctx 92k/1.0M"), line)
         self.assertIn(f"· {statusline.fmt_num((92000 + 500000) * W[2] + 500)} ETU ·", line)
 
     def test_appends_and_streamed_usage_are_counted_once(self):

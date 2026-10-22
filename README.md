@@ -100,7 +100,7 @@ Then **restart Claude Code** so it stops loading the old hooks.
 | PreToolUse `Bash` | `toknix hook bash` |
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
-| UserPromptSubmit | `toknix hook prompt`: warns you (not the model) when the context is over 200k |
+| UserPromptSubmit | `toknix hook prompt`: warns you (not the model) when the context is over `context_budget` (1M) |
 
 It also adds `statusLine` → `toknix statusline`, but only if you have no status line yet. All your other
 settings stay as they are.
@@ -154,7 +154,7 @@ byte. Restart Claude Code after installing, then run `toknix doctor`.
 | `toknix snapshot --label L [--days 7]` | save a report summary to compare later |
 | `toknix bench tasks.json --label L [--rules FILE]` | A/B runs of a real agent in throwaway git worktrees |
 | `toknix compare A B [--json]` | compare two bench labels and give a verdict |
-| `toknix statusline` | Claude Code status line: `ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k` |
+| `toknix statusline` | Claude Code status line: `ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 600k` |
 | `toknix install` / `uninstall` / `doctor` | set up, remove, and check the hooks and rules |
 | `toknix init-project [--path DIR]` | deny Read of junk directories in the project's `.claude/settings.json`; write `.geminiignore` |
 
@@ -241,7 +241,7 @@ Settings live in `~/.toknix/config.json`. Only the keys you set override the def
 | `wrap_programs` | test runners, package managers, git, docker… | commands the Bash hook rewrites |
 | `guard_junk`, `guard_big_file_lines`, `guard_repeat_reads` | true, 800, 2 | read guard rules (`0` turns a rule off) |
 | `grep_head_limit` | 200 | added to content Greps (`0` = off) |
-| `context_window` | 200000 | for the status line; 1M models are recognised |
+| `context_window` | 1000000 | for the status line; 1M models are recognised |
 | `etu_model` | `"claude-opus-5-5"` | 1 ETU = one input token of this model (`""`: every request uses `weights`) |
 | `prices` | Anthropic list prices | $ per million tokens by model: input, 5-min cache write, 1-hour cache write, cache read, output. Your entries add to the defaults |
 | `weights` | `[1, 1.25, 0.1, 5]` | ETU weights of a model without a price: input, cache write, cache read, output |

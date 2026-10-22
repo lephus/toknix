@@ -27,6 +27,8 @@ class PromptHook(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         self.path = self.tmp / "s1.jsonl"
+        self.home.mkdir(parents=True)
+        (self.home / "config.json").write_text(json.dumps({"context_budget": 200000}))  # the default is 1M
 
     def transcript(self, *contexts: int, sidechain_after: int = 0) -> ClaudeTranscript:
         t = ClaudeTranscript()
@@ -69,8 +71,14 @@ class PromptHook(unittest.TestCase):
             with self.subTest(prompt=prompt):
                 self.assertIsNone(self.reply(prompt))
 
+    def test_default_budget_is_one_million(self):  # the user's choice, 2026-10-22
+        (self.home / "config.json").unlink()
+        self.transcript(280000)
+        self.assertIsNone(self.reply())
+        self.transcript(1_050_000)
+        self.assertIn("over the 1.0M budget", self.reply()["systemMessage"])
+
     def test_budget_from_config(self):
-        self.home.mkdir(parents=True)
         (self.home / "config.json").write_text(json.dumps({"context_budget": 5000}))
         self.transcript(6000)
         self.assertIn("over the 5.0k budget", self.reply()["systemMessage"])

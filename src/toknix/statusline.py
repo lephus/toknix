@@ -1,6 +1,6 @@
 """`toknix statusline` (A7): one line for Claude Code's status bar, e.g.
 
-    ctx 92k/200k ▮▮▮▮▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 120k
+    ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 600k
 
 Claude Code runs it after every turn with the session JSON on stdin, so it must be fast on a large
 transcript: the file, and each subagent file of the session, is read incrementally from the offset kept in
