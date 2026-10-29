@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="580" viewBox="0 0 880 580" role="img" aria-label="Tokens saved per output: git log 96%, pytest 72%, make build 56%, jest 28%, go test 24%, cargo test 23%, gradle 11%, pip and npm install 0%; outline plus symbol saves 78 to 83% against a whole-file read.">
+<rect x="0.5" y="0.5" width="879" height="579" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
+<text x="32" y="40" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#1f2328">Tokens the agent did not have to read</text>
+<text x="32" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#59636e">Real outputs from tests/fixtures · reproduce with python scripts/bench_filters.py</text>
+<line x1="300.0" y1="86" x2="300.0" y2="508" stroke="#d1d9e0" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="300.0" y="526" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#59636e">0%</text>
+<line x1="397.5" y1="86" x2="397.5" y2="508" stroke="#d1d9e0" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="397.5" y="526" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#59636e">25%</text>
+<line x1="495.0" y1="86" x2="495.0" y2="508" stroke="#d1d9e0" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="495.0" y="526" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#59636e">50%</text>
+<line x1="592.5" y1="86" x2="592.5" y2="508" stroke="#d1d9e0" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="592.5" y="526" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#59636e">75%</text>
+<line x1="690.0" y1="86" x2="690.0" y2="508" stroke="#d1d9e0" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="690.0" y="526" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#59636e">100%</text>
+<text x="32" y="100" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.06em" fill="#59636e">COMMAND OUTPUT · TOKNIX RUN</text>
+<text x="32" y="132.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">git log  (1,500 lines)</text>
+<rect x="300" y="119.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,119.0 H669.2 Q673.2,119.0 673.2,123.0 V131.0 Q673.2,135.0 669.2,135.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="132.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−96%</text>
+<text x="748" y="132.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">15,927 → 687</text>
+<text x="32" y="162.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">pytest -v  (2 failing)</text>
+<rect x="300" y="149.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,149.0 H575.8 Q579.8,149.0 579.8,153.0 V161.0 Q579.8,165.0 575.8,165.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="162.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−72%</text>
+<text x="748" y="162.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">1,207 → 341</text>
+<text x="32" y="192.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">make build  (long lines)</text>
+<rect x="300" y="179.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,179.0 H514.1 Q518.1,179.0 518.1,183.0 V191.0 Q518.1,195.0 514.1,195.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="192.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−56%</text>
+<text x="748" y="192.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">1,609 → 709</text>
+<text x="32" y="222.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">jest --verbose  (1 failing)</text>
+<rect x="300" y="209.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,209.0 H405.8 Q409.8,209.0 409.8,213.0 V221.0 Q409.8,225.0 405.8,225.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="222.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−28%</text>
+<text x="748" y="222.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">277 → 199</text>
+<text x="32" y="252.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">go test -v  (2 failing)</text>
+<rect x="300" y="239.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,239.0 H391.4 Q395.4,239.0 395.4,243.0 V251.0 Q395.4,255.0 391.4,255.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="252.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−24%</text>
+<text x="748" y="252.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">409 → 309</text>
+<text x="32" y="282.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">cargo test  (2 failing)</text>
+<rect x="300" y="269.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,269.0 H384.6 Q388.6,269.0 388.6,273.0 V281.0 Q388.6,285.0 384.6,285.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="282.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−23%</text>
+<text x="748" y="282.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">295 → 228</text>
+<text x="32" y="312.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">gradlew bootRun  (logs)</text>
+<rect x="300" y="299.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,299.0 H338.3 Q342.3,299.0 342.3,303.0 V311.0 Q342.3,315.0 338.3,315.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="312.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−11%</text>
+<text x="748" y="312.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">1,649 → 1,470</text>
+<text x="32" y="342.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">pip install</text>
+<rect x="300" y="329.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<text x="702" y="342.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">0%</text>
+<text x="748" y="342.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">passed through</text>
+<text x="32" y="372.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">npm install</text>
+<rect x="300" y="359.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<text x="702" y="372.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">0%</text>
+<text x="748" y="372.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">passed through</text>
+<text x="32" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.06em" fill="#59636e">CODE BY NAME · OUTLINE + SYMBOL VS WHOLE FILE</text>
+<text x="32" y="438.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">reports.py → waste_data</text>
+<rect x="300" y="425.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,425.0 H619.4 Q623.4,425.0 623.4,429.0 V437.0 Q623.4,441.0 619.4,441.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="438.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−83%</text>
+<text x="748" y="438.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">10,580 → 1,808</text>
+<text x="32" y="468.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">filters.py → budget_cut</text>
+<rect x="300" y="455.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,455.0 H602.4 Q606.4,455.0 606.4,459.0 V467.0 Q606.4,471.0 602.4,471.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="468.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−79%</text>
+<text x="748" y="468.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">4,524 → 970</text>
+<text x="32" y="498.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#1f2328">hooks.py → hook_agent</text>
+<rect x="300" y="485.0" width="390" height="16" rx="4" fill="#e6eaef"/>
+<path d="M300,485.0 H600.0 Q604.0,485.0 604.0,489.0 V497.0 Q604.0,501.0 600.0,501.0 H300 Z" fill="#2a78d6"/>
+<text x="702" y="498.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1f2328">−78%</text>
+<text x="748" y="498.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">3,255 → 718</text>
+<text x="32" y="554" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#1f2328"><tspan font-weight="600">22,535 → 5,105 tokens (−77%)</tspan><tspan fill="#59636e">  over the 9 outputs · every error line kept (54 of 54)</tspan></text>
+</svg>

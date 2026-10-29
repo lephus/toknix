@@ -1,17 +1,46 @@
-# toknix
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+    <img alt="toknix: cắt token mà coding agent lãng phí, và chứng minh được." src="docs/assets/banner-light.svg" width="880">
+  </picture>
+</p>
 
-**Cắt token mà coding agent lãng phí, và chứng minh được.** · [English](README.md)
+<p align="center">
+  <a href="https://github.com/lephus/toknix/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/lephus/toknix/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/lephus/toknix/tags"><img alt="Version" src="https://img.shields.io/github/v/tag/lephus/toknix?label=version&color=2a78d6"></a>
+  <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%2B-3776ab?logo=python&logoColor=white">
+  <img alt="Dependencies: 0" src="https://img.shields.io/badge/dependencies-0-1baf7a">
+  <img alt="macOS, Linux, Windows" src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux%20%C2%B7%20Windows-supported-6e7781">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-eda100"></a>
+</p>
 
-toknix là một công cụ dòng lệnh (Python ≥ 3.9, chỉ dùng thư viện chuẩn) cho Claude Code, Codex CLI và
-Gemini CLI. Nó làm ba việc:
+<p align="center">
+  <a href="#-bắt-đầu-nhanh">Bắt đầu nhanh</a> ·
+  <a href="#-kết-quả-đo">Kết quả đo</a> ·
+  <a href="#-cách-hoạt-động">Cách hoạt động</a> ·
+  <a href="#-các-lệnh">Các lệnh</a> ·
+  <a href="#-cấu-hình">Cấu hình</a> ·
+  <a href="README.md">English</a>
+</p>
 
-1. **Cắt phần lãng phí:** output lệnh ồn ào, đọc file sinh tự động, đọc cả file trong khi chỉ cần một hàm.
-2. **Đo phần đã cắt**, từ dữ liệu của chính nó và từ transcript của agent.
-3. **Chứng minh chất lượng không giảm**, bằng cách chạy A/B một agent thật trên task của chính bạn.
+---
 
-Không có gì rời khỏi máy bạn. Mọi dữ liệu toknix giữ nằm trong `~/.toknix/`.
+**toknix** là một công cụ dòng lệnh cho **Claude Code**, **Codex CLI** và **Gemini CLI**. Nó chạy trên
+Python ≥ 3.9, chỉ dùng thư viện chuẩn, và làm ba việc:
 
-## Cài đặt
+| | | |
+|:---:|---|---|
+| ✂️ | **Cắt phần lãng phí** | output lệnh ồn ào, đọc file sinh tự động, đọc cả file trong khi chỉ cần một hàm |
+| 📏 | **Đo phần đã cắt** | từ dữ liệu của chính nó và từ transcript của agent, bằng token và bằng đô la |
+| ✅ | **Chứng minh chất lượng không giảm** | chạy A/B một agent thật trên task của chính bạn, kèm verdict thống kê |
+
+| ✂️ **−77%** | 🛡️ **54 / 54** | 🔎 **−78 đến −83%** | ⚡ **0,19 s** | 📦 **0** |
+|:---:|:---:|:---:|:---:|:---:|
+| token trên 9 output lệnh thật | dòng lỗi được giữ | khi đọc một hàm thay vì cả file | `toknix refs` trên repo 2.000 file | dependency khi chạy |
+
+🔒 **Không có gì rời khỏi máy bạn.** Mọi dữ liệu toknix giữ nằm trong `~/.toknix/`.
+
+## 🚀 Bắt đầu nhanh
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
@@ -23,11 +52,28 @@ Trên Windows (PowerShell, đã cài Git for Windows):
 irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 | iex
 ```
 
+Sau đó **khởi động lại Claude Code** và kiểm tra:
+
+```bash
+toknix doctor
+```
+
+Từ session sau, output ồn ào đến tay agent đã được lọc, kèm một dòng footer chỉ tới bản đầy đủ:
+
+```
+[toknix: 84 → 37 lines; full output: toknix recall 851e91; exit 1]
+```
+
+Xem đã tiết kiệm được bao nhiêu bằng `toknix gain`, hoặc xem trực tiếp bằng `toknix ui`.
+
+<details>
+<summary><b>Tuỳ chọn của script cài</b></summary>
+
 Script cài:
 
-- dùng `uv tool install` nếu máy có [uv](https://docs.astral.sh/uv/). Nếu không, nó tạo một venv riêng
-  trong `~/.toknix/venv`, nên Python hệ thống bị đánh dấu "externally managed" (PEP 668, ví dụ Ubuntu 24.04)
-  không bị đụng tới, rồi tạo `~/.local/bin/toknix` trỏ vào venv đó;
+- dùng `uv tool install` nếu máy có [uv](https://docs.astral.sh/uv/). Nếu không, nó tạo một venv riêng trong
+  `~/.toknix/venv`, nên Python hệ thống bị đánh dấu "externally managed" (PEP 668, ví dụ Ubuntu 24.04) không bị
+  đụng tới, rồi tạo `~/.local/bin/toknix` trỏ vào venv đó;
 - thêm `~/.local/bin` vào PATH trong profile của shell (`~/.zshrc`, `~/.bash_profile` hoặc `~/.bashrc`,
   `config.fish`, `~/.profile`) nếu PATH chưa có: hai dòng có đánh dấu, không bao giờ thêm trùng. Sau đó mở
   terminal mới, hoặc chạy dòng `export` mà script in ở cuối;
@@ -38,13 +84,16 @@ Script cài:
 | xem trước sẽ làm gì | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
 | chỉ cài lệnh, không cài hook | `… \| sh -s -- --no-hooks` |
 | không sửa profile của shell | `… \| sh -s -- --no-modify-path` |
-| gỡ hết | `… \| sh -s -- --uninstall`, hoặc `toknix uninstall` nếu chỉ muốn gỡ hook và rules |
+| đứng yên ở một bản phát hành thay vì `main` | `curl -fsSL …/install.sh \| TOKNIX_REF=v0.3.0 sh` |
 | cài không qua script | `uv tool install git+https://github.com/lephus/toknix && toknix install` |
 
 Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKNIX_DRY_RUN = "1"` hoặc
 `$env:TOKNIX_UNINSTALL = "1"` trước khi chạy.
 
-### Cập nhật
+</details>
+
+<details>
+<summary><b>Cập nhật</b></summary>
 
 Chạy lại lệnh cài:
 
@@ -53,20 +102,15 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh
 ```
 
 - Lệnh cài lại toknix từ bản mới nhất trên `main`, kể cả khi số version không đổi.
-- Sau đó `toknix install` trỏ các hook vào bản vừa cài và thay rules block bằng bản mới. Nó không bao giờ
-  tạo bản trùng.
-- Kiểm tra bằng `toknix --version` và `toknix doctor`. `doctor` cũng báo khi rules block cũ hơn bản toknix
-  đang cài.
+- Sau đó `toknix install` trỏ các hook vào bản vừa cài và thay rules block bằng bản mới. Nó không bao giờ tạo
+  bản trùng.
+- Kiểm tra bằng `toknix --version` và `toknix doctor`. `doctor` cũng báo khi rules block cũ hơn bản toknix đang
+  cài.
 
-Muốn đứng yên ở một bản phát hành thay vì `main`:
-`curl -fsSL …/install.sh | TOKNIX_REF=v0.3.0 sh`.
+</details>
 
-**Khi phát hành bản mới**:
-1. Tăng `__version__` trong `src/toknix/__init__.py` và thêm một mục vào `CHANGELOG.md`.
-2. Push lên `main`.
-3. Gắn tag cho bản phát hành (`git tag v0.3.1 && git push origin v0.3.1`) để người dùng có thể ghim bản đó.
-
-### Gỡ cài đặt
+<details>
+<summary><b>Gỡ cài đặt</b></summary>
 
 Chạy lại đúng script đã dùng để cài, thêm `--uninstall`:
 
@@ -76,7 +120,7 @@ curl -fsSL https://raw.githubusercontent.com/lephus/toknix/main/install.sh | sh 
 
 Lệnh này làm ba việc:
 
-1. Chạy `toknix uninstall`: bỏ 4 hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
+1. Chạy `toknix uninstall`: bỏ các hook và statusLine khỏi `~/.claude/settings.json`, và bỏ rules block khỏi
    `~/.claude/CLAUDE.md` (cùng `AGENTS.md` / `GEMINI.md` nếu có). Các file này trở về đúng như trước khi cài.
 2. Gỡ chính lệnh `toknix`: `uv tool uninstall toknix`, hoặc xoá venv `~/.toknix/venv` và link
    `~/.local/bin/toknix`, cùng hai dòng PATH mà script cài đã thêm vào profile của shell.
@@ -90,7 +134,10 @@ Sau đó **khởi động lại Claude Code** để nó không còn nạp các h
 | tắt toknix trong Claude Code nhưng giữ lệnh | `toknix uninstall` (bật lại bằng `toknix install`) |
 | gỡ trên Windows (PowerShell) | `$env:TOKNIX_UNINSTALL = "1"; irm https://raw.githubusercontent.com/lephus/toknix/main/install.ps1 \| iex` |
 
-### `toknix install` thay đổi những gì
+</details>
+
+<details>
+<summary><b><code>toknix install</code> thay đổi những gì</b></summary>
 
 `~/.claude/settings.json` (hoặc `$CLAUDE_CONFIG_DIR/settings.json`):
 
@@ -98,72 +145,175 @@ Sau đó **khởi động lại Claude Code** để nó không còn nạp các h
 |---|---|
 | PreToolUse `Bash` | `toknix hook bash` |
 | PreToolUse `Read\|Grep\|Glob` | `toknix hook read` |
+| PreToolUse `Agent\|Task` | `toknix hook agent` |
 | SessionStart `compact\|clear` | `toknix hook session-start` |
 | UserPromptSubmit | `toknix hook prompt`: nhắc bạn (không phải model) khi context vượt `context_budget` (1M) |
-| PreToolUse `Agent\|Task` | `toknix hook agent`: chọn model rẻ hơn cho subagent theo việc (Explore → haiku; đọc, review, làm task đã viết rõ → sonnet; thiết kế, lập kế hoạch, debug giữ model của bạn). Không bao giờ đổi lên, không ghi đè model bạn hoặc agent đã chọn; tắt bằng `"route_subagents": false` |
 
-Lệnh cũng thêm `statusLine` → `toknix statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập
-khác của bạn giữ nguyên.
+Lệnh cũng thêm `statusLine` → `toknix statusline`, nhưng chỉ khi bạn chưa có status line. Mọi thiết lập khác
+của bạn giữ nguyên.
 
 Rules block được đặt giữa hai marker `<!-- toknix:begin v1 -->` và `<!-- toknix:end -->`, trong
-`~/.claude/CLAUDE.md`. Nó cũng được đặt vào `~/.codex/AGENTS.md` và `~/.gemini/GEMINI.md`, nhưng chỉ khi
-máy có cài Codex hoặc Gemini CLI.
+`~/.claude/CLAUDE.md`. Nó cũng được đặt vào `~/.codex/AGENTS.md` và `~/.gemini/GEMINI.md`, nhưng chỉ khi máy có
+cài Codex hoặc Gemini CLI.
 
-Mọi thay đổi đều được backup trước vào `~/.toknix/backups/`. `toknix uninstall` trả các file về đúng như
-cũ, từng byte. Sau khi cài, khởi động lại Claude Code rồi chạy `toknix doctor`.
+Mọi thay đổi đều được backup trước vào `~/.toknix/backups/`. `toknix uninstall` trả các file về đúng như cũ,
+từng byte.
 
-## Trong một phiên làm việc, toknix làm gì
+</details>
 
-- **Output lệnh:** hook Bash viết lại các lệnh ồn ào (test, build, cài gói, git, liệt kê file) thành
-  `toknix run -- '<lệnh>'`.
-  - Agent vẫn nhận đủ lỗi, phần tổng kết và exit code. Test pass, thanh tiến độ và log tải về bị bỏ.
-  - **Dòng lỗi không bao giờ bị cắt.**
-  - Khi có phần bị cắt, output kết thúc bằng
-    `[toknix: 84 → 37 lines; full output: toknix recall 851e91; exit 1]`.
-  - `toknix recall <id>` in lại output gốc, đúng từng byte. `--grep` và `--lines` chỉ in một phần.
-  - Lệnh bắt đầu bằng `TOKNIX_RAW=1` không bao giờ bị viết lại.
-- **Read guard:** chặn ba kiểu đọc, và luôn nói cách đọc thay thế.
-  - Đọc cả một file sinh tự động, file vendor hoặc lockfile (`node_modules/`, `package-lock.json`,
-    `.min.js`…). Đọc một lát cắt bằng offset/limit vẫn được.
-  - Đọc cả một file dài hơn 800 dòng. Lời nhắc gợi ý dùng `toknix outline`.
-  - Lần đọc thứ ba y hệt của một file không đổi. Bộ đếm reset sau `/compact` hoặc `/clear`.
+## 📊 Kết quả đo
 
-  Nó cũng thêm `head_limit: 200` cho các lệnh Grep ở chế độ content chưa có giới hạn.
-- **Tìm code theo tên:** `toknix outline`, `symbol`, `refs`, `map` chạy được với Python (chính xác, qua
-  `ast`) và JS/TS, Go, Java, Rust, PHP, Ruby, Dart, Kotlin, C# (bằng regex, có che chuỗi và comment).
-- **Rules block:** nhắc agent dùng các lệnh trên, trả lời bằng diff thay vì tóm tắt, sửa file bằng Edit thay
-  vì viết lại cả file, và giữ đầy đủ suy luận khi debug, khi làm bảo mật hay migration. Block dài 282 token.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/benchmark-dark.svg">
+    <img alt="Token tiết kiệm trên từng output: git log 96%, pytest 72%, make build 56%, jest 28%, go test 24%, cargo test 23%, gradle 11%, pip và npm install 0%. Outline cộng symbol tiết kiệm 78 đến 83% so với đọc cả file." src="docs/assets/benchmark-light.svg" width="880">
+  </picture>
+</p>
 
-## Các lệnh
+Các output lệnh là output thật trong [`tests/fixtures`](tests/fixtures), chạy qua đúng pipeline của
+`toknix run`. Phần đọc code so một lần Read cả file với `toknix outline <file>` cộng `toknix symbol <tên>`, trên
+chính mã nguồn của toknix. Đo lại cả hai bằng:
 
-| Lệnh | Làm gì |
+```bash
+python scripts/bench_filters.py              # thêm --markdown để in các bảng bên dưới
+```
+
+<details>
+<summary><b>Số liệu đầy đủ</b></summary>
+
+| Lệnh | Dòng | Token | Tiết kiệm | Dòng lỗi được giữ |
+|---|---:|---:|---:|---:|
+| `python -m pytest -v` | 82 → 36 | 1.207 → 341 | **−72%** | 11 / 11 |
+| `npx jest --verbose` | 42 → 30 | 277 → 199 | **−28%** | 4 / 4 |
+| `go test -v ./...` | 44 → 28 | 409 → 309 | **−24%** | 11 / 11 |
+| `cargo test` | 41 → 30 | 295 → 228 | **−23%** | 5 / 5 |
+| `npm install express typescript eslint` | 18 → 18 | 294 → 294 | 0% | 6 / 6 |
+| `pip install requests rich` | 39 → 39 | 868 → 868 | 0% | 1 / 1 |
+| `./gradlew bootRun` | 67 → 63 | 1.649 → 1.470 | **−11%** | 13 / 13 |
+| `make build` | 17 → 18 | 1.609 → 709 | **−56%** | 3 / 3 |
+| `git log` | 1.500 → 31 | 15.927 → 687 | **−96%** | 0 / 0 |
+| **Tổng** | | **22.535 → 5.105** | **−77%** | **54 / 54** |
+
+| Đọc | Cả file | outline + symbol | Tiết kiệm |
+|---|---:|---:|---:|
+| `src/toknix/reports.py` → `waste_data` | 10.580 | 1.808 | **−83%** |
+| `src/toknix/filters.py` → `budget_cut` | 4.524 | 970 | **−79%** |
+| `src/toknix/hooks.py` → `hook_agent` | 3.255 | 718 | **−78%** |
+
+| Tốc độ và kích thước | |
 |---|---|
-| `toknix run -- "<lệnh>"` | chạy lệnh, in output đã lọc, giữ bản gốc để lấy lại; giữ nguyên exit code |
-| `toknix recall <id> [--grep RE] [--lines A:B]` | in lại output đầy đủ của một lần chạy đã lọc |
-| `toknix gain [--days N] [--json]` | số token tiết kiệm nhờ bộ lọc và read guard |
-| `toknix ui [--port N] [--no-open]` | trang `http://127.0.0.1:8765` để xem toknix làm việc: từng lệnh đã lọc với output gốc và output đã lọc cạnh nhau, các lần read guard chặn, token tiết kiệm theo ngày. Chỉ chạy trên máy, chỉ đọc |
-| `toknix outline <file>` | các symbol của một file kèm khoảng dòng (`L12-40  def foo(a, b)`) |
-| `toknix symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
-| `toknix refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
-| `toknix map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
-| `toknix report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU và $, chi phí theo model, cache hit, tỉ trọng output, các session tốn nhất |
-| `toknix waste [--days 7] [--json]` | 8 nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ, subagent theo loại và model…), kèm cách sửa |
-| `toknix context [--days 30] [--path DIR] [--json]` | file chỉ dẫn được nạp mỗi session, MCP server và skill, số lần chúng được dùng, và overhead cố định của mỗi request (tool, danh sách skill, MCP…) kèm chi phí của plugin, MCP server và skill không dùng |
-| `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
-| `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
-| `toknix compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
-| `toknix statusline` | status line của Claude Code: `ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 600k` |
-| `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
-| `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
+| `toknix symbol` / `toknix refs` trên repo sinh tự động 2.000 file | 0,14 s / 0,19 s (gồm cả thời gian khởi động Python; CI fail khi tới 2 s) |
+| Rules block thêm vào `CLAUDE.md` | 282 token |
 
-**ETU** là đơn vị để so sánh chi phí: một token input của `etu_model` (Claude Opus 5.5, $4 cho một triệu
-token). Mỗi request tính theo giá niêm yết của chính model của nó: input, cache write (5 phút và 1 giờ), cache
-read và output. Vì vậy ETU cộng được giữa các model và tỉ lệ với số đô la; báo cáo hiện cả hai. Với Opus 5.5:
-`input + 1,25 × cache write 5 phút + 2 × cache write 1 giờ + 0,05 × cache read + 5 × output`. Số đô la là giá
-API niêm yết: gói Pro hay Max không trả theo token, nên hãy coi nó là con số để so sánh. Model không có giá
-(Codex, Gemini) dùng `weights` và không có $; với hai agent này hãy đặt `weights` trong config.
+</details>
 
-## Đọc `toknix gain`
+> [!NOTE]
+> - Số token là ước lượng của chính toknix (xem [Giới hạn đã biết](#-giới-hạn-đã-biết)).
+> - Output từ 40 dòng trở xuống được giữ nguyên, vì vậy hai lệnh cài gói ở mức 0%.
+> - `git log` chiếm phần lớn tổng. Xét riêng từng lệnh, các lần chạy test giảm 23–72% và các lần build 11–56%.
+> - Số liệu trên công việc của chính bạn đến từ `toknix gain` (bộ lọc đã cắt bao nhiêu) và `toknix compare` (agent
+>   thật có rẻ hơn mà không fail thêm task nào không).
+
+## 🧩 Cách hoạt động
+
+```mermaid
+flowchart LR
+    A["Coding agent"] -->|"Bash"| HB["hook bash"]
+    HB -->|"lệnh ồn ào"| R["toknix run"]
+    R -->|"lỗi, tổng kết, exit code"| A
+    R -.->|"output đầy đủ"| S[("~/.toknix")]
+    A -->|"Read / Grep / Glob"| HR["hook read"]
+    HR -->|"đọc junk, file lớn, đọc lặp: trả lời nhắc"| A
+    A -->|"Agent / Task"| HA["hook agent"]
+    HA -->|"model rẻ hơn theo việc"| SA["Subagent"]
+    S --> M["gain · report · waste · ui"]
+```
+
+### 🧹 Output lệnh
+
+Hook Bash viết lại các lệnh ồn ào (test, build, cài gói, git, liệt kê file) thành `toknix run -- '<lệnh>'`.
+
+- Agent vẫn nhận đủ lỗi, phần tổng kết và exit code. Test pass, thanh tiến độ và log tải về bị bỏ.
+- **Dòng lỗi không bao giờ bị cắt**, kể cả khi riêng chúng đã vượt ngân sách token.
+- Khi có phần bị cắt, output kết thúc bằng `[toknix: 84 → 37 lines; full output: toknix recall 851e91; exit 1]`.
+- `toknix recall <id>` in lại output gốc, đúng từng byte. `--grep` và `--lines` chỉ in một phần.
+- Lệnh bắt đầu bằng `TOKNIX_RAW=1` không bao giờ bị viết lại.
+
+### 🛡️ Read guard
+
+Chặn ba kiểu đọc, và luôn nói cách đọc thay thế:
+
+- đọc cả một file sinh tự động, file vendor hoặc lockfile (`node_modules/`, `package-lock.json`, `.min.js`…).
+  Đọc một lát cắt bằng offset/limit vẫn được;
+- đọc cả một file dài hơn 800 dòng. Lời nhắc gợi ý dùng `toknix outline`;
+- lần đọc thứ ba y hệt của một file không đổi. Bộ đếm reset sau `/compact` hoặc `/clear`.
+
+Nó cũng thêm `head_limit: 200` cho các lệnh Grep ở chế độ content chưa có giới hạn.
+
+### 🔎 Tìm code theo tên
+
+`toknix outline`, `symbol`, `refs`, `map` chạy được với Python (chính xác, qua `ast`) và JS/TS, Go, Java, Rust,
+PHP, Ruby, Dart, Kotlin, C# (bằng regex, có che chuỗi và comment).
+
+### 🧭 Model cho subagent
+
+Subagent chiếm khoảng 70% chi phí của một session Claude Code. Khi một subagent được khởi chạy mà không chỉ định
+model, hook agent chọn cho nó một model rẻ hơn theo việc:
+
+| Việc | Model |
+|---|---|
+| Explore | Haiku |
+| đọc, tìm kiếm, review, làm một task đã viết rõ | Sonnet |
+| thiết kế, lập kế hoạch, debug | giữ model của bạn |
+
+Hook không bao giờ đổi lên model đắt hơn, không ghi đè model mà bạn, agent hay định nghĩa agent đã chọn, và để
+nguyên fork, Plan và agent của plugin. Tắt bằng `"route_subagents": false`.
+
+### 📝 Rules block
+
+282 token trong `CLAUDE.md`, nhắc agent dùng các lệnh trên, trả lời bằng diff thay vì tóm tắt, sửa file bằng
+Edit thay vì viết lại cả file, và giữ đầy đủ suy luận khi debug, khi làm bảo mật hay migration.
+
+## 🧰 Các lệnh
+
+| | Lệnh | Làm gì |
+|:---:|---|---|
+| ✂️ | `toknix run -- "<lệnh>"` | chạy lệnh, in output đã lọc, giữ bản gốc để lấy lại; giữ nguyên exit code |
+| ✂️ | `toknix recall <id> [--grep RE] [--lines A:B]` | in lại output đầy đủ của một lần chạy đã lọc |
+| 🔎 | `toknix outline <file>` | các symbol của một file kèm khoảng dòng (`L12-40  def foo(a, b)`) |
+| 🔎 | `toknix symbol <tên> [--kind K] [--path DIR]` | in code của một hàm hay class (nhận cả `Class.method`), kèm số dòng |
+| 🔎 | `toknix refs <tên> [--path DIR]` | các chỗ dùng một tên trong code (không tính chuỗi hay comment), không gồm dòng định nghĩa |
+| 🔎 | `toknix map [DIR] [--budget 1500]` | các file được dùng nhiều nhất và symbol top-level của chúng, trong một ngân sách token |
+| 📏 | `toknix gain [--days N] [--json]` | số token tiết kiệm nhờ bộ lọc và read guard |
+| 📏 | `toknix ui [--port N] [--no-open]` | trang `http://127.0.0.1:8765`, chỉ chạy trên máy và chỉ đọc: từng lệnh đã lọc với output gốc và output đã lọc cạnh nhau, các lần read guard chặn, token tiết kiệm theo ngày |
+| 📏 | `toknix report [--days 7] [--json]` | lượng token đã dùng, đọc từ transcript: ETU và $, chi phí theo model, cache hit, tỉ trọng output, các session tốn nhất |
+| 📏 | `toknix waste [--days 7] [--json]` | các nhóm lãng phí (chi phí đọc lại, output lớn, đọc file junk, cache vỡ, subagent theo loại và model…), kèm cách sửa |
+| 📏 | `toknix context [--days 30] [--path DIR] [--json]` | file chỉ dẫn, MCP server và skill được nạp mỗi session, số lần chúng được dùng, và overhead cố định của mỗi request, kèm chi phí của plugin, MCP server và skill không dùng |
+| 📏 | `toknix snapshot --label L [--days 7]` | lưu một bản tóm tắt report để so sánh về sau |
+| 📏 | `toknix statusline` | status line của Claude Code: `ctx 92k/1.0M ▯▯▯▯▯▯▯▯▯▯ · 1.2M ETU · saved ~84k ETU (6.5%) · /clear at 600k` |
+| ✅ | `toknix bench tasks.json --label L [--rules FILE]` | chạy A/B một agent thật trong các git worktree dùng một lần |
+| ✅ | `toknix compare A B [--json]` | so sánh hai lần bench và đưa ra verdict |
+| 🔧 | `toknix install` / `uninstall` / `doctor` | cài, gỡ, và kiểm tra hook cùng rules |
+| 🔧 | `toknix init-project [--path DIR]` | chặn Read các thư mục junk trong `.claude/settings.json` của project; tạo `.geminiignore` |
+
+<details>
+<summary><b>💲 ETU, đơn vị chi phí</b></summary>
+
+**ETU** là đơn vị để so sánh chi phí: một token input của `etu_model` (Claude Opus 5.5, $4 cho một triệu token).
+Mỗi request tính theo giá niêm yết của chính model của nó: input, cache write (5 phút và 1 giờ), cache read và
+output. Vì vậy ETU cộng được giữa các model và tỉ lệ với số đô la; báo cáo hiện cả hai. Với Opus 5.5:
+
+```
+input + 1,25 × cache write 5 phút + 2 × cache write 1 giờ + 0,05 × cache read + 5 × output
+```
+
+Số đô la là giá API niêm yết: gói Pro hay Max không trả theo token, nên hãy coi nó là con số để so sánh. Model
+không có giá (Codex, Gemini) dùng `weights` và không có $; với hai agent này hãy đặt `weights` trong config.
+
+</details>
+
+<details>
+<summary><b>📏 Đọc <code>toknix gain</code></b></summary>
 
 ```
 toknix gain (all time)
@@ -177,25 +327,28 @@ By filter kind
   generic          3     2   15.1k         0    0%
 ```
 
-- **Saved directly** là phần agent không phải nhận: output gốc trừ output đã lọc, cộng các file mà read guard
-  đã chặn. Đây là số token ước lượng. Hãy coi nó là ước tính, không phải hoá đơn.
-- **With re-reads** gần với số tiền bạn thật sự trả. Token đã vào context được ghi vào cache một lần, rồi
-  được đọc lại ở mọi request sau đó trong session.
-  - R̄ là trung vị số request còn lại sau một kết quả Bash, đo từ transcript của bạn. Mỗi kết quả tính theo
-    giá model của request mang nó.
+- **Saved directly** là phần agent không phải nhận: output gốc trừ output đã lọc, cộng các file mà read guard đã
+  chặn. Đây là số token ước lượng. Hãy coi nó là ước tính, không phải hoá đơn.
+- **With re-reads** gần với số tiền bạn thật sự trả. Token đã vào context được ghi vào cache một lần, rồi được
+  đọc lại ở mọi request sau đó trong session.
+  - R̄ là trung vị số request còn lại sau một kết quả Bash, đo từ transcript của bạn. Mỗi kết quả tính theo giá
+    model của request mang nó.
   - Khi chưa có transcript, R̄ là 20 theo giá Opus 5.5, và dòng output ghi rõ đó là giá trị mặc định.
 - **cuts / recalled / rate:** mỗi bộ lọc đã cắt output bao nhiêu lần, và sau đó bạn hay agent cần đến
   `toknix recall` bao nhiêu lần.
-  - Nếu tỉ lệ này trên 20% với từ 10 lần cắt trở lên, `gain` cảnh báo bộ lọc có thể cắt quá tay. Khi đó hãy
-    báo lại lệnh đã gặp.
+  - Nếu tỉ lệ này trên 20% với từ 10 lần cắt trở lên, `gain` cảnh báo bộ lọc có thể cắt quá tay. Khi đó hãy báo
+    lại lệnh đã gặp.
 - **Bash calls wrapped** là tỉ lệ lệnh Bash đã đi qua `toknix run`.
-- Một lần chạy mà riêng các dòng lỗi đã vượt ngân sách token được đếm là `error_overflow`. Các dòng lỗi đó
-  vẫn được giữ đủ.
+- Một lần chạy mà riêng các dòng lỗi đã vượt ngân sách token được đếm là `error_overflow`. Các dòng lỗi đó vẫn
+  được giữ đủ.
 
-## Đọc `toknix compare`
+</details>
 
-`toknix bench` chạy mỗi task trong `tasks.json` nhiều lần. Mỗi lần dùng một `git worktree` mới, và worktree
-đó luôn bị xoá sau khi chạy xong, kể cả khi bị timeout:
+<details>
+<summary><b>✅ Đọc <code>toknix compare</code></b></summary>
+
+`toknix bench` chạy mỗi task trong `tasks.json` nhiều lần. Mỗi lần dùng một `git worktree` mới, và worktree đó
+luôn bị xoá sau khi chạy xong, kể cả khi bị timeout:
 
 ```json
 {"repo": ".", "ref": "HEAD", "agent": "claude", "repeat": 3, "timeout": 900,
@@ -218,20 +371,22 @@ output verdict: ACCEPT
 
 | Verdict | Khi nào |
 |---|---|
-| **ACCEPT** | pass rate không giảm, median ETU giảm ít nhất 10%, và cả khoảng tin cậy 95% (bootstrap, 2.000 lần lấy mẫu) nằm dưới 0 |
-| **REJECT** | pass rate giảm, hoặc B không rẻ hơn |
-| **INCONCLUSIVE** | B rẻ hơn nhưng chưa rõ ràng: hãy chạy thêm vài lần |
+| 🟢 **ACCEPT** | pass rate không giảm, median ETU giảm ít nhất 10%, và cả khoảng tin cậy 95% (bootstrap, 2.000 lần lấy mẫu) nằm dưới 0 |
+| 🔴 **REJECT** | pass rate giảm, hoặc B không rẻ hơn |
+| 🟡 **INCONCLUSIVE** | B rẻ hơn nhưng chưa rõ ràng: hãy chạy thêm vài lần |
 
 **Output verdict** áp cùng luật đó, nhưng chỉ cho output token. Đây là cách chọn biến thể rules
 (`bench --rules variant.md`).
 
-Chỉ các task có ở cả hai lần chạy mới được so. Ví dụ trên là kết quả của agent giả trong bộ test. Chạy với
-agent thật thì tốn tiền thật, vì vậy việc đó do bạn tự chạy.
+Chỉ các task có ở cả hai lần chạy mới được so. Ví dụ trên là kết quả của agent giả trong bộ test. Chạy với agent
+thật thì tốn tiền thật, vì vậy việc đó do bạn tự chạy.
 
-## Cấu hình
+</details>
+
+## 🔧 Cấu hình
 
 Thiết lập nằm trong `~/.toknix/config.json`. Chỉ những key bạn đặt mới ghi đè giá trị mặc định (xem trong
-`src/toknix/config.py`). Các key bạn hay cần đổi nhất:
+[`src/toknix/config.py`](src/toknix/config.py)). Các key bạn hay cần đổi nhất:
 
 | Key | Mặc định | Ý nghĩa |
 |---|---|---|
@@ -254,77 +409,86 @@ Thiết lập nằm trong `~/.toknix/config.json`. Chỉ những key bạn đặ
 | `TOKNIX_DEBUG=1` | hook in lỗi ra stderr. Mặc định hook không bao giờ chặn agent và im lặng khi lỗi |
 | `TOKNIX_HOME` | nơi toknix giữ dữ liệu (mặc định `~/.toknix`) |
 
-### ⚠ `hook_permission`
+> [!WARNING]
+> **`hook_permission`.** Mặc định, hook Bash chỉ viết lại lệnh, sau đó Claude Code vẫn hỏi quyền như với lệnh
+> gốc. Đặt `"hook_permission": "allow"` thì hook sẽ tự duyệt **mọi** lệnh nó viết lại. Điều đó gồm cả
+> `git push --force` và bất cứ lệnh nào mà permission rule của bạn lẽ ra đã chặn. Đừng đặt giá trị này, trừ khi
+> bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
 
-Mặc định, hook Bash chỉ viết lại lệnh. Sau đó Claude Code vẫn hỏi quyền như với lệnh gốc.
+## 🚧 Giới hạn đã biết
 
-Đặt `"hook_permission": "allow"` thì hook sẽ tự duyệt **mọi** lệnh nó viết lại. Điều đó gồm cả
-`git push --force` và bất cứ lệnh nào mà permission rule của bạn lẽ ra đã chặn. Đừng đặt giá trị này, trừ
-khi bạn chắc chắn muốn vậy. `"ask"` thì luôn hỏi.
-
-## Giới hạn đã biết
-
-- **Permission rule có thể không khớp với lệnh đã bị viết lại.** Một rule như `Bash(npm test:*)` có thể
-  không khớp với `toknix run -- 'npm test'`, nên Claude Code có thể hỏi quyền ở chỗ trước đây không hỏi.
-  Điều này chưa được kiểm trên Claude Code; nó là check B trong [docs/VERIFY.md](docs/VERIFY.md).
+- **Permission rule có thể không khớp với lệnh đã bị viết lại.** Một rule như `Bash(npm test:*)` có thể không
+  khớp với `toknix run -- 'npm test'`, nên Claude Code có thể hỏi quyền ở chỗ trước đây không hỏi. Điều này chưa
+  được kiểm trên Claude Code; nó là check B trong [docs/VERIFY.md](docs/VERIFY.md).
 - **Số token là ước lượng.**
-  - toknix đếm số ký tự theo từng lớp: khoảng 4 ký tự/token với văn bản thường, 2 với hex/base64, 1,5 với
-    ký tự ngoài ASCII.
-  - toknix có thể hiệu chỉnh các tỉ lệ này từ transcript của bạn. Trên những transcript đã thử, phép fit
-    chưa đạt ngưỡng chất lượng (sai số trung vị 21–25%, trong khi ngưỡng là 15%), nên tỉ lệ mặc định vẫn
-    được dùng.
+  - toknix đếm số ký tự theo từng lớp: khoảng 4 ký tự/token với văn bản thường, 2 với hex/base64, 1,5 với ký tự
+    ngoài ASCII.
+  - toknix có thể hiệu chỉnh các tỉ lệ này từ transcript của bạn. Trên những transcript đã thử, phép fit chưa đạt
+    ngưỡng chất lượng (sai số trung vị 21–25%, trong khi ngưỡng là 15%), nên tỉ lệ mặc định vẫn được dùng.
   - Vì vậy `gain` hiện số ước tính. Còn `report` và `waste` dùng số `usage` chính xác lấy từ transcript.
-- **Hook agent đoán việc qua từ ngữ.** Hook đọc description của subagent, rồi phần đầu prompt (từ khoá tiếng
-  Anh và tiếng Việt); việc không xếp được loại thì giữ model chính. Nếu model rẻ hơn làm subagent chạy lâu hơn,
-  `waste` (8) sẽ thấy số request mỗi agent tăng; đặt `"route_subagents": false` để tắt. Không hook nào đổi
-  được model của phiên chính.
+- **Hook agent đoán việc qua từ ngữ.** Hook đọc description của subagent, rồi phần đầu prompt (từ khoá tiếng Anh
+  và tiếng Việt); việc không xếp được loại thì giữ model chính. Nếu model rẻ hơn làm subagent chạy lâu hơn,
+  `waste` (8) sẽ thấy số request mỗi agent tăng; đặt `"route_subagents": false` để tắt. Không hook nào đổi được
+  model của phiên chính.
 - **Codex và Gemini CLI chưa có hook.** Hai agent này chỉ nhận rules block, để agent tự gọi `toknix run` và
   `toknix outline`. Transcript của Gemini không được đọc.
   - Model của subagent: Gemini CLI vốn đã chạy subagent chỉ đọc (`codebase_investigator`) bằng Flash. toknix
     không đặt model cho Codex. Codex chỉ có một thiết lập, `[agents] default_subagent_model` trong
-    `~/.codex/config.toml` (Codex 0.145 trở lên), áp cho mọi subagent, kể cả subagent sửa code, và model không
-    có trong gói của bạn làm các lần spawn đó lỗi. Bạn tự đặt nếu thấy hợp ([A9.1](docs/ALGORITHMS.md)).
+    `~/.codex/config.toml` (Codex 0.145 trở lên), áp cho mọi subagent, kể cả subagent sửa code, và model không có
+    trong gói của bạn làm các lần spawn đó lỗi. Bạn tự đặt nếu thấy hợp ([A9.1](docs/ALGORITHMS.md)).
 - **Một số hành vi của Claude Code chưa được xác nhận trên session thật** ([docs/VERIFY.md](docs/VERIFY.md)):
   - `updatedInput` có được áp dụng khi hook không gửi permission decision không;
   - Claude Code có tự bỏ qua các lần Read lặp lại không;
   - khi Grep bị `head_limit` cắt bớt, agent có được báo không;
   - các rule deny do `init-project` thêm có khớp không.
-- **Windows** được hỗ trợ qua Git Bash, giống cách Claude Code chạy trên Windows. CI chạy bộ test và script
-  cài trên Windows, nhưng chưa ai dùng toknix với Claude Code trên Windows.
+- **Windows** được hỗ trợ qua Git Bash, giống cách Claude Code chạy trên Windows. CI chạy bộ test và script cài
+  trên Windows, nhưng chưa ai dùng toknix với Claude Code trên Windows.
 - **Outline:**
   - Với các ngôn ngữ ngoài Python, outline dựa trên regex. Code đã minify có thể làm nó nhầm.
   - Swift, C và C++ chưa được hỗ trợ; với các file đó, `outline` in 200 dòng đầu.
   - `map` tính cả tên xuất hiện trong chuỗi và comment là một lần dùng.
-- **Tỉ lệ "Bash calls wrapped" trong `gain` là ước lượng.** Nó đếm các lệnh có chứa `toknix run`, hoặc có
-  footer của toknix trong output.
+- **Tỉ lệ "Bash calls wrapped" trong `gain` là ước lượng.** Nó đếm các lệnh có chứa `toknix run`, hoặc có footer
+  của toknix trong output.
 
-## Phát triển
+## 🛠️ Phát triển
 
 ```bash
 python -m unittest discover -s tests -v        # chỉ thư viện chuẩn, không cần pytest
+python scripts/bench_filters.py                # token cắt được trên các fixture, dòng lỗi được giữ
 python scripts/bench_codesearch.py 2000        # đo symbol/refs trên một repo sinh tự động 2.000 file
 ```
 
-- [docs/PLAN.md](docs/PLAN.md): những gì đã làm và thứ tự làm.
-- [docs/ALGORITHMS.md](docs/ALGORITHMS.md): mỗi phần hoạt động thế nào. Đây là tài liệu gốc: khi tài liệu
-  và code không khớp, tài liệu được sửa trước.
-- [docs/VERIFY.md](docs/VERIFY.md): các bước kiểm trên một session Claude Code thật.
+CI chạy hơn 480 test và benchmark tìm code trên Linux, macOS và Windows với Python 3.9 và 3.13, và kiểm các
+script cài bằng shellcheck và PSScriptAnalyzer.
 
-## Tài liệu tham khảo
+| Tài liệu | Nội dung |
+|---|---|
+| [docs/PLAN.md](docs/PLAN.md) | những gì đã làm và thứ tự làm |
+| [docs/ALGORITHMS.md](docs/ALGORITHMS.md) | mỗi phần hoạt động thế nào. Đây là tài liệu gốc: khi tài liệu và code không khớp, tài liệu được sửa trước |
+| [docs/VERIFY.md](docs/VERIFY.md) | các bước kiểm trên một session Claude Code thật |
+| [CHANGELOG.md](CHANGELOG.md) | thay đổi của từng bản phát hành |
 
-Cả hai bài đều huấn luyện tokenizer mới. toknix thì không: bạn trả tiền theo số token mà tokenizer của nhà
-cung cấp đếm.
+**Khi phát hành bản mới:**
+
+1. Tăng `__version__` trong `src/toknix/__init__.py` và thêm một mục vào `CHANGELOG.md`.
+2. Push lên `main`.
+3. Gắn tag cho bản phát hành (`git tag v0.3.1 && git push origin v0.3.1`) để người dùng có thể ghim bản đó.
+
+## 📚 Tài liệu tham khảo
+
+Cả hai bài đều huấn luyện tokenizer mới. toknix thì không: bạn trả tiền theo số token mà tokenizer của nhà cung
+cấp đếm.
 
 - Shi và cộng sự, *Counting and Min-Cost Encoding for Tokenization in Large Language Models* (CNF-MCE),
-  [arXiv:2610.01127](https://arxiv.org/abs/2610.01127), 1/10/2026. Bài đếm chuỗi con trên toàn bộ dữ liệu,
-  chỉ giữ những chuỗi thực sự được dùng, rồi chọn cách tách token có tổng chi phí thấp nhất, và so sánh với
-  BPE. toknix lấy hai ý từ bài này: chi phí token phụ thuộc loại văn bản, không tỉ lệ với số ký tự (ước lượng
-  token theo loại ký tự, viết lại các chuỗi tốn token), và điều quan trọng là cái được dùng, không phải cái
-  xuất hiện nhiều (tỉ lệ recall của bộ lọc, MCP server và skill được nạp nhưng không bao giờ được gọi).
-- Reif, Kaplan, Schwartz, *More Than Words: Compositional Tokenization for Efficient Language Models*
-  (CoBPE), [arXiv:2610.05597](https://arxiv.org/abs/2610.05597), 10/2026. Bài biểu diễn một cụm từ ngắn
-  bằng một token gốc cộng các modifier, nhờ đó chuỗi ngắn hơn khoảng 30% so với BPE.
+  [arXiv:2610.01127](https://arxiv.org/abs/2610.01127), 1/10/2026. Bài đếm chuỗi con trên toàn bộ dữ liệu, chỉ
+  giữ những chuỗi thực sự được dùng, rồi chọn cách tách token có tổng chi phí thấp nhất, và so sánh với BPE.
+  toknix lấy hai ý từ bài này: chi phí token phụ thuộc loại văn bản, không tỉ lệ với số ký tự (ước lượng token
+  theo loại ký tự, viết lại các chuỗi tốn token), và điều quan trọng là cái được dùng, không phải cái xuất hiện
+  nhiều (tỉ lệ recall của bộ lọc, MCP server và skill được nạp nhưng không bao giờ được gọi).
+- Reif, Kaplan, Schwartz, *More Than Words: Compositional Tokenization for Efficient Language Models* (CoBPE),
+  [arXiv:2610.05597](https://arxiv.org/abs/2610.05597), 10/2026. Bài biểu diễn một cụm từ ngắn bằng một token
+  gốc cộng các modifier, nhờ đó chuỗi ngắn hơn khoảng 30% so với BPE.
 
-## Giấy phép
+## 📄 Giấy phép
 
 MIT, xem [LICENSE](LICENSE).

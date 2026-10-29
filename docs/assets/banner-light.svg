@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="220" viewBox="0 0 880 220" role="img" aria-label="toknix: cut the tokens AI coding agents waste, and prove it.">
+<rect x="0.5" y="0.5" width="879" height="219" rx="12" fill="#f6f8fa" stroke="#d1d9e0"/>
+<text x="40" y="104" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="-0.02em" fill="#1f2328">tok<tspan fill="#2a78d6">nix</tspan></text>
+<text x="42" y="140" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#59636e">Cut the tokens AI coding agents waste,</text>
+<text x="42" y="163" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#59636e">and prove it.</text>
+<rect x="470" y="40" width="22" height="12" rx="3" fill="#c8d1da"/>
+<rect x="497" y="40" width="34" height="12" rx="3" fill="#c8d1da"/>
+<rect x="536" y="40" width="18" height="12" rx="3" fill="#c8d1da"/>
+<rect x="559" y="40" width="40" height="12" rx="3" fill="#c8d1da"/>
+<rect x="604" y="40" width="26" height="12" rx="3" fill="#c8d1da"/>
+<rect x="635" y="40" width="30" height="12" rx="3" fill="#d1242f"/>
+<rect x="670" y="40" width="16" height="12" rx="3" fill="#c8d1da"/>
+<rect x="691" y="40" width="36" height="12" rx="3" fill="#c8d1da"/>
+<rect x="732" y="40" width="24" height="12" rx="3" fill="#c8d1da"/>
+<rect x="761" y="40" width="20" height="12" rx="3" fill="#c8d1da"/>
+<rect x="786" y="40" width="38" height="12" rx="3" fill="#c8d1da"/>
+<rect x="470" y="58" width="28" height="12" rx="3" fill="#c8d1da"/>
+<rect x="503" y="58" width="18" height="12" rx="3" fill="#c8d1da"/>
+<rect x="526" y="58" width="32" height="12" rx="3" fill="#c8d1da"/>
+<rect x="563" y="58" width="22" height="12" rx="3" fill="#c8d1da"/>
+<rect x="590" y="58" width="26" height="12" rx="3" fill="#c8d1da"/>
+<rect x="621" y="58" width="30" height="12" rx="3" fill="#c8d1da"/>
+<rect x="656" y="58" width="20" height="12" rx="3" fill="#d1242f"/>
+<rect x="681" y="58" width="34" height="12" rx="3" fill="#c8d1da"/>
+<rect x="720" y="58" width="24" height="12" rx="3" fill="#c8d1da"/>
+<rect x="749" y="58" width="16" height="12" rx="3" fill="#c8d1da"/>
+<rect x="770" y="58" width="28" height="12" rx="3" fill="#c8d1da"/>
+<rect x="803" y="58" width="36" height="12" rx="3" fill="#c8d1da"/>
+<rect x="470" y="76" width="22" height="12" rx="3" fill="#c8d1da"/>
+<rect x="497" y="76" width="30" height="12" rx="3" fill="#c8d1da"/>
+<rect x="532" y="76" width="18" height="12" rx="3" fill="#c8d1da"/>
+<rect x="555" y="76" width="26" height="12" rx="3" fill="#c8d1da"/>
+<rect x="586" y="76" width="40" height="12" rx="3" fill="#d1242f"/>
+<rect x="631" y="76" width="20" height="12" rx="3" fill="#c8d1da"/>
+<rect x="656" y="76" width="24" height="12" rx="3" fill="#c8d1da"/>
+<rect x="685" y="76" width="32" height="12" rx="3" fill="#c8d1da"/>
+<rect x="722" y="76" width="18" height="12" rx="3" fill="#c8d1da"/>
+<text x="470" y="110" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#59636e">22,535 tokens of raw output</text>
+<path d="M476,122 v18 m-5,-6 l5,6 l5,-6" fill="none" stroke="#59636e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="470" y="148" width="34" height="12" rx="3" fill="#2a78d6"/>
+<rect x="509" y="148" width="22" height="12" rx="3" fill="#d1242f"/>
+<rect x="536" y="148" width="30" height="12" rx="3" fill="#2a78d6"/>
+<rect x="571" y="148" width="26" height="12" rx="3" fill="#2a78d6"/>
+<rect x="602" y="148" width="38" height="12" rx="3" fill="#d1242f"/>
+<rect x="645" y="148" width="18" height="12" rx="3" fill="#2a78d6"/>
+<rect x="668" y="148" width="24" height="12" rx="3" fill="#d1242f"/>
+<rect x="697" y="148" width="28" height="12" rx="3" fill="#2a78d6"/>
+<text x="470" y="182" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328"><tspan font-weight="600">5,105 tokens</tspan><tspan fill="#59636e"> · every error line kept</tspan></text>
+</svg>
