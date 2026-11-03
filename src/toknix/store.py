@@ -96,5 +96,7 @@ def bump_read(session: str, path: str, mtime: float, span: str) -> int:
 
 
 def reset_reads(session: str):
+    """Forget the reads of a session and of its subagents, whose ledgers are `<session>/<agent_id>` (P11-T1)."""
     with db() as c:
-        c.execute("DELETE FROM reads WHERE session=?", (session,))
+        c.execute("DELETE FROM reads WHERE session=? OR substr(session, 1, ?)=?",
+                  (session, len(session) + 1, session + "/"))

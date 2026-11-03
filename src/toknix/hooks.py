@@ -141,7 +141,9 @@ def hook_read(data: dict) -> dict | None:
     limit = cfg["guard_repeat_reads"]
     if limit and session:
         span = f"{ti.get('offset')}:{ti.get('limit')}"
-        n = store.bump_read(session, str(p.resolve()), st.st_mtime, span)
+        agent = data.get("agent_id")  # P11-T1: a subagent sends its parent's session_id, but has its own context
+        ledger = f"{session}/{agent}" if isinstance(agent, str) and agent else session
+        n = store.bump_read(ledger, str(p.resolve()), st.st_mtime, span)
         if n > limit:
             est = st.st_size // 4 if not has_span else est_tokens("x" * 40 * int(ti.get("limit") or 200))
             store.record_guard(session, "reread", path, est)

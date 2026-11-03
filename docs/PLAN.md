@@ -342,12 +342,35 @@ Người dùng chọn T1 và T2 (2026-10-21). Gợi ý bỏ tool lớn không d�
 
 ---
 
+## P11 — Không làm mất context của agent (người dùng báo lỗi, điều tra 2026-11-03)
+
+Người dùng báo toknix làm agent "mất context" khi code. Điều tra trên dữ liệu thật của máy phát triển (`~/.toknix/toknix.db` và transcript) ra ba nguyên nhân, đều là toknix che mất nội dung agent cần. Đã loại trừ: `head_limit` của Grep (khi cắt, Claude Code báo `[Showing results with pagination = limit: N]`), compaction (hook `SessionStart` đã xoá sổ đọc), Claude Code tự xoá tool result cũ (không thấy trong transcript).
+
+**P11-T1 `[x]` R3 theo từng agent (A4)**
+- Sổ đọc lặp khoá thêm `agent_id`. Tool call trong subagent mang `session_id` của phiên cha, nên phiên chính và mọi subagent đang dùng chung một sổ, và subagent bị chặn đọc file nó chưa đọc lần nào.
+- Xong khi: có test cho các trường hợp sau.
+  - Subagent vẫn đọc được file mà phiên cha đã đọc 3 lần.
+  - Hai subagent không ảnh hưởng nhau.
+  - Compaction xoá cả sổ của subagent.
+  - Dòng `guard` vẫn ghi session của phiên cha.
+  - Kết quả (2026-11-03): sổ của subagent là `<session>/<agent_id>` trong cột `session` (không đổi schema); `reset_reads` xoá cả `<session>/…`. 2 test mới.
+
+**P11-T2 `[ ]` Lệnh ghép chỉ được bọc khi mọi câu lệnh bọc được (A3, A2.3)**
+- `ls x && cat a.ts` đang đi qua bộ lọc `listing`, nên nội dung file bị cắt sau 80 dòng. Câu lệnh khác loại nhau thì phân loại `generic`.
+- Xong khi: có test tách câu lệnh (dấu nháy, `2>&1`, `|&`, xuống dòng), bảng `should_wrap` và bảng classify cho lệnh ghép.
+
+**P11-T3 `[ ]` Lệnh in nội dung không bị lọc, diff không bị gộp dòng (A2.3, A2.4, A2.5)**
+- Kind `content` (output giữ nguyên) cho `git show <rev>:<path>` và `git log` có patch/stat. A2.5 không chạy trên `gitdiff`.
+- Xong khi: có test cho `git show HEAD:file`, `git log -p` và một diff có nhiều dòng cùng dạng.
+
+---
+
 ## Rủi ro đã biết
 
 | ID | Rủi ro | Xử lý |
 |---|---|---|
 | RK-1 | Claude Code bỏ qua `updatedInput` khi không có `permissionDecision` | P2-T4 kiểm chứng; phương án dự phòng là rules để agent tự gõ `toknix run --` |
 | RK-2 | Lọc mất dòng quan trọng nên agent đoán sai | Bất biến ERROR_RE (có property test), footer `recall`, `TOKNIX_RAW=1`, verdict của bench |
-| RK-3 | Read guard làm agent kẹt vòng lặp | Mọi lần deny đều nêu cách đọc thay thế; R3 cho phép 2 lần; reset khi compaction; mọi rule tắt được trong config |
+| RK-3 | Read guard làm agent kẹt vòng lặp | Mọi lần deny đều nêu cách đọc thay thế; R3 cho phép 2 lần, đếm riêng từng agent (P11-T1); reset khi compaction; mọi rule tắt được trong config |
 | RK-4 | Hook làm chậm mỗi lượt gọi | Đo thời gian khởi động `toknix hook` (mục tiêu < 80 ms); import lười, không import module đo lường trong hook |
 | RK-5 | Schema transcript thay đổi | Parser phòng thủ; test với fixture; `doctor` cảnh báo khi đọc được 0 usage |

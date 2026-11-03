@@ -39,12 +39,15 @@ class GuardCase(unittest.TestCase):
         self.home.mkdir(parents=True, exist_ok=True)
         (self.home / "config.json").write_text(json.dumps(values))
 
-    def call(self, tool: str, session: str = "s1", **tool_input) -> dict | None:
-        return hooks.hook_read({"session_id": session, "cwd": str(self.proj), "hook_event_name": "PreToolUse",
-                                "tool_name": tool, "tool_input": tool_input})
+    def call(self, tool: str, session: str = "s1", agent: str | None = None, **tool_input) -> dict | None:
+        data = {"session_id": session, "cwd": str(self.proj), "hook_event_name": "PreToolUse",
+                "tool_name": tool, "tool_input": tool_input}
+        if agent:  # Claude Code adds agent_id/agent_type when the tool call runs inside a subagent
+            data.update(agent_id=agent, agent_type="general-purpose")
+        return hooks.hook_read(data)
 
-    def read(self, path, session: str = "s1", **span) -> dict | None:
-        return self.call("Read", session, file_path=str(path), **span)
+    def read(self, path, session: str = "s1", agent: str | None = None, **span) -> dict | None:
+        return self.call("Read", session, agent, file_path=str(path), **span)
 
     def assertDenied(self, reply: dict | None, *in_reason: str):
         self.assertIsNotNone(reply)
@@ -196,6 +199,26 @@ class TestRepeatReads(GuardCase):
         for _ in range(2):
             self.read(f, session="a")
         self.assertIsNone(self.read(f, session="b"))
+
+    def test_each_subagent_has_its_own_ledger(self):  # P11-T1: a subagent sends its parent's session_id
+        f = self.file("src/app.ts")
+        for _ in range(3):
+            self.read(f)
+        self.assertIsNone(self.read(f, agent="a1"))  # its context never had the file
+        self.assertIsNone(self.read(f, agent="a1"))
+        self.assertIsNone(self.read(f, agent="a2"))
+        self.assertDenied(self.read(f, agent="a1"), "already read this exact range")
+        self.assertDenied(self.read(f))
+        self.assertEqual([r[:2] for r in self.guard_rows()], [("s1", "reread")] * 3)  # rows keep the parent session
+
+    def test_compact_resets_the_subagent_ledgers_of_that_session_only(self):
+        f = self.file("src/app.ts")
+        for session in ("s1", "s10"):
+            for _ in range(3):
+                self.read(f, session=session, agent="a1")
+        hooks.hook_session_start({"session_id": "s1", "source": "compact"})
+        self.assertIsNone(self.read(f, agent="a1"))
+        self.assertDenied(self.read(f, session="s10", agent="a1"))
 
     def test_relative_paths_resolve_against_the_hook_cwd(self):
         f = self.file("src/app.ts")

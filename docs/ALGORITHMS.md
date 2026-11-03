@@ -79,10 +79,12 @@ run(cmd):
       print(text as lines); record(kind="passthrough"); return p.returncode     # không đụng output nhỏ
 
   kind = classify(cmd)                  # A2.3
-  out = FILTERS[kind](lines, failed = p.returncode != 0)                         # A2.4
-  out = normalize_costly(out, kind)                                              # A2.5b
-  out = squeeze_blank(collapse_similar(dedupe_runs(out)))                        # A2.5
-  if kind != "gitdiff":
+  if kind == "content": out = lines     # P11-T3: nội dung file/patch agent cố ý xem, không đụng
+  else:
+    out = FILTERS[kind](lines, failed = p.returncode != 0)                       # A2.4
+    out = normalize_costly(out, kind)                                            # A2.5b
+    if kind != "gitdiff":               # P11-T3: diff là code, A2.5 không được gộp dòng của nó
+      out = squeeze_blank(collapse_similar(dedupe_runs(out)))                    # A2.5
       out = cut_long_lines(out, max_line_chars)                                  # A2.5c
       k = 2 if failed else 1
       out = budget_cut(out, max_lines × k, max_tokens × k, head_lines)           # A2.6
@@ -113,7 +115,14 @@ rstrip mỗi dòng
 
 ### A2.3 classify(cmd) → kind
 
-1. Lấy câu lệnh đầu tiên, cắt ở `&& || ; |`, rồi tách bằng `shlex.split` (fallback `split()`).
+1. (P11-T2) Tách lệnh thành các câu lệnh và khâu pipe (`statements`): cắt ở `&& || ; | |& &` và xuống dòng, chỉ ở
+   ngoài dấu nháy; `&` trong `2>&1`, `>&2`, `&>file` không phải chỗ cắt. Bỏ câu lệnh trung tính `echo printf true false`.
+   Mỗi câu lệnh còn lại được phân loại theo bước 2–4 (tách từ bằng `shlex.split`, fallback `split()`), rồi:
+   - có câu lệnh loại `content` → `content`;
+   - mọi câu lệnh cùng một loại → loại đó;
+   - khác loại, hoặc không còn câu lệnh nào → `generic`.
+
+   Trước P11-T2 chỉ câu lệnh đầu được xét, nên `ls x && cat a.ts` đi qua bộ lọc `listing` và nội dung file bị cắt.
 2. Bỏ các tiền tố:
    - `VAR=value`,
    - wrapper `sudo npx pnpx bunx time nice env command exec`,
@@ -132,6 +141,7 @@ rstrip mỗi dòng
 | cargo test/nextest | cargotest |
 | cargo build/check/clippy | compile |
 | tsc, eslint, ruff, mypy, flake8, pylint | lint |
+| git show `<rev>:<path>` (một đối số trước `--` không bắt đầu bằng `-` và có `:`); git log có `-p -u --patch -L… --stat… --numstat --shortstat --name-only --name-status --raw --summary --dirstat…` (P11-T3) | content |
 | git status / log / diff, show / push, pull, fetch, clone | gitstatus / gitlog / gitdiff / gitnet |
 | ls, find, tree, du | listing |
 | docker, mvn, gradle, ./gradlew, make, dotnet, flutter, terraform | build |
@@ -160,12 +170,15 @@ Bất biến của mọi bộ lọc:
 | listing | — | 80 mục đầu, kèm dòng báo số mục còn lại |
 | build | layer docker (sha256, extracting; dòng trạng thái layer dạng `<12 hex>: Pulling fs layer / Waiting / Verifying Checksum / Download complete / Pull complete`), `> Task … UP-TO-DATE`, dòng chỉ có % | Mọi dòng còn lại (kể cả log ứng dụng có chữ `Waiting`) |
 | generic | — | Không lọc riêng, chỉ qua A2.5 và A2.6 |
+| content (P11-T3) | — | Không đổi gì, bỏ qua cả A2.5 và A2.6: đó là nội dung file hay patch agent cố ý xem, như `cat`. Trước P11-T3, `git show HEAD:reports.py` (778 dòng) thành 2 dòng `[toknix] 1 more files changed … (+0 -0)`, `git log -p` (188 dòng) thành 3 dòng subject |
 
 ### A2.5 Nén chung
 
 - `dedupe_runs`: các dòng giống hệt và liên tiếp → 1 dòng `… [×N]`.
 - `collapse_similar(min_run=4)`: `shape(l)` thay số và hex ≥ 7 ký tự bằng `#`. Một chuỗi từ 4 dòng cùng shape trở lên và không khớp `ERROR_RE` → giữ dòng đầu, dòng `… K similar lines …`, dòng cuối.
 - `squeeze_blank`: gộp nhiều dòng trống liên tiếp, bỏ dòng trống ở cuối.
+- (P11-T3) Không áp dụng cho `gitdiff` và `content`: diff là code, gộp dòng làm sai nội dung (60 dòng `+LIMIT_i = …` thành
+  3 dòng; dòng context trống của hunk bị gộp).
 
 ### A2.5b normalize_costly(lines, kind)
 
@@ -240,7 +253,8 @@ should_wrap(cmd):
                (Claude Code giữ cwd/env giữa các lần gọi; bọc vào subshell sẽ làm mất trạng thái đó)
                "đầu một câu lệnh" = đầu chuỗi, hoặc sau ; & | hay xuống dòng; có hoặc không có đối số (`npm test; popd`)
              | tool_name khác "Bash" | command không phải chuỗi
-  true nếu program_of(cmd) ∈ config.wrap_programs
+  true nếu mọi câu lệnh (statements, A2.3 bước 1) bọc được: program_of(câu lệnh) ∈ config.wrap_programs, hoặc là
+       câu lệnh trung tính (echo printf true false); phải có ít nhất một câu lệnh không trung tính   # P11-T2
 output nếu wrap:
   {"hookSpecificOutput":{"hookEventName":"PreToolUse",
      "updatedInput": {...tool_input, "command": "toknix run -- " + shlex.quote(cmd)}}}
@@ -249,6 +263,11 @@ output nếu wrap:
   <đối số> = một từ không có khoảng trắng, ; & |, hoặc một chuỗi trong nháy đơn/kép; giữ nguyên văn
 ```
 
+- **Lệnh ghép (P11-T2):** trước đây chỉ chương trình đầu được xét, nên `ls x && cat a.ts && cat b.json` bị bọc và đi
+  qua bộ lọc `listing`: giữ 80 dòng, báo "N more entries", trong khi phần bị cắt là nội dung file agent cố ý đọc. Dữ
+  liệu thật (máy phát triển, đến 2026-11-03): 252 lệnh ghép có chương trình ngoài `wrap_programs` (`head` 219, `grep`
+  149, `cat` 97, `sed` 67, …), 78 bị cắt; cả nhóm chỉ 1,8% số ký tự tiết kiệm. Trong lệnh như vậy, agent đã tự định
+  hình output (`| head`, `| grep`) hoặc đang đọc file, nên không bọc. `npm test 2>&1 | tail -30` cũng thôi được bọc.
 - **`cd X &&` (P7-T3):** trên dữ liệu thật 7 ngày, 188 lệnh dạng `cd X && <lệnh bọc được>` bị bỏ qua hoàn toàn vì có `cd`. Chỉ xử lý đúng một `cd` ở đầu, nối bằng `&&`: `cd X; npm test` (npm vẫn chạy khi cd lỗi), `cd a && cd b && …`, hay `rest` còn lệnh có trạng thái thì vẫn không bọc.
 
 - **Input:** đọc stdin dưới dạng byte rồi giải mã UTF-8, không dùng code page của console (cp1252 trên Windows sẽ làm hỏng lệnh có tiếng Việt khi ghi lại vào `updatedInput`). Output là JSON ASCII.
@@ -274,7 +293,8 @@ Read(file_path, offset?, limit?):
               (`package-lock.json` không khớp `my-package-lock.json`). Đường dẫn Windows đổi `\` thành `/` trước.
   R2 bigfile: không có offset/limit và size > big_lines×40 bytes và đếm dòng > big_lines (800)
               → deny "… has N lines (~T tokens). Run `toknix outline <path>`, then Read the range with offset/limit."
-  R3 reread:  key = (session, realpath, f"{offset}:{limit}"); nếu mtime không đổi thì n++, mtime đổi thì n=1
+  R3 reread:  key = (session, agent_id, realpath, f"{offset}:{limit}"); nếu mtime không đổi thì n++, mtime đổi thì n=1
+              agent_id: field `agent_id` của hook input, rỗng ở chuỗi chính (P11-T1)
               n > guard_repeat_reads (2) → deny "already read this exact range N times; file unchanged; content is still in context."
 Grep/Glob(path):
   path nằm trong junk → deny kèm gợi ý tìm trong thư mục source
@@ -286,7 +306,8 @@ file không tồn tại hoặc là thư mục → không ý kiến (Claude Code 
 ```
 
 - `[ASSUMPTION]` Giới hạn Grep cần kiểm chứng ở P2-T4: (1) `updatedInput` có được áp dụng khi không có `permissionDecision`; (2) khi `head_limit` cắt bớt, Claude Code có báo cho agent là kết quả đã bị cắt không. Nếu (2) không có thì đặt mặc định `grep_head_limit = 0`, vì cắt im lặng có thể làm agent kết luận sai ("chỉ có 200 chỗ gọi").
-- **Reset ledger:** hook `SessionStart` với `source ∈ {compact, clear}` xoá các dòng `reads` của session đó. Sau compaction, nội dung file cũ không còn trong context nên phải cho phép đọc lại.
+- **Reset ledger:** hook `SessionStart` với `source ∈ {compact, clear}` xoá các dòng `reads` của session đó, cả của các subagent. Sau compaction, nội dung file cũ không còn trong context nên phải cho phép đọc lại.
+- **Sổ theo từng agent (P11-T1):** tool call trong subagent mang `session_id` của phiên cha, kèm `agent_id` và `agent_type` của subagent (tài liệu hook của Claude Code, tra 2026-11-03). Subagent có context riêng, nên mỗi agent có sổ riêng. Trước P11-T1, phiên chính và mọi subagent dùng chung một sổ: trên máy phát triển, 10/10 lần chặn R3 rơi vào subagent (3 phiên, 7 subagent), đa số là lần đọc đầu tiên của subagent đó, kèm câu "still in your context" sai; subagent phải đọc lách bằng `limit` nên chỉ thấy một phần file. Mô phỏng sổ theo agent trên các transcript đó: 0 lần chặn. Dòng `guard` vẫn ghi `session_id` của phiên cha, để báo cáo gom theo phiên như cũ.
 - **Vì sao R3 cho phép 2 lần:** lần thứ 2 có thể hợp lệ (đọc lại sau khi tự sửa file nhưng mtime chưa đổi theo giây, hoặc sau một compaction mà hook không bắt được).
 - `[ASSUMPTION]` Bản Claude Code mới có thể đã tự trả stub "file unchanged" cho lần Read lặp. Nếu đúng vậy thì R3 thừa. Kiểm chứng ở P2-T4; nếu thừa thì mặc định đặt `guard_repeat_reads = 0`.
 
