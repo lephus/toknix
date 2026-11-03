@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.1 (2026-11-03)
+
+### Fixed: toknix no longer hides what the agent needs
+Users reported that toknix made Claude lose context while coding. Three causes, all fixed:
+- **Subagents were denied files they had never read.** A subagent's tool calls carry its parent's session id, so
+  the main session and every subagent shared one repeat-read count. Once the main session had read a file twice,
+  a fresh subagent was told the file was "still in your context" and had to read it in slices. Each subagent
+  now has its own count. Every repeat-read denial seen on the development machine was of this kind.
+- **Compound commands were filtered by their first program.** `ls src && cat a.ts && cat b.json` went through
+  the `ls` filter, so file contents were cut after 80 lines. A command with `&&`, `||`, `;` or `|` is now
+  wrapped only when every part of it is a wrapped program (`echo`, `printf`, `true` and `false` don't count).
+  Commands like `npm test 2>&1 | tail -30` or `git diff | head -50`, where the agent already limits the output,
+  are no longer wrapped.
+- **File contents and patches were filtered as if they were logs.** `git show <rev>:<path>` came back as a
+  single line, `git log -p` lost every patch, and a diff with many similar lines (constants, test tables) had
+  them merged into `… N similar lines …`. These outputs now reach the agent line for line.
+
 ## 0.3.0 (2026-10-22)
 
 ### Choosing models

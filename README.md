@@ -84,7 +84,7 @@ The installer:
 | see what would happen | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
 | install the command only, no hooks | `… \| sh -s -- --no-hooks` |
 | leave my shell profile alone | `… \| sh -s -- --no-modify-path` |
-| stay on a given release instead of `main` | `curl -fsSL …/install.sh \| TOKNIX_REF=v0.3.0 sh` |
+| stay on a given release instead of `main` | `curl -fsSL …/install.sh \| TOKNIX_REF=v0.3.1 sh` |
 | install without the script | `uv tool install git+https://github.com/lephus/toknix && toknix install` |
 
 On Windows, `irm | iex` cannot pass options. Set `$env:TOKNIX_DRY_RUN = "1"` or `$env:TOKNIX_UNINSTALL = "1"`
@@ -473,7 +473,7 @@ checks the install scripts with shellcheck and PSScriptAnalyzer.
 
 1. Raise `__version__` in `src/toknix/__init__.py` and add an entry to `CHANGELOG.md`.
 2. Push to `main`.
-3. Tag the release (`git tag v0.3.1 && git push origin v0.3.1`) so that it can be pinned.
+3. Tag the release (`git tag v0.3.2 && git push origin v0.3.2`) so that it can be pinned.
 
 ## 📚 References
 

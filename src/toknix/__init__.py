@@ -3,4 +3,4 @@
 Pure Python standard library. See docs/ALGORITHMS.md for the algorithms.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"

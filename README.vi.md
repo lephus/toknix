@@ -84,7 +84,7 @@ Script cài:
 | xem trước sẽ làm gì | `curl -fsSL …/install.sh \| sh -s -- --dry-run` |
 | chỉ cài lệnh, không cài hook | `… \| sh -s -- --no-hooks` |
 | không sửa profile của shell | `… \| sh -s -- --no-modify-path` |
-| đứng yên ở một bản phát hành thay vì `main` | `curl -fsSL …/install.sh \| TOKNIX_REF=v0.3.0 sh` |
+| đứng yên ở một bản phát hành thay vì `main` | `curl -fsSL …/install.sh \| TOKNIX_REF=v0.3.1 sh` |
 | cài không qua script | `uv tool install git+https://github.com/lephus/toknix && toknix install` |
 
 Trên Windows, `irm | iex` không truyền được tuỳ chọn. Hãy đặt `$env:TOKNIX_DRY_RUN = "1"` hoặc
@@ -472,7 +472,7 @@ script cài bằng shellcheck và PSScriptAnalyzer.
 
 1. Tăng `__version__` trong `src/toknix/__init__.py` và thêm một mục vào `CHANGELOG.md`.
 2. Push lên `main`.
-3. Gắn tag cho bản phát hành (`git tag v0.3.1 && git push origin v0.3.1`) để người dùng có thể ghim bản đó.
+3. Gắn tag cho bản phát hành (`git tag v0.3.2 && git push origin v0.3.2`) để người dùng có thể ghim bản đó.
 
 ## 📚 Tài liệu tham khảo
 
