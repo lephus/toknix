@@ -112,6 +112,22 @@ CLASSIFY_CASES = [
     ("make -j4", "build"),
     ("mvn package", "build"),
     ("terraform plan", "build"),
+    # content (P11-T3): a file or patches the agent asked for
+    ("git show HEAD:src/a.py", "content"),
+    ("git show :src/a.py", "content"),
+    ("git -C sub show main~1:README.md", "content"),
+    ("git show abc123 -- dir:x.py", "gitdiff"),     # after --, a path
+    ("git show --format=%h:%s HEAD", "gitdiff"),    # an option
+    ("git log -p -3 -- a.py", "content"),
+    ("git log --patch", "content"),
+    ("git log -u", "content"),
+    ("git log -L 10,20:a.py", "content"),
+    ("git log -L10,20:a.py", "content"),
+    ("git log --stat -5", "content"),
+    ("git log --stat=100", "content"),
+    ("git log --name-only", "content"),
+    ("git log --oneline -5", "gitlog"),
+    ("git show HEAD:a.py && git diff", "content"),  # one content statement: nothing is filtered
     # compound (P11-T2): every statement counts; echo, printf, true, false are neutral
     ("ls src && cat src/a.ts", "generic"),
     ("git status && git diff", "generic"),

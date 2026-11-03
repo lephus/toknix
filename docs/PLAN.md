@@ -360,9 +360,10 @@ Người dùng báo toknix làm agent "mất context" khi code. Điều tra trê
 - Xong khi: có test tách câu lệnh (dấu nháy, `2>&1`, `|&`, xuống dòng), bảng `should_wrap` và bảng classify cho lệnh ghép.
   - Kết quả (2026-11-03): `filters.statements`, `filters.NEUTRAL`; `classify` và `should_wrap` xét mọi câu lệnh. 13 ca tách câu lệnh, 7 ca classify, 10 ca `should_wrap`; test "lệnh bọc chạy như lệnh gốc" đổi sang lệnh ghép vẫn được bọc.
 
-**P11-T3 `[ ]` Lệnh in nội dung không bị lọc, diff không bị gộp dòng (A2.3, A2.4, A2.5)**
+**P11-T3 `[x]` Lệnh in nội dung không bị lọc, diff không bị gộp dòng (A2.3, A2.4, A2.5)**
 - Kind `content` (output giữ nguyên) cho `git show <rev>:<path>` và `git log` có patch/stat. A2.5 không chạy trên `gitdiff`.
 - Xong khi: có test cho `git show HEAD:file`, `git log -p` và một diff có nhiều dòng cùng dạng.
+  - Kết quả (2026-11-03): `filters._git_content`, kind `content` trả nguyên output. 15 ca classify, 2 test bộ lọc. Chạy lại trên repo này: `git show HEAD:reports.py` 778 → 778 dòng (trước 2), `git log -p -3` giữ đủ, diff 60 hằng số 64 → 64 dòng (trước 7).
 
 ---
 

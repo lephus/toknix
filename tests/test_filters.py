@@ -241,5 +241,23 @@ class TestLint(unittest.TestCase):
             self.assertEqual(sum(1 for l in out if l.startswith(f + ":")), 15)
 
 
+class TestCodeIsNotRewritten(unittest.TestCase):
+    """P11-T3: file contents, patches and diffs reach the agent line for line."""
+
+    CODE = ([f"LIMIT_{i} = {i * 10}" for i in range(60)] + ["", "", "", "}", "}", "x" * 2000]
+            + [f"def f{i}(): return {i}" for i in range(400)])
+
+    def test_content_is_never_changed(self):
+        for cmd in ("git show HEAD:src/c.py", "git log -p -3 -- src/c.py"):
+            with self.subTest(cmd=cmd):
+                r = apply(cmd, self.CODE, 0, cfg())
+                self.assertEqual((r.lines, r.kind, r.lossy), (self.CODE, "content", False))
+
+    def test_a_diff_keeps_similar_repeated_and_blank_lines(self):
+        diff = (["diff --git a/c.py b/c.py", "--- a/c.py", "+++ b/c.py", "@@ -1,3 +1,66 @@"]
+                + [f"+LIMIT_{i} = {i * 10}" for i in range(60)] + ["", "", "+}", "+}"])
+        self.assertEqual(apply("git diff", diff, 0, cfg()).lines, diff)
+
+
 if __name__ == "__main__":
     unittest.main()

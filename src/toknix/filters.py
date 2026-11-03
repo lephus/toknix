@@ -84,8 +84,8 @@ def program_of(cmd: str) -> tuple[str, list[str]]:
     return prog, words[1:]
 
 
-def _git_sub(args: list[str]) -> str:
-    """Subcommand after git's global options (`-C dir`, `-c k=v`, `--no-pager`, `--git-dir=…`)."""
+def _git_sub(args: list[str]) -> tuple[str, list[str]]:
+    """Subcommand after git's global options (`-C dir`, `-c k=v`, `--no-pager`, `--git-dir=…`), and its arguments."""
     i = 0
     while i < len(args):
         a = args[i]
@@ -94,13 +94,29 @@ def _git_sub(args: list[str]) -> str:
         elif a == "--no-pager" or a.startswith(("--git-dir=", "--work-tree=")):
             i += 1
         else:
-            return a
-    return ""
+            return a, args[i + 1:]
+    return "", []
+
+
+GIT_PATCH_OPTS = {"-p", "-u", "--patch", "--stat", "--numstat", "--shortstat", "--name-only", "--name-status",
+                  "--raw", "--summary", "--dirstat"}
+
+
+def _git_content(sub: str, args: list[str]) -> bool:
+    """P11-T3: `git show <rev>:<path>` prints a file, `git log` with patch or stat options prints patches."""
+    opts = args[:args.index("--")] if "--" in args else args  # after --, paths
+    if sub == "show":
+        return any(not a.startswith("-") and ":" in a for a in opts)
+    if sub == "log":
+        return any(a in GIT_PATCH_OPTS or a.startswith(("-L", "--stat=", "--dirstat=")) for a in opts)
+    return False
 
 
 def classify(cmd: str) -> str:
     """A2.3: the kind of every non-neutral statement; one kind for all of them, else generic (P11-T2)."""
     kinds = {_classify_one(s) for s in statements(cmd) if program_of(s)[0] not in NEUTRAL}
+    if "content" in kinds:  # P11-T3: never filter a file the agent asked for, whatever runs next to it
+        return "content"
     return kinds.pop() if len(kinds) == 1 else "generic"
 
 
@@ -132,7 +148,9 @@ def _classify_one(cmd: str) -> str:
     if prog in ("tsc", "eslint", "ruff", "mypy", "flake8", "pylint"):
         return "lint"
     if prog == "git":
-        sub = _git_sub(args)
+        sub, rest = _git_sub(args)
+        if _git_content(sub, rest):
+            return "content"
         return {"status": "gitstatus", "log": "gitlog", "diff": "gitdiff", "show": "gitdiff",
                 "push": "gitnet", "pull": "gitnet", "fetch": "gitnet", "clone": "gitnet"}.get(sub, "generic")
     if prog in ("ls", "find", "tree", "du"):
@@ -452,6 +470,8 @@ class Filtered(NamedTuple):
 def apply(cmd: str, lines: list[str], exit_code: int, cfg: dict, cwd: str | None = None) -> Filtered:
     """The filter part of the A2.1 pipeline: kind filter → normalize_costly → A2.5 → cut_long_lines → budget."""
     kind = classify(cmd)
+    if kind == "content":  # P11-T3: a file or patches the agent asked for, line for line
+        return Filtered(list(lines), kind, False, False)
     failed = exit_code != 0
     ratios = cfg.get("token_ratios")
     if kind == "gitdiff":
@@ -459,10 +479,10 @@ def apply(cmd: str, lines: list[str], exit_code: int, cfg: dict, cwd: str | None
     else:
         out = FILTERS.get(kind, lambda l, f: l)(lines, failed)
     costly = normalize_costly(out, kind, cfg, cwd)
-    lossy = costly != out
-    out = squeeze_blank(collapse_similar(dedupe_runs(costly)))
+    lossy, out = costly != out, costly
     overflow = False
-    if kind != "gitdiff":
+    if kind != "gitdiff":  # P11-T3: A2.5 would merge lines of the code in a diff
+        out = squeeze_blank(collapse_similar(dedupe_runs(costly)))
         k = 2 if failed else 1
         cut = cut_long_lines(out, cfg["max_line_chars"])
         lossy = lossy or cut != out
