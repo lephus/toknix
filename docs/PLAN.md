@@ -355,9 +355,10 @@ Người dùng báo toknix làm agent "mất context" khi code. Điều tra trê
   - Dòng `guard` vẫn ghi session của phiên cha.
   - Kết quả (2026-11-03): sổ của subagent là `<session>/<agent_id>` trong cột `session` (không đổi schema); `reset_reads` xoá cả `<session>/…`. 2 test mới.
 
-**P11-T2 `[ ]` Lệnh ghép chỉ được bọc khi mọi câu lệnh bọc được (A3, A2.3)**
+**P11-T2 `[x]` Lệnh ghép chỉ được bọc khi mọi câu lệnh bọc được (A3, A2.3)**
 - `ls x && cat a.ts` đang đi qua bộ lọc `listing`, nên nội dung file bị cắt sau 80 dòng. Câu lệnh khác loại nhau thì phân loại `generic`.
 - Xong khi: có test tách câu lệnh (dấu nháy, `2>&1`, `|&`, xuống dòng), bảng `should_wrap` và bảng classify cho lệnh ghép.
+  - Kết quả (2026-11-03): `filters.statements`, `filters.NEUTRAL`; `classify` và `should_wrap` xét mọi câu lệnh. 13 ca tách câu lệnh, 7 ca classify, 10 ca `should_wrap`; test "lệnh bọc chạy như lệnh gốc" đổi sang lệnh ghép vẫn được bọc.
 
 **P11-T3 `[ ]` Lệnh in nội dung không bị lọc, diff không bị gộp dòng (A2.3, A2.4, A2.5)**
 - Kind `content` (output giữ nguyên) cho `git show <rev>:<path>` và `git log` có patch/stat. A2.5 không chạy trên `gitdiff`.

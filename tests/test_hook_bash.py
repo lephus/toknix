@@ -31,7 +31,6 @@ WRAP_CASES = [
     ("go test ./...", True),
     ("npm run build", True),
     ("ls -la src", True),
-    ("npm test | tail -5", True),
     ("git log --oneline -n 50 && git status", True),
     ("git commit -m 'fix: handle \"quoted\" input'", True),
     ("  npm test  ", True),
@@ -39,9 +38,19 @@ WRAP_CASES = [
     ("echo hi", False),
     ("cat package.json", False),
     ("vim x", False),
-    ("echo hi && npm test", False),  # only the first program counts
     ("", False),
     ("   ", False),
+    # P11-T2: a compound command is wrapped only when every statement is; echo/printf/true/false are neutral
+    ("echo hi && npm test", True),
+    ("git status && echo --- && git diff", True),
+    ("git log --format='%h|%s' -5", True),  # the | is quoted
+    ("npm test 2>&1", True),                 # the & of 2>&1 is not a separator
+    ("ls src && cat src/a.ts", False),       # cat prints a file the agent wants whole
+    ("ls && sed -n 1,20p a.py", False),
+    ("git diff | head -50", False),          # the agent already shaped the output
+    ("npm test | tail -5", False),
+    ("npm test 2>&1 | tail -30", False),
+    ("echo a && echo b", False),             # nothing noisy left
     # not wrapped: already toknix
     ("toknix run -- 'npm test'", False),
     ("toknix gain", False),
@@ -108,8 +117,9 @@ CD_CASES = [
     ("cd x && npm test", "cd x && toknix run -- 'npm test'"),
     ('cd "my dir" && pytest -q', "cd \"my dir\" && toknix run -- 'pytest -q'"),
     ("cd 'a b'&&git status", "cd 'a b'&&toknix run -- 'git status'"),
-    ("  cd /w/app  &&  npm test | tail -5", "  cd /w/app  &&  toknix run -- 'npm test | tail -5'"),
+    ("  cd /w/app  &&  git status && git diff", "  cd /w/app  &&  toknix run -- 'git status && git diff'"),
     ("cd x && echo hi", None),               # not a noisy program
+    ("cd x && ls && cat a.ts", None),        # P11-T2: cat is not wrapped
     ("cd x; npm test", None),                # npm would run even when cd fails
     ("cd && npm test", None),
     ("cd a && cd b && npm test", None),      # one cd only
@@ -228,13 +238,13 @@ class TestWrappedCommandBehavesTheSame(Process):
     """The rewritten command, run by bash like Claude Code does, gives the original's output and exit code."""
 
     COMMANDS = [
-        "ls tests/fixtures_py | sort",
+        "ls tests/fixtures_py | git hash-object --stdin",  # P11-T2: only wrapped programs in a pipe
         "ls 'tests/fixtures_py' && echo 'single $HOME quoted'",
         'ls "tests/fixtures_py" >/dev/null && echo "double $HOME quoted"',
         "ls tests >/dev/null && echo \"it's $TOKNIX_TEST_VAR\" 'say \"hi\"'",
-        "ls tests/fixtures | grep -c '\\.txt$' && echo done",
-        "find tests/fixtures_py -name '*.py' | sed 's/^/> /'",
-        "git --version | cut -c1-11 && echo \"tab:\t|\" 'back\\slash'",
+        "ls tests/fixtures 2>&1 | git hash-object --stdin && echo done",
+        "find tests/fixtures_py -name '*.py' && printf '%s\\n' 'a;b|c&&d'",
+        "git --version && echo \"tab:\t|\" 'back\\slash'",
         "ls /definitely/not/here; echo \"rc=$?\"",
         "ls /definitely/not/here",
         "ls tests/fixtures_py && false || echo 'or-branch ran'",

@@ -3,7 +3,24 @@ import unittest
 
 import support  # noqa: F401  (puts src/ on sys.path)
 
-from toknix.filters import classify, program_of
+from toknix.filters import classify, program_of, statements
+
+# (cmd, statements and pipe stages): P11-T2, split outside quotes; the & of 2>&1, >&2 and &> is not a separator
+STATEMENT_CASES = [
+    ("npm test", ["npm test"]),
+    ("ls a && cat b", ["ls a", "cat b"]),
+    ("a || b; c | d |& e", ["a", "b", "c", "d", "e"]),
+    ("npm test\ngit status", ["npm test", "git status"]),
+    ("npm test 2>&1 | tail -5", ["npm test 2>&1", "tail -5"]),
+    ("make &> log & echo started", ["make &> log", "echo started"]),
+    ("cmd >&2", ["cmd >&2"]),
+    ("git log --format='%h|%s' -5", ["git log --format='%h|%s' -5"]),
+    ('echo "a && b; c"', ['echo "a && b; c"']),
+    ('echo "say \\" && x"', ['echo "say \\" && x"']),
+    ("echo a\\;b && ls", ["echo a\\;b", "ls"]),
+    ("ls;", ["ls"]),
+    ("", []),
+]
 
 # (cmd, expected program, expected args)
 PROGRAM_CASES = [
@@ -95,6 +112,14 @@ CLASSIFY_CASES = [
     ("make -j4", "build"),
     ("mvn package", "build"),
     ("terraform plan", "build"),
+    # compound (P11-T2): every statement counts; echo, printf, true, false are neutral
+    ("ls src && cat src/a.ts", "generic"),
+    ("git status && git diff", "generic"),
+    ("git status && echo --- && git status -s", "gitstatus"),
+    ("echo start && npm test", "jest"),
+    ("npm test 2>&1 | tail -30", "generic"),
+    ("ls a; ls b", "listing"),
+    ("git log --format='%h|%s'", "gitlog"),
     # generic
     ("echo hi", "generic"),
     ("", "generic"),
@@ -113,6 +138,13 @@ class TestProgramOf(unittest.TestCase):
         for cmd, prog, args in PROGRAM_CASES:
             with self.subTest(cmd=cmd):
                 self.assertEqual(program_of(cmd), (prog, args))
+
+
+class TestStatements(unittest.TestCase):
+    def test_table(self):
+        for cmd, expected in STATEMENT_CASES:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(statements(cmd), expected)
 
 
 class TestClassify(unittest.TestCase):

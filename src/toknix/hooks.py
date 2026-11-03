@@ -58,8 +58,9 @@ def should_wrap(cmd: str, tool_input: dict, cfg: dict) -> bool:
         return False
     if STATEFUL.search(c):  # the agent's shell must keep cwd/env changes
         return False
-    prog, _ = filters.program_of(c)
-    return prog in set(cfg["wrap_programs"])
+    wrap = set(cfg["wrap_programs"])
+    noisy = [p for p in (filters.program_of(s)[0] for s in filters.statements(c)) if p not in filters.NEUTRAL]
+    return bool(noisy) and all(p in wrap for p in noisy)  # P11-T2: every statement, not only the first
 
 
 def hook_bash(data: dict) -> dict | None:

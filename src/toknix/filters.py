@@ -22,6 +22,38 @@ ERROR_RE = re.compile(
 )
 
 WRAPPERS = {"sudo", "npx", "pnpx", "bunx", "time", "nice", "env", "command", "exec"}
+NEUTRAL = {"echo", "printf", "true", "false"}  # print only what the agent wrote, or nothing (A2.3, P11-T2)
+
+
+def statements(cmd: str) -> list[str]:
+    """Statements and pipe stages of a command line (A2.3, P11-T2): split at && || ; | |& & and newlines outside
+    quotes. The & of 2>&1, >&2 and &>file belongs to a redirection."""
+    parts, cur, quote, i, n = [], [], None, 0, len(cmd)
+    while i < n:
+        ch = cmd[i]
+        if quote:
+            cur.append(ch)
+            if ch == "\\" and quote == '"' and i + 1 < n:
+                cur.append(cmd[i + 1])
+                i += 1
+            elif ch == quote:
+                quote = None
+        elif ch == "\\" and i + 1 < n:
+            cur.append(cmd[i:i + 2])
+            i += 1
+        elif ch in "'\"":
+            quote = ch
+            cur.append(ch)
+        elif ch in ";|\n" or (ch == "&" and cmd[i - 1:i] not in (">", "<") and cmd[i + 1:i + 2] != ">"):
+            parts.append("".join(cur))
+            cur = []
+            if cmd[i:i + 2] in ("&&", "||", "|&", ";;"):
+                i += 1
+        else:
+            cur.append(ch)
+        i += 1
+    parts.append("".join(cur))
+    return [p.strip() for p in parts if p.strip()]
 
 
 def program_of(cmd: str) -> tuple[str, list[str]]:
@@ -67,6 +99,12 @@ def _git_sub(args: list[str]) -> str:
 
 
 def classify(cmd: str) -> str:
+    """A2.3: the kind of every non-neutral statement; one kind for all of them, else generic (P11-T2)."""
+    kinds = {_classify_one(s) for s in statements(cmd) if program_of(s)[0] not in NEUTRAL}
+    return kinds.pop() if len(kinds) == 1 else "generic"
+
+
+def _classify_one(cmd: str) -> str:
     prog, args = program_of(cmd)
     sub = args[0] if args else ""
     if prog in ("pytest", "py.test"):
